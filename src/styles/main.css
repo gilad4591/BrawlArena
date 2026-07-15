@@ -186,6 +186,11 @@ body,
   opacity: 0.5;
   filter: grayscale(0.4);
 }
+.foot-link {
+  color: inherit;
+  text-decoration: underline;
+  opacity: 0.85;
+}
 
 .btn-locked {
   opacity: 0.55;

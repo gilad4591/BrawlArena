@@ -16,8 +16,34 @@
          by AdService for the in-game banner unit (id keeps it from loading twice). -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9834744561471352"
       crossorigin="anonymous" id="adsense-lib"></script>
+    <!-- Inline so it paints instantly (before CSS/JS), covering the blank->menu
+         swap on first load. Removed by main.js once the menu is ready. -->
+    <style>
+      html, body { margin: 0; background: #0b0e1a; }
+      #boot-splash {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; align-items: center; justify-content: center;
+        background: radial-gradient(circle at 50% 40%, #16203a 0%, #0b0e1a 70%);
+        transition: opacity 0.35s ease;
+      }
+      #boot-splash.hide { opacity: 0; pointer-events: none; }
+      #boot-splash .bs-logo {
+        font: 800 clamp(28px, 8vw, 64px)/1 system-ui, sans-serif;
+        letter-spacing: 0.04em; color: #fff; text-transform: uppercase;
+      }
+      #boot-splash .bs-logo span { color: #ff8a3d; }
+      #boot-splash .bs-sub {
+        position: absolute; bottom: 16%; color: #6b7699;
+        font: 600 13px system-ui, sans-serif; letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+    </style>
   </head>
   <body>
+    <div id="boot-splash">
+      <div class="bs-logo">Brawl<span>Arena</span></div>
+      <div class="bs-sub">Loading…</div>
+    </div>
     <div id="app"></div>
     <!-- Web ad slot (AdSense on browser builds; hidden on native where AdMob draws its own banner) -->
     <div id="ad-banner" class="ad-banner hidden"></div>

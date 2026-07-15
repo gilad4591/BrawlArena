@@ -44,7 +44,19 @@ async function bootstrap() {
   const app = new App(document.getElementById('app'), { audio, haptics, ads });
   await app.init();
 
+  // Menu DOM is built; give it one frame to paint, then fade the boot splash out.
+  const splash = document.getElementById('boot-splash');
+  if (splash) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => splash.classList.add('hide'));
+    });
+    setTimeout(() => splash.remove(), 500);
+  }
+
   document.addEventListener('pointerdown', () => audio.resume(), { once: true });
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Boot failed:', err);
+  document.getElementById('boot-splash')?.remove();
+});

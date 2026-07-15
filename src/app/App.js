@@ -91,7 +91,11 @@ export class App {
             <button class="btn btn-ghost" data-action="settings">Settings</button>
           </div>
         </div>
-        <p class="footer-note">Cross-platform · iOS · Android</p>
+        <p class="footer-note">Cross-platform · iOS · Android${
+          this._isNative()
+            ? ''
+            : ' · <a href="/about.html" class="foot-link">About</a> · <a href="/privacy.html" class="foot-link">Privacy</a>'
+        }</p>
       </div>
 
       <div id="screen-setup" class="screen setup hidden">
