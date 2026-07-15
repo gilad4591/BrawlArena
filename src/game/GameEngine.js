@@ -9,6 +9,7 @@ import { Item, ITEM_DEFS, ITEM_IDS, STRONG_ITEM_IDS, POWERUP_DEFS, POWERUP_IDS }
 import { Particle, FloatingText, burst, spark, dust } from './effects.js';
 import { getEnemy } from './enemies.js';
 import { buildSnapshot, readInput, applyInput, ProjProxy, ItemProxy } from './netcode.js';
+import { t, tpl } from '../i18n.js';
 
 const SNAPSHOT_HZ = 22; // host broadcast rate
 
@@ -522,7 +523,7 @@ export class GameEngine {
         const sx = this.view.screenX(f.x);
         const sy = this.view.screenY(f.x, f.z, f.height * 0.6 + f.y);
         this.effects.push(
-          new FloatingText(sx, sy, it.def.healMp ? '+MP' : '+HP', it.def.color, 20, { pop: true }),
+          new FloatingText(sx, sy, t(it.def.healMp ? '+MP' : '+HP'), it.def.color, 20, { pop: true }),
         );
         burst(this.effects, sx, sy, it.def.color, 10, { spread: 160, up: 160 });
         this.audio?.pickup?.();
@@ -784,7 +785,7 @@ export class GameEngine {
     if (def.shieldTimer > 0 && def.alive) {
       const bx = this.view.screenX(def.x);
       const by = this.view.screenY(def.x, def.z, def.height * 0.5 + def.y);
-      this.effects.push(new FloatingText(bx, by - 18, 'SHIELD', '#5fe6ff', 16, { pop: true }));
+      this.effects.push(new FloatingText(bx, by - 18, t('SHIELD'), '#5fe6ff', 16, { pop: true }));
       spark(this.effects, bx, by, '#5fe6ff');
       return;
     }
@@ -807,7 +808,7 @@ export class GameEngine {
     const sx = view.screenX(def.x);
     const sy = view.screenY(def.x, def.z, def.height * 0.5 + def.y);
     if (result.blocked) {
-      this.effects.push(new FloatingText(sx, sy - 20, 'BLOCK', '#8fd0ff', 16));
+      this.effects.push(new FloatingText(sx, sy - 20, t('BLOCK'), '#8fd0ff', 16));
       burst(this.effects, sx, sy, '#8fd0ff', 6, { spread: 160, up: 120, life: 0.3 });
     } else {
       this.effects.push(new FloatingText(sx, sy - 24, `${Math.round(result.damage)}`, '#fff', 20));
@@ -824,7 +825,7 @@ export class GameEngine {
         const cx = view.screenX(attacker.x);
         const cy = view.screenY(attacker.x, attacker.z, attacker.height + attacker.y) - 40;
         this.effects.push(
-          new FloatingText(cx, cy, `${attacker._combo} Hits!`, attacker.char.accent, 26, {
+          new FloatingText(cx, cy, tpl('{n} Hits!', { n: attacker._combo }), attacker.char.accent, 26, {
             pop: true,
             life: 0.75,
             rise: 26,

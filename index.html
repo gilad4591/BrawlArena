@@ -20,28 +20,29 @@
          swap on first load. Removed by main.js once the menu is ready. -->
     <style>
       html, body { margin: 0; background: #0b0e1a; }
+      /* Same artwork + scrim as the menu, so when this fades out the background
+         doesn't change — only the logo/buttons fade in (no double-logo flash). */
       #boot-splash {
         position: fixed; inset: 0; z-index: 9999;
-        display: flex; align-items: center; justify-content: center;
-        background: radial-gradient(circle at 50% 40%, #16203a 0%, #0b0e1a 70%);
-        transition: opacity 0.35s ease;
+        display: flex; align-items: flex-end; justify-content: center;
+        background: #0b0e1a url('/ui/menu-splash.png?v=8') center / cover no-repeat;
+        transition: opacity 0.4s ease;
+      }
+      #boot-splash::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(180deg, rgba(6,8,16,0.5) 0%, rgba(6,8,16,0.15) 40%, rgba(6,8,16,0.85) 100%);
       }
       #boot-splash.hide { opacity: 0; pointer-events: none; }
-      #boot-splash .bs-logo {
-        font: 800 clamp(28px, 8vw, 64px)/1 system-ui, sans-serif;
-        letter-spacing: 0.04em; color: #fff; text-transform: uppercase;
-      }
-      #boot-splash .bs-logo span { color: #ff8a3d; }
       #boot-splash .bs-sub {
-        position: absolute; bottom: 16%; color: #6b7699;
-        font: 600 13px system-ui, sans-serif; letter-spacing: 0.2em;
-        text-transform: uppercase;
+        position: relative; z-index: 1; margin-bottom: 14%;
+        color: #cdd6f4; font: 600 13px system-ui, sans-serif;
+        letter-spacing: 0.3em; text-transform: uppercase;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.8);
       }
     </style>
   </head>
   <body>
     <div id="boot-splash">
-      <div class="bs-logo">Brawl<span>Arena</span></div>
       <div class="bs-sub">Loading…</div>
     </div>
     <div id="app"></div>

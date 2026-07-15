@@ -15,6 +15,7 @@ import {
 } from '../game/sprites.js';
 import { StorageService } from '../services/StorageService.js';
 import { MultiplayerService } from '../services/MultiplayerService.js';
+import { t, tpl, getLang, setLang, attachTranslator, retranslate } from '../i18n.js';
 
 export class App {
   constructor(root, { audio, haptics, ads }) {
@@ -62,7 +63,12 @@ export class App {
     this.audio.setVolume(this.settings.volume ?? 0.8);
     this.haptics.setEnabled(this.settings.haptics);
 
+    // Language must be set before the first render so the observer can translate it.
+    setLang(this.profile.lang || 'en');
+    attachTranslator(this.root);
+
     this.render();
+    retranslate(this.root);
     this.showScreen('menu');
     if (this.settings.music) this.audio.startMusic();
 
@@ -239,6 +245,11 @@ export class App {
             <button class="toggle ${this.settings?.haptics ? 'on' : ''}" data-toggle="haptics"></button></div>
           <div class="setting-row"><span>Reduce Motion<small>Turns off screen shake</small></span>
             <button class="toggle ${this.settings?.reduceMotion ? 'on' : ''}" data-toggle="reduceMotion"></button></div>
+          <div class="setting-row"><span>Language</span>
+            <div class="seg lang-seg">
+              <button data-lang="en" class="${getLang() === 'en' ? 'on' : ''}">EN</button>
+              <button data-lang="he" class="${getLang() === 'he' ? 'on' : ''}">עברית</button>
+            </div></div>
         </div>
         <div class="stats-block" id="stats-block"></div>
         <button class="btn btn-secondary" data-action="menu">Back</button>
@@ -256,6 +267,8 @@ export class App {
       if (action) this.handleAction(action);
       const toggle = e.target.closest('[data-toggle]')?.dataset.toggle;
       if (toggle) this.toggleSetting(toggle, e.target.closest('[data-toggle]'));
+      const langBtn = e.target.closest('[data-lang]')?.dataset.lang;
+      if (langBtn) this.switchLanguage(langBtn);
     });
 
     const volume = this.root.querySelector('#volume-slider');
@@ -357,7 +370,7 @@ export class App {
     if (!this._menuSplashImg) {
       const im = new Image();
       im.onload = () => { if (this.state === 'menu') this.drawMenuScene(); };
-      im.src = `${import.meta.env.BASE_URL || '/'}ui/menu-splash.png`;
+      im.src = `${import.meta.env.BASE_URL || '/'}ui/menu-splash.png?v=8`;
       this._menuSplashImg = im;
     }
 
@@ -997,8 +1010,12 @@ export class App {
     const el = this.root.querySelector('#stage-indicator');
     if (!el || !info) return;
     el.classList.remove('hidden');
-    el.innerHTML = `<b>Stage ${info.stage}/${info.totalStages}</b> · ${info.stageName}
-      <span>Wave ${info.wave}/${info.totalWaves}${info.boss ? ' · BOSS' : ''}</span>`;
+    el.innerHTML = `<b>${tpl('Stage {s}/{total}', { s: info.stage, total: info.totalStages })}</b> · ${t(
+      info.stageName,
+    )}
+      <span>${tpl('Wave {w}/{total}', { w: info.wave, total: info.totalWaves })}${
+      info.boss ? ` · ${t('BOSS')}` : ''
+    }</span>`;
   }
 
   async saveCampaignProgress(clearedStageIndex) {
@@ -1111,14 +1128,16 @@ export class App {
     const ranking = result.ranking || [];
     const you = ranking.find((r) => r.containsHuman ?? r.isHuman);
     if (title) {
-      title.textContent = result.win ? 'VICTORY!' : 'DEFEATED';
+      title.textContent = t(result.win ? 'VICTORY!' : 'DEFEATED');
       title.classList.toggle('lose', !result.win);
     }
     if (meta) {
-      const who = result.teams ? 'Your team placed' : 'You placed';
+      const tmpl = result.teams
+        ? 'Your team placed #{place} of {count} · {time}s'
+        : 'You placed #{place} of {count} · {time}s';
       meta.textContent = you
-        ? `${who} #${you.place} of ${ranking.length} · ${Math.floor(result.time)}s`
-        : `KO in ${Math.floor(result.time)}s`;
+        ? tpl(tmpl, { place: you.place, count: ranking.length, time: Math.floor(result.time) })
+        : tpl('KO in {time}s', { time: Math.floor(result.time) });
     }
     this.buildPodium(ranking);
 
@@ -1143,13 +1162,16 @@ export class App {
     this.root.querySelector('#stage-indicator')?.classList.add('hidden');
 
     if (title) {
-      title.textContent = result.win ? 'CHAMPION!' : 'DEFEATED';
+      title.textContent = t(result.win ? 'CHAMPION!' : 'DEFEATED');
       title.classList.toggle('lose', !result.win);
     }
     if (meta) {
       meta.textContent = result.win
-        ? `You cleared all ${STAGES.length} stages! · ${Math.floor(result.time)}s`
-        : `Fell at ${result.stageName} · ${result.stagesCleared} stage${result.stagesCleared === 1 ? '' : 's'} cleared`;
+        ? tpl('You cleared all {n} stages! · {time}s', { n: STAGES.length, time: Math.floor(result.time) })
+        : tpl('Fell at {stage} · {n} stages cleared', {
+            stage: t(result.stageName),
+            n: result.stagesCleared,
+          });
     }
     // No survival podium in the campaign.
     const podium = this.root.querySelector('#result-podium');
@@ -1218,10 +1240,13 @@ export class App {
     if (!el) return;
     const unlocks = award.unlocked
       .map(
-        (c) => `<span class="xp-unlock" data-portrait="${c.id}"><b>${c.name}</b> unlocked!</span>`,
+        (c) => `<span class="xp-unlock" data-portrait="${c.id}"><b>${c.name}</b> ${t('unlocked!')}</span>`,
       )
       .join('');
-    el.innerHTML = `<div class="xp-gain">+${award.gained} XP <span>· Total ${this.xp}</span></div>${unlocks}`;
+    el.innerHTML = `<div class="xp-gain">${tpl('+{gained} XP · Total {xp}', {
+      gained: award.gained,
+      xp: this.xp,
+    })}</div>${unlocks}`;
     el.querySelectorAll('[data-portrait]').forEach((holder) => {
       holder.prepend(this.portraitCanvas(getCharacter(holder.dataset.portrait), 40));
     });
@@ -1298,7 +1323,7 @@ export class App {
   async confirmReset() {
     this.haptics.tap();
     // eslint-disable-next-line no-alert
-    const ok = window.confirm('Reset all progress? This clears your stats, XP and unlocks.');
+    const ok = window.confirm(t('Reset all progress? This clears your stats, XP and unlocks.'));
     if (!ok) return;
     const { stats, profile } = await StorageService.resetProgress();
     this.stats = stats;
@@ -1306,6 +1331,20 @@ export class App {
     this.xp = 0;
     this.unlocked = new Set(STARTER_IDS);
     this.toast('Progress reset');
+    this.showSettings();
+  }
+
+  switchLanguage(l) {
+    if (getLang() === l) return;
+    setLang(l);
+    this.profile.lang = l;
+    StorageService.saveProfile({ lang: l });
+    this.audio.select?.();
+    this.haptics.tap();
+    // Rebuild the whole UI in the base (English) language, then let the
+    // observer/retranslate re-apply Hebrew, and reopen the settings screen.
+    this.render();
+    retranslate(this.root);
     this.showSettings();
   }
 
@@ -1591,9 +1630,9 @@ export class App {
         const c = p.character ? getCharacter(p.character) : null;
         const dotColor = c ? c.color : '#4a4f66';
         const charName = c ? c.name : 'Choosing…';
-        const t = showTeams ? this._mpTeamMap[p.id] ?? 0 : null;
+        const tm = showTeams ? this._mpTeamMap[p.id] ?? 0 : null;
         const teamTag = showTeams
-          ? `<span class="team-tag" style="background:${teamColors[t % 2]}">Team ${t + 1}</span>`
+          ? `<span class="team-tag" style="background:${teamColors[tm % 2]}">Team ${tm + 1}</span>`
           : '';
         return `<div class="roster-row">
           <span class="roster-dot" style="background:${dotColor}"></span>
@@ -1656,15 +1695,15 @@ export class App {
   }
 
   toast(msg) {
-    let t = this.root.querySelector('.toast');
-    if (!t) {
-      t = document.createElement('div');
-      t.className = 'toast';
-      this.root.appendChild(t);
+    let el = this.root.querySelector('.toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'toast';
+      this.root.appendChild(el);
     }
-    t.textContent = msg;
-    t.classList.add('show');
+    el.textContent = t(msg);
+    el.classList.add('show');
     clearTimeout(this._toastTimer);
-    this._toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+    this._toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
   }
 }

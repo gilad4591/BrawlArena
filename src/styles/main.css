@@ -234,6 +234,17 @@ body,
   cursor: pointer;
 }
 
+/* Shared artwork backdrop for the front-end screens (menu draws it on its own
+   canvas). A dark scrim keeps the controls legible over the illustration. */
+.screen.setup,
+.screen.settings,
+.screen.mp,
+.screen.howto {
+  background:
+    linear-gradient(180deg, rgba(8, 10, 22, 0.9) 0%, rgba(8, 10, 22, 0.82) 40%, rgba(8, 10, 22, 0.92) 100%),
+    url('/ui/menu-splash.png?v=8') center / cover no-repeat;
+}
+
 /* ---------------- menu ---------------- */
 .screen.menu {
   justify-content: flex-start;
@@ -1800,4 +1811,24 @@ body.has-web-ad .screen {
 
 .hud-fighter.boss {
   outline: 2px solid #ff5252;
+}
+
+/* -------------------------------------------------------------- i18n / RTL */
+/* The gameplay layer is coordinate-driven and its controls are physically
+   placed, so keep it LTR even in Hebrew; only the surrounding menus flip. */
+[dir='rtl'] .game-screen,
+[dir='rtl'] .controls,
+[dir='rtl'] .hud,
+[dir='rtl'] .stage-indicator,
+[dir='rtl'] .announce {
+  direction: ltr;
+}
+
+/* Keep the HUD name text reading right-to-left while its box stays on the left. */
+[dir='rtl'] .hud-name {
+  direction: rtl;
+}
+
+.lang-seg button {
+  min-width: 46px;
 }
