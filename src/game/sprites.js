@@ -14,7 +14,7 @@ const BASE = import.meta.env.BASE_URL || '/';
 // Bump this whenever portrait/sprite PNGs are re-exported. Vite does NOT hash
 // files under public/, so browsers (and the dev server) can serve a stale
 // cached copy after art updates — the version query forces a fresh fetch.
-const ASSET_VERSION = '8';
+const ASSET_VERSION = '9';
 const v = (url) => `${url}${url.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`;
 
 /**
@@ -332,10 +332,10 @@ export const SPRITE_DEFS = {
 // Painted busts (cropped from the "Character Select Screen 2" mockup) mapped to
 // each fighter by element. Sylva (archer) and Sage (wizard) have no matching
 // bust, so they fall back to their crisp 1024px sprite crops.
-// frost/tide/sage intentionally omitted: their regenerated chroma sprites are
-// crisp, so we crop the portrait straight from the idle frame — this keeps the
-// select/HUD bust identical to the in-game character (no painted mismatch).
-const PORTRAIT_IDS = ['blaze', 'shade', 'volt', 'golem', 'nox', 'aurex', 'sylva'];
+// Full painted-bust roster. All 10 busts were regenerated as a matching set
+// (crop-busts.mjs) from flat-magenta reference sheets, so the select/HUD
+// portrait now matches each in-game character across the whole roster.
+const PORTRAIT_IDS = ['blaze', 'frost', 'tide', 'volt', 'sylva', 'shade', 'nox', 'golem', 'aurex', 'sage'];
 const portraits = new Map();
 
 function loadImage(url) {
