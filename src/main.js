@@ -32,25 +32,35 @@ async function initNativeShell() {
   }
 }
 
+/** Nudge the boot-splash progress bar (CSS-animated) as we pass load milestones. */
+function bootProgress(pct) {
+  const bar = document.getElementById('boot-bar');
+  if (bar) bar.style.width = `${pct}%`;
+}
+
 async function bootstrap() {
+  // Start the bar moving right away; it eases toward ~85% while assets load.
+  requestAnimationFrame(() => bootProgress(30));
+
   await initNativeShell();
+  bootProgress(50);
 
   const audio = new AudioService();
   const haptics = new HapticsService();
   const ads = new AdService();
   await audio.init();
   await ads.init();
+  bootProgress(70);
 
   const app = new App(document.getElementById('app'), { audio, haptics, ads });
   await app.init();
+  bootProgress(100);
 
-  // Menu DOM is built; give it one frame to paint, then fade the boot splash out.
+  // Menu DOM is built; hold at 100% for a beat, then fade the boot splash out.
   const splash = document.getElementById('boot-splash');
   if (splash) {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => splash.classList.add('hide'));
-    });
-    setTimeout(() => splash.remove(), 500);
+    setTimeout(() => splash.classList.add('hide'), 280);
+    setTimeout(() => splash.remove(), 760);
   }
 
   document.addEventListener('pointerdown', () => audio.resume(), { once: true });

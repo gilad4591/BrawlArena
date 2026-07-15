@@ -20,22 +20,48 @@
          swap on first load. Removed by main.js once the menu is ready. -->
     <style>
       html, body { margin: 0; background: #0b0e1a; }
-      /* Same artwork + scrim as the menu, so when this fades out the background
-         doesn't change — only the logo/buttons fade in (no double-logo flash). */
+      /* Branded loading screen over the menu artwork. Shares the menu's image +
+         scrim so the fade-out only swaps the logo/buttons in (no flash). */
       #boot-splash {
         position: fixed; inset: 0; z-index: 9999;
-        display: flex; align-items: flex-end; justify-content: center;
+        display: flex; align-items: center; justify-content: center;
         background: #0b0e1a url('/ui/menu-splash.png?v=9') center / cover no-repeat;
         transition: opacity 0.4s ease;
       }
       #boot-splash::after {
         content: ''; position: absolute; inset: 0;
-        background: linear-gradient(180deg, rgba(6,8,16,0.5) 0%, rgba(6,8,16,0.15) 40%, rgba(6,8,16,0.85) 100%);
+        background: linear-gradient(180deg, rgba(6,8,16,0.55) 0%, rgba(6,8,16,0.25) 45%, rgba(6,8,16,0.88) 100%);
       }
       #boot-splash.hide { opacity: 0; pointer-events: none; }
+      #boot-splash .bs-wrap {
+        position: relative; z-index: 1; text-align: center;
+        display: flex; flex-direction: column; align-items: center; gap: 20px;
+        animation: bs-pop 0.5s ease both;
+      }
+      @keyframes bs-pop { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+      #boot-splash .bs-logo {
+        font: 900 clamp(2.6rem, 9vw, 4.4rem)/0.9 system-ui, sans-serif;
+        letter-spacing: 2px;
+        background: linear-gradient(135deg, #ff5d3b, #ffb03b);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+        filter: drop-shadow(0 3px 10px rgba(0,0,0,0.7)) drop-shadow(0 4px 18px rgba(255,93,59,0.35));
+      }
+      #boot-splash .bs-logo span {
+        display: block; -webkit-text-fill-color: #eef1ff; color: #eef1ff;
+        font-size: 0.44em; letter-spacing: 10px; margin-top: 6px;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+      }
+      #boot-splash .bs-loader {
+        width: min(260px, 60vw); height: 6px; border-radius: 999px;
+        background: rgba(255,255,255,0.14); overflow: hidden;
+      }
+      #boot-splash .bs-loader i {
+        display: block; height: 100%; width: 8%; border-radius: 999px;
+        background: linear-gradient(90deg, #ff5d3b, #ffb03b);
+        transition: width 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
+      }
       #boot-splash .bs-sub {
-        position: relative; z-index: 1; margin-bottom: 14%;
-        color: #cdd6f4; font: 600 13px system-ui, sans-serif;
+        color: #cdd6f4; font: 600 12px system-ui, sans-serif;
         letter-spacing: 0.3em; text-transform: uppercase;
         text-shadow: 0 2px 8px rgba(0,0,0,0.8);
       }
@@ -43,7 +69,11 @@
   </head>
   <body>
     <div id="boot-splash">
-      <div class="bs-sub">Loading…</div>
+      <div class="bs-wrap">
+        <div class="bs-logo">BRAWL<span>ARENA</span></div>
+        <div class="bs-loader"><i id="boot-bar"></i></div>
+        <div class="bs-sub">Loading…</div>
+      </div>
     </div>
     <div id="app"></div>
     <!-- Web ad slot (AdSense on browser builds; hidden on native where AdMob draws its own banner) -->

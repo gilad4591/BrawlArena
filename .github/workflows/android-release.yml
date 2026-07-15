@@ -1,0 +1,89 @@
+name: Android Release AAB
+
+# Builds a Play-ready Android App Bundle (.aab) on GitHub's runners, which have
+# the Android SDK preinstalled (no local SDK needed). Runs on every push to main
+# and can also be triggered manually from the Actions tab.
+#
+# Signing: add these repo secrets (Settings -> Secrets and variables -> Actions)
+# for a Play-uploadable, signed build:
+#   ANDROID_KEYSTORE_BASE64     base64 of your upload .jks  (see notes below)
+#   ANDROID_KEYSTORE_PASSWORD   keystore (store) password
+#   ANDROID_KEY_ALIAS           key alias (e.g. brawl-upload)
+#   ANDROID_KEY_PASSWORD        key password
+#   VITE_MP_RELAY_URL           (optional) wss URL for multiplayer, e.g.
+#                               wss://brawlarena-1.onrender.com
+#
+# Create the keystore once (JDK's keytool, no SDK needed) and base64 it:
+#   keytool -genkey -v -keystore brawl-upload.jks -keyalg RSA -keysize 2048 \
+#           -validity 10000 -alias brawl-upload
+#   # Windows PowerShell:
+#   [Convert]::ToBase64String([IO.File]::ReadAllBytes("brawl-upload.jks")) | Set-Clipboard
+# Without the secrets the workflow still runs but produces a debug-signed AAB
+# (fine for testing the pipeline, NOT uploadable to Play).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle
+        run: npm run build
+        env:
+          VITE_MP_RELAY_URL: ${{ secrets.VITE_MP_RELAY_URL }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Capacitor sync (android)
+        run: npx cap sync android
+
+      - name: Write signing config (if secrets present)
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KSP: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KP: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > android/app/upload.jks
+            printf 'storeFile=upload.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$KSP" "$ALIAS" "$KP" > android/keystore.properties
+            echo "Release signing configured."
+          else
+            echo "No ANDROID_KEYSTORE_BASE64 secret — building a debug-signed AAB (not uploadable to Play)."
+          fi
+
+      - name: Build AAB
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew bundleRelease --no-daemon --stacktrace
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: brawl-arena-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
