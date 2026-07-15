@@ -41,9 +41,11 @@ export const ADS = {
     rewarded: 'ca-app-pub-3940256099942544/1712485313',
   },
 
-  // AdSense (browser build). Leave empty to render a placeholder instead.
+  // AdSense (browser build). adClient is your publisher ID. adSlot is filled in
+  // AFTER approval, once you create a Display ad unit (see notes at top of file).
+  // Until adSlot is set, a neutral "Advertisement" placeholder reserves the space.
   web: {
-    adClient: '', // e.g. 'ca-pub-1234567890123456'
-    adSlot: '', // e.g. '1234567890'
+    adClient: 'ca-pub-9834744561471352',
+    adSlot: '', // paste the ad-unit slot id here after AdSense approves the site
   },
 };
