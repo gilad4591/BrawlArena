@@ -57,6 +57,57 @@ body,
   display: none !important;
 }
 
+/* ---------------- screen / element transitions ---------------- */
+/* Front-end screens fade+rise in when shown (display none -> flex restarts the
+   animation). The gameplay screen is excluded so the canvas never transforms. */
+.screen:not(.hidden):not(.game-screen) {
+  animation: screen-in 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.overlay:not(.hidden) {
+  animation: overlay-in 0.28s ease both;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen:not(.hidden):not(.game-screen),
+  .overlay:not(.hidden),
+  .menu-content > * {
+    animation: none !important;
+  }
+}
+
 /* ---------------- buttons ---------------- */
 .btn {
   border: none;
@@ -242,7 +293,7 @@ body,
 .screen.howto {
   background:
     linear-gradient(180deg, rgba(8, 10, 22, 0.9) 0%, rgba(8, 10, 22, 0.82) 40%, rgba(8, 10, 22, 0.92) 100%),
-    url('/ui/menu-splash.png?v=8') center / cover no-repeat;
+    url('/ui/menu-splash.png?v=9') center / cover no-repeat;
 }
 
 /* ---------------- menu ---------------- */
@@ -283,6 +334,36 @@ body,
 
 .menu-buttons {
   margin-top: 6px;
+}
+
+/* Staggered entrance for the title, tagline and each menu button. */
+.menu-content > .logo {
+  animation: rise-in 0.5s ease both;
+}
+
+.menu-content > .tagline {
+  animation: rise-in 0.5s 0.08s ease both;
+}
+
+.menu-buttons .btn {
+  animation: rise-in 0.5s ease both;
+  opacity: 0;
+}
+
+.menu-buttons .btn:nth-child(1) {
+  animation-delay: 0.14s;
+}
+.menu-buttons .btn:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.menu-buttons .btn:nth-child(3) {
+  animation-delay: 0.26s;
+}
+.menu-buttons .btn:nth-child(4) {
+  animation-delay: 0.32s;
+}
+.menu-buttons .btn:nth-child(5) {
+  animation-delay: 0.38s;
 }
 
 .bg-glow {

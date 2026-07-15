@@ -370,7 +370,7 @@ export class App {
     if (!this._menuSplashImg) {
       const im = new Image();
       im.onload = () => { if (this.state === 'menu') this.drawMenuScene(); };
-      im.src = `${import.meta.env.BASE_URL || '/'}ui/menu-splash.png?v=8`;
+      im.src = `${import.meta.env.BASE_URL || '/'}ui/menu-splash.png?v=9`;
       this._menuSplashImg = im;
     }
 
