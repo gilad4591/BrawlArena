@@ -785,9 +785,17 @@ export class App {
     }
   }
 
-  /** Shuffle Arcade fighters into two balanced teams. */
+  /**
+   * Shuffle Arcade fighters into a RANDOM number of balanced teams. The team
+   * count is picked between 2 and the participant count (so 4 fighters can be
+   * split into 2, 3 or 4 teams — never more teams than fighters). Round-robin
+   * over a shuffled order keeps the teams balanced and guarantees every team
+   * has at least one member.
+   */
   _randomizeArcadeTeams() {
     const total = this.selection.opponents + 1;
+    const maxTeams = Math.min(total, TEAM_COLORS.length);
+    const numTeams = 2 + Math.floor(Math.random() * Math.max(1, maxTeams - 1));
     const idx = Array.from({ length: total }, (_, i) => i);
     for (let i = idx.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -795,7 +803,7 @@ export class App {
     }
     const assign = new Array(total);
     idx.forEach((p, k) => {
-      assign[p] = k % 2;
+      assign[p] = k % numTeams;
     });
     this.selection.teamAssign = assign;
   }
@@ -1554,16 +1562,21 @@ export class App {
     });
   }
 
-  /** Randomly split the current lobby into two balanced teams (host only). */
+  /**
+   * Randomly split the current lobby into a random number of balanced teams
+   * (2 up to the player count), host only.
+   */
   _shuffleMpTeams() {
     const ids = this.mp.players.map((p) => p.id);
+    const maxTeams = Math.min(ids.length, TEAM_COLORS.length);
+    const numTeams = 2 + Math.floor(Math.random() * Math.max(1, maxTeams - 1));
     for (let i = ids.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [ids[i], ids[j]] = [ids[j], ids[i]];
     }
     this._mpTeamMap = {};
     ids.forEach((id, i) => {
-      this._mpTeamMap[id] = i % 2;
+      this._mpTeamMap[id] = i % numTeams;
     });
   }
 
