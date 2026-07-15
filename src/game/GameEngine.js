@@ -8,6 +8,9 @@ import { Projectile } from './Projectile.js';
 import { Item, ITEM_DEFS, ITEM_IDS, STRONG_ITEM_IDS, POWERUP_DEFS, POWERUP_IDS } from './items.js';
 import { Particle, FloatingText, burst, spark, dust } from './effects.js';
 import { getEnemy } from './enemies.js';
+import { buildSnapshot, readInput, applyInput, ProjProxy, ItemProxy } from './netcode.js';
+
+const SNAPSHOT_HZ = 22; // host broadcast rate
 
 const NEUTRAL_MODS = { moveSpeedMult: 1, damageTaken: 1, damageDealt: 1 };
 
@@ -27,6 +30,13 @@ export class GameEngine {
     this.ais = [];
     this.humanController = null;
     this.human = null;
+
+    // --- Networking (host-authoritative). null for local/offline play. ---
+    this.net = null; // { role:'host'|'guest', localNetId, send(state) }
+    this.remoteControllers = new Map(); // netId -> Controller (host side)
+    this._netTarget = null; // latest snapshot to interpolate toward (guest)
+    this._snapAccum = 0; // host snapshot throttle
+    this._inputAccum = 0; // guest input throttle
 
     this.running = false;
     this.paused = false;
@@ -60,6 +70,8 @@ export class GameEngine {
 
     this.floorTopY = h * 0.52;
     this.floorBottomY = h * 0.94;
+    this._arenaCache = null; // size changed -> rebuild the cached background
+    this._vignette = null;
     this.fighters.forEach((f) => f.setArenaWidth(w));
   }
 
@@ -91,6 +103,11 @@ export class GameEngine {
     this.effects = [];
     this.items = [];
     this.ais = [];
+    this.remoteControllers = new Map();
+    this.net = config.net || null;
+    this._netTarget = null;
+    this._snapAccum = 0;
+    this._inputAccum = 0;
     this.roundOver = false;
     this.overTimer = 0;
     this.elapsed = 0;
@@ -123,6 +140,8 @@ export class GameEngine {
 
     if (config.campaign) {
       this._startCampaign(config);
+    } else if (config.network) {
+      this._startNetworkMatch(config);
     } else {
       // Build the participant list: teams + characters.
       const participants = this._buildParticipants(config, mode);
@@ -156,7 +175,7 @@ export class GameEngine {
   }
 
   /** Create a fighter (+ controller and AI) and register it. */
-  _addFighter({ character, team, isHuman, name, x, z, facing, aiDiff }) {
+  _addFighter({ character, team, isHuman, name, x, z, facing, aiDiff, remote, netId, neutral }) {
     const controller = new Controller();
     const char = typeof character === 'string' ? getCharacter(character) : character;
     const fighter = new Fighter({
@@ -168,19 +187,69 @@ export class GameEngine {
       x,
       z,
       facing: facing ?? 1,
-      difficultyMods: isHuman ? NEUTRAL_MODS : this.diffMods,
+      // Human players (local or remote) never get the AI difficulty handicap.
+      difficultyMods: isHuman || remote || neutral ? NEUTRAL_MODS : this.diffMods,
       teamsMode: this._teamsMode,
     });
     fighter.displayName = name;
+    fighter.netId = netId || null;
     fighter.setArenaWidth(this.vw);
     this.fighters.push(fighter);
     if (isHuman) {
       this.human = fighter;
       this.humanController = controller;
+    } else if (remote) {
+      // Driven over the network (another human). No local AI.
+      this.remoteControllers.set(netId, controller);
     } else {
       this.ais.push(new AIController(fighter, controller, aiDiff || this._diff));
     }
     return fighter;
+  }
+
+  /**
+   * Build a networked match. `config.netPlayers` is the agreed roster (same on
+   * every client) as [{ character, name, team, netId }]. `config.localIndex`
+   * marks which of those is the local human; the rest are remote (host) or
+   * puppets (guest). Only the HOST actually simulates.
+   */
+  _startNetworkMatch(config) {
+    const w = this.vw;
+    const players = config.netPlayers || [];
+    this._teamsMode = !!config.teamsMode;
+    const isHost = this.net?.role === 'host';
+    players.forEach((p, i) => {
+      const spawnX = w * (0.16 + 0.68 * (players.length === 1 ? 0.5 : i / (players.length - 1)));
+      const local = i === config.localIndex;
+      this._addFighter({
+        character: p.character,
+        team: p.team,
+        isHuman: local,
+        // Non-local players are never AI: on the host they're driven by remote
+        // input; on a guest they're puppets that just render host snapshots.
+        remote: !local,
+        neutral: !local,
+        netId: p.netId,
+        name: p.name,
+        x: spawnX,
+        z: ARENA_DEPTH * (0.45 + 0.1 * (i / Math.max(1, players.length - 1))),
+        facing: spawnX < w / 2 ? 1 : -1,
+      });
+    });
+    // Only the host spawns items (they're part of the authoritative sim).
+    if (isHost) this._spawnItems();
+    this.cb.onAnnounce?.('FIGHT!', 'go');
+  }
+
+  /** Route an incoming network payload (snapshot from host / input from guest). */
+  ingestNet(state) {
+    if (!state || !this.net) return;
+    if (state.k === 'input' && this.net.role === 'host') {
+      const ctrl = this.remoteControllers.get(state.id);
+      if (ctrl) applyInput(ctrl, state);
+    } else if (state.k === 'snap' && this.net.role === 'guest') {
+      this._netTarget = state;
+    }
   }
 
   _buildParticipants(config, mode) {
@@ -495,18 +564,97 @@ export class GameEngine {
     this._rawDt = raw;
 
     if (!this.paused) {
-      if (this.hitStop > 0) {
+      if (this.net?.role === 'guest') {
+        // Guests never simulate; they render the host's snapshot and stream input.
+        this._guestTick(raw);
+      } else if (this.hitStop > 0) {
         // Freeze the sim for a beat (impact punch), but keep drawing.
         this.hitStop -= raw;
-        this._render();
       } else {
         this._slowmo = Math.max(0, this._slowmo - raw);
         this.timeScale = this._slowmo > 0 ? 0.4 : 1;
         this._update(raw * this.timeScale);
-        this._render();
       }
+      this._render();
+      if (this.net?.role === 'host') this._maybeSendSnapshot(raw);
     }
     this._raf = requestAnimationFrame((t) => this._loop(t));
+  }
+
+  /** Host: broadcast a compact snapshot at a fixed rate. */
+  _maybeSendSnapshot(dt) {
+    this._snapAccum += dt;
+    if (this._snapAccum < 1 / SNAPSHOT_HZ) return;
+    this._snapAccum = 0;
+    this.net.send(buildSnapshot(this));
+  }
+
+  /**
+   * Guest per-frame: smooth fighters toward the latest snapshot, keep cosmetic
+   * animation/effects ticking, forward local input, and mirror round-over.
+   */
+  _guestTick(dt) {
+    this.elapsed += dt;
+    this.shake = Math.max(0, this.shake - dt * 48);
+
+    // Stream our own input to the host (throttled a touch above snapshot rate).
+    this._inputAccum += dt;
+    if (this.humanController && this._inputAccum >= 1 / 30) {
+      this._inputAccum = 0;
+      this.net.send(readInput(this.humanController, this.net.localNetId));
+    }
+
+    const snap = this._netTarget;
+    if (snap) {
+      const a = Math.min(1, dt * 16); // exponential smoothing toward the target
+      for (const fs of snap.fighters) {
+        const f = this.fighters[fs.i];
+        if (!f) continue;
+        f.x += (fs.x - f.x) * a;
+        f.y += (fs.y - f.y) * a;
+        f.z += (fs.z - f.z) * a;
+        f.facing = fs.fa;
+        f.state = fs.s;
+        f.stateTime = fs.st;
+        f.hp = fs.hp;
+        f.mp = fs.mp;
+        f.alive = !!fs.al;
+        f.deathTime = fs.dt;
+        f.powerTimer = fs.pt;
+        f.shieldTimer = fs.sh;
+        f._combo = fs.cb;
+        f.heldItem = fs.it ? { def: ITEM_DEFS[fs.it.id], uses: fs.it.u } : null;
+      }
+      // Rebuild render proxies for projectiles / items.
+      this.projectiles = snap.proj.map((d) => new ProjProxy(d));
+      this.items = snap.items.map((d) => new ItemProxy(d));
+
+      if (snap.over != null && !this.roundOver) {
+        this.roundOver = true;
+        this.overTimer = 1.6;
+        this._winnerTeam = snap.over < 0 ? null : snap.over;
+        this._slowmo = 1.0;
+        this.cb.onAnnounce?.('K.O.!', 'ko');
+      }
+    }
+
+    // Advance cosmetic-only clocks so animations still play on the guest.
+    for (const f of this.fighters) {
+      f.animClock += dt;
+      if (f.flashTime > 0) f.flashTime = Math.max(0, f.flashTime - dt);
+    }
+    for (const e of this.effects) e.update(dt);
+    this.effects = this.effects.filter((e) => !e.dead);
+
+    this._emitHud();
+
+    if (this.roundOver) {
+      this.overTimer -= dt;
+      if (this.overTimer <= 0 && !this._reported) {
+        this._reported = true;
+        this._reportResult();
+      }
+    }
   }
 
   addShake(mag) {
@@ -961,15 +1109,29 @@ export class GameEngine {
       ctx.drawImage(arena.bgImage, 0, 0, w, h);
       return;
     }
-    arena.draw(ctx, {
-      w,
-      h,
-      floorTopY: this.floorTopY,
-      floorBottomY: this.floorBottomY,
-      floorLine: (z) => this.floorLine(z),
-      ARENA_DEPTH,
-      time: this.elapsed,
-    });
+    // The procedural arenas fill a dozen gradients per draw. Render the scene
+    // ONCE into an offscreen canvas and just blit it every frame — this was the
+    // biggest per-frame cost and the main cause of stutter on slower machines.
+    const cache = this._arenaCache;
+    if (!cache || cache.w !== w || cache.h !== h || cache.id !== arena.id) {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const off = (cache && cache.canvas) || document.createElement('canvas');
+      off.width = Math.max(1, Math.floor(w * dpr));
+      off.height = Math.max(1, Math.floor(h * dpr));
+      const octx = off.getContext('2d');
+      octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      arena.draw(octx, {
+        w,
+        h,
+        floorTopY: this.floorTopY,
+        floorBottomY: this.floorBottomY,
+        floorLine: (z) => this.floorLine(z),
+        ARENA_DEPTH,
+        time: this.elapsed,
+      });
+      this._arenaCache = { canvas: off, w, h, id: arena.id };
+    }
+    ctx.drawImage(this._arenaCache.canvas, 0, 0, w, h);
   }
 
   // ---- Controls --------------------------------------------------------

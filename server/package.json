@@ -1,0 +1,17 @@
+{
+  "name": "brawl-arena-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tiny WebSocket relay for Brawl Arena multiplayer. Forwards JSON messages between peers in the same 6-digit room. Holds no game logic.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

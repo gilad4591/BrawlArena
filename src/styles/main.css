@@ -89,6 +89,68 @@ body,
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+.chip-sm {
+  font-size: 0.72em;
+  padding: 2px 10px;
+  margin-left: auto;
+}
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.82em;
+}
+.mp-teamctl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.seg {
+  display: inline-flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.seg button {
+  background: rgba(255, 255, 255, 0.06);
+  color: #cdd6f4;
+  border: 0;
+  padding: 8px 14px;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+.seg button.on {
+  background: linear-gradient(180deg, #ffb347, #ff7b3d);
+  color: #1a1005;
+  font-weight: 700;
+}
+.team-tag {
+  font-size: 0.66em;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: #0b0e1a;
+  margin-left: 6px;
+}
+
+.btn-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  position: relative;
+}
+.btn-locked .soon-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.62em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.18);
+  vertical-align: middle;
+}
+
 .btn-row {
   display: flex;
   gap: 12px;

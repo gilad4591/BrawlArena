@@ -14,7 +14,7 @@ const BASE = import.meta.env.BASE_URL || '/';
 // Bump this whenever portrait/sprite PNGs are re-exported. Vite does NOT hash
 // files under public/, so browsers (and the dev server) can serve a stale
 // cached copy after art updates — the version query forces a fresh fetch.
-const ASSET_VERSION = '5';
+const ASSET_VERSION = '7';
 const v = (url) => `${url}${url.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`;
 
 /**
@@ -156,7 +156,7 @@ export const SPRITE_DEFS = {
       special: { frames: [24], loop: false },
       hit: { frames: [35], loop: false },
       defend: { frames: [30], loop: false },
-      ko: { frames: [39], loop: false },
+      ko: { frames: [40], loop: false },
     },
   },
   aurex: {
@@ -207,12 +207,12 @@ export const SPRITE_DEFS = {
     animations: {
       idle: { frames: [0, 1, 2, 3], fps: 4, loop: true },
       walk: { frames: [8, 9, 10, 11], fps: 9, loop: true },
-      jump: { frames: [14], loop: false },
+      jump: { frames: [13], loop: false },
       attack: { frames: [16, 17], fps: 11, loop: false },
       special: { frames: [20], loop: false },
-      hit: { frames: [44], loop: false },
+      hit: { frames: [41], loop: false },
       defend: { frames: [31], loop: false },
-      ko: { frames: [44], loop: false },
+      ko: { frames: [43], loop: false },
     },
   },
   nox: {
@@ -259,15 +259,15 @@ export const SPRITE_DEFS = {
   },
   sage: {
     sheet: 'sprites/sage.png', frames: 'sprites/sage.frames.json', scale: 0.95,
-    faceRight: true, portraitFrame: 0, portraitZoom: 1.12,
+    faceRight: true, flipStates: ['walk'], portraitFrame: 0, portraitZoom: 1.12,
     animations: {
       idle: { frames: [0, 1, 2, 3], fps: 4, loop: true },
-      walk: { frames: [7, 8, 9, 10], fps: 9, loop: true },
+      walk: { frames: [8, 9, 10, 11], fps: 9, loop: true },
       jump: { frames: [16], loop: false },
       attack: { frames: [23], fps: 8, loop: false },
       special: { frames: [31], loop: false },
       hit: { frames: [32], loop: false },
-      defend: { frames: [0], loop: false },
+      defend: { frames: [21], loop: false },
       ko: { frames: [32], loop: false },
     },
   },
@@ -380,6 +380,10 @@ export class SpriteSheet {
     // box is a different height (punch/kick) don't get vertically stretched.
     const ref = this.frame(def.portraitFrame ?? 0);
     this.refH = ref ? ref.h : 1;
+    // Reference width of the idle body. Attack/special frames are much wider
+    // (they include the beam/effect), so we anchor by this width to stop the
+    // body from sliding backwards when a wide frame is centered.
+    this.refW = ref ? ref.w : 1;
   }
 
   frame(index) {

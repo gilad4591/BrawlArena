@@ -85,10 +85,29 @@ class BroadcastChannelTransport {
   }
 }
 
+/**
+ * Pick a transport automatically: if a relay URL is configured (build-time
+ * VITE_MP_RELAY_URL or a global window.__MP_RELAY_URL), use real cross-device
+ * WebSockets; otherwise fall back to same-device BroadcastChannel so local
+ * testing still works with zero setup.
+ */
+export function defaultTransport() {
+  let url;
+  try {
+    url = import.meta.env?.VITE_MP_RELAY_URL;
+  } catch {
+    /* not a Vite context */
+  }
+  if (!url && typeof window !== 'undefined') url = window.__MP_RELAY_URL;
+  if (url) return new WebSocketTransport(url);
+  return new BroadcastChannelTransport();
+}
+
 export class MultiplayerService extends Emitter {
   constructor(transport) {
     super();
-    this.transport = transport || new BroadcastChannelTransport();
+    this.transport = transport || defaultTransport();
+    this.online = this.transport instanceof WebSocketTransport;
     this.playerId = makePlayerId();
     this.reset();
   }
@@ -274,10 +293,14 @@ export class MultiplayerService extends Emitter {
         }
         break;
       }
-      case 'leave': {
-        this.players = this.players.filter((p) => p.id !== msg.id);
+      case 'leave':
+      case 'peer-left': {
+        const goneId = msg.id;
+        if (!goneId) break;
+        this.players = this.players.filter((p) => p.id !== goneId);
         if (this.isHost) this._broadcast({ type: 'roster', players: this.players });
         this.emit('players', this.players.slice());
+        this.emit('peerLeft', goneId);
         break;
       }
       case 'start': {

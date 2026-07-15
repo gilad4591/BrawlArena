@@ -175,10 +175,14 @@ export class Fighter {
     }
 
     // ---- movement ----
+    // Frame-rate-independent friction: decays the same amount per real second
+    // regardless of FPS, so a lag spike can't make the fighter keep gliding in
+    // the old direction after you let go / switch directions.
+    const fr = Math.pow(FRICTION, dt * 60);
     const defending = c.state.defend && this.grounded && !this.busy;
     if (defending) {
       this.state = 'defend';
-      this.vx *= FRICTION;
+      this.vx *= fr;
     } else if (!this.busy) {
       const speed = this.char.speed * this.mods.moveSpeedMult * (this.rage ? 1.14 : 1);
       let moving = false;
@@ -187,7 +191,7 @@ export class Fighter {
         this.facing = c.state.dirX > 0 ? 1 : -1;
         moving = true;
       } else {
-        this.vx *= FRICTION;
+        this.vx *= fr;
       }
       if (c.state.dirZ && this.grounded) {
         this.z += c.state.dirZ * speed * 0.62 * dt;
@@ -234,7 +238,8 @@ export class Fighter {
     }
     // horizontal
     this.x += this.vx * dt;
-    if (Math.abs(this.vx) < 4) this.vx = 0;
+    // Kill the low-speed tail quickly so stopping/turning feels crisp.
+    if (Math.abs(this.vx) < 12) this.vx = 0;
 
     // clamp to arena
     const halfW = this.width / 2;
@@ -517,8 +522,12 @@ export class Fighter {
     // frame keeps the same body size (no per-pose stretching / clipping).
     const idleTargetH = h * (set.def.scale || 1.5);
     const k = idleTargetH / set.refH;
-    const flip = set.def.faceRight ? this.facing < 0 : this.facing > 0;
+    let flip = set.def.faceRight ? this.facing < 0 : this.facing > 0;
     const state = this._animState();
+    // Some sheets have a pose drawn facing the opposite way from the rest (e.g.
+    // Sage's walk frames face left while idle/cast face right). Invert the flip
+    // just for those states so the character faces its movement direction.
+    if (set.def.flipStates && set.def.flipStates.includes(state)) flip = !flip;
     const idx = frameForState(set, state, this.stateTime, this.animClock);
     // Single-pose sprites: add a small code-driven bob so idle/walk feel alive.
     let bob = 0;
@@ -533,6 +542,13 @@ export class Fighter {
       const p = Math.sin(Math.min(1, this.stateTime / 0.22) * Math.PI);
       lunge = this.facing * p * h * 0.14;
     }
+    // Anchor the frame by the idle BODY width instead of the (much wider)
+    // effect frame, so casting/attacking doesn't shove the character backwards.
+    // The effect overhang grows in the facing direction, so shift the opposite
+    // way by half the overhang to keep the body planted.
+    const f = set.frame(idx);
+    const overhang = (f.w - set.refW) * k;
+    const bodyShift = overhang > 0 ? -this.facing * overhang * 0.5 : 0;
     // KO: tip the body over and fade it out before it disappears.
     let rot = 0;
     let alpha = 1;
@@ -548,7 +564,7 @@ export class Fighter {
     if (flash) filter += 'brightness(2.2)';
     if (filter) ctx.filter = filter.trim();
     if (alpha < 1) ctx.globalAlpha = alpha;
-    set.drawScaled(ctx, idx, sx + lunge, bodyBottom + bob, k, flip, rot);
+    set.drawScaled(ctx, idx, sx + lunge + bodyShift, bodyBottom + bob, k, flip, rot);
     if (alpha < 1) ctx.globalAlpha = 1;
     if (filter) ctx.filter = 'none';
   }

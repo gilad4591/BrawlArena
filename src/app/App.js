@@ -111,7 +111,9 @@ export class App {
           <div class="chip-row" id="opponents-row"></div>
         </div>
         <div class="opt-block" id="teams-block">
-          <label class="opt-label">Teams <span class="opt-hint">tap a colour per fighter</span></label>
+          <label class="opt-label">Teams <span class="opt-hint">tap a colour per fighter</span>
+            <button class="chip chip-sm" id="teams-random" type="button">🎲 Random</button>
+          </label>
           <div class="team-assign" id="team-assign"></div>
         </div>
         <div class="opt-block">
@@ -294,6 +296,7 @@ export class App {
       case 'rematch':
         this._maybeInterstitial();
         if (this._mode === 'campaign') this.startCampaign(this.campaignStartStage || 0);
+        else if (this._mode === 'multiplayer') this.quitGame(); // no local rematch online
         else this.startGame();
         break;
       case 'quit':
@@ -752,6 +755,32 @@ export class App {
         this._buildTeamAssign(mode);
       });
     });
+
+    const rnd = this.root.querySelector('#teams-random');
+    if (rnd && !rnd._wired) {
+      rnd._wired = true;
+      rnd.addEventListener('click', () => {
+        this._randomizeArcadeTeams();
+        this.audio.select?.();
+        this.haptics.tap();
+        this._buildTeamAssign(MODES[this.selection.mode]);
+      });
+    }
+  }
+
+  /** Shuffle Arcade fighters into two balanced teams. */
+  _randomizeArcadeTeams() {
+    const total = this.selection.opponents + 1;
+    const idx = Array.from({ length: total }, (_, i) => i);
+    for (let i = idx.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    const assign = new Array(total);
+    idx.forEach((p, k) => {
+      assign[p] = k % 2;
+    });
+    this.selection.teamAssign = assign;
   }
 
   portraitCanvas(char, size) {
@@ -1286,6 +1315,14 @@ export class App {
     this.renderMpLanding();
   }
 
+  _relayConfigured() {
+    try {
+      return !!(import.meta.env?.VITE_MP_RELAY_URL || (typeof window !== 'undefined' && window.__MP_RELAY_URL));
+    } catch {
+      return false;
+    }
+  }
+
   renderMpLanding() {
     const body = this.root.querySelector('#mp-body');
     if (!body) return;
@@ -1302,8 +1339,9 @@ export class App {
           <small>Enter a friend's code</small>
         </button>
       </div>
-      <p class="mp-note">Same-device play works out of the box. For cross-device,
-      point the transport at a relay server (see README).</p>
+      <p class="mp-note">${this.mp?.online || this._relayConfigured()
+        ? 'Cross-device play is live via the relay server.'
+        : 'Same-device play works out of the box. Set a relay URL (VITE_MP_RELAY_URL) for cross-device.'}</p>
     `;
     body.querySelector('#mp-create').addEventListener('click', () => this.mpCreate());
     body.querySelector('#mp-join').addEventListener('click', () => this.mpJoinPrompt());
@@ -1319,6 +1357,8 @@ export class App {
         this.toast('Invite expired');
       });
       this.mp.on('start', (config) => this.startFromLobby(config));
+      // In-match traffic (snapshots from host / input from guests).
+      this.mp.on('state', (s) => this.engine?.ingestNet(s));
     }
   }
 
@@ -1370,6 +1410,18 @@ export class App {
     const roomCode = code || this.mp.room.code;
     const players = this.mp.players;
     const isHost = this.mp.isHost;
+    if (!this._mpTeamType) this._mpTeamType = 'ffa';
+    const canTeams = players.length > 2;
+
+    const teamCtrls = isHost && canTeams
+      ? `<div class="mp-teamctl">
+           <div class="seg" id="mp-modeseg">
+             <button data-t="ffa" class="${this._mpTeamType === 'ffa' ? 'on' : ''}">Free-for-all</button>
+             <button data-t="teams" class="${this._mpTeamType === 'teams' ? 'on' : ''}">Teams</button>
+           </div>
+           ${this._mpTeamType === 'teams' ? '<button class="btn btn-ghost btn-sm" id="mp-shuffle">🎲 Shuffle Teams</button>' : ''}
+         </div>`
+      : '';
 
     body.innerHTML = `
       <div class="lobby">
@@ -1378,6 +1430,7 @@ export class App {
           <div class="code-big" id="code-big">${roomCode}</div>
           <div class="code-timer" id="code-timer"></div>
         </div>
+        ${teamCtrls}
         <div class="roster" id="roster"></div>
         <div class="lobby-actions">
           <button class="btn btn-secondary" id="lobby-ready">Ready</button>
@@ -1396,12 +1449,19 @@ export class App {
       this.mp.toggleReady();
       e.target.classList.toggle('on', this.mp.self.ready);
     });
-    body.querySelector('#lobby-start')?.addEventListener('click', () => {
-      this.mp.startMatch({
-        mode: players.length > 2 ? 'freeForAll' : 'oneVsOne',
-        difficulty: this.selection.difficulty,
-        players: players.map((p) => ({ character: p.character, name: p.name })),
+    body.querySelector('#mp-modeseg')?.querySelectorAll('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        this._mpTeamType = b.dataset.t;
+        if (this._mpTeamType === 'teams') this._shuffleMpTeams();
+        this.renderLobby();
       });
+    });
+    body.querySelector('#mp-shuffle')?.addEventListener('click', () => {
+      this._shuffleMpTeams();
+      this.renderRoster();
+    });
+    body.querySelector('#lobby-start')?.addEventListener('click', () => {
+      this.mp.startMatch(this._buildMpStartConfig());
     });
     body.querySelector('#lobby-leave').addEventListener('click', () => {
       this.mp.leave();
@@ -1410,15 +1470,55 @@ export class App {
     });
   }
 
+  /** Randomly split the current lobby into two balanced teams (host only). */
+  _shuffleMpTeams() {
+    const ids = this.mp.players.map((p) => p.id);
+    for (let i = ids.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    this._mpTeamMap = {};
+    ids.forEach((id, i) => {
+      this._mpTeamMap[id] = i % 2;
+    });
+  }
+
+  /** Host: assemble the agreed match config broadcast to every client. */
+  _buildMpStartConfig() {
+    const players = this.mp.players;
+    const teams = this._mpTeamType === 'teams' && players.length > 2;
+    if (teams && !this._mpTeamMap) this._shuffleMpTeams();
+    const netPlayers = players.map((p, i) => ({
+      character: p.character,
+      name: p.name,
+      netId: p.id,
+      team: teams ? this._mpTeamMap[p.id] ?? i % 2 : i, // FFA: everyone their own team
+    }));
+    return {
+      network: true,
+      teamsMode: teams,
+      mode: players.length === 2 ? 'oneVsOne' : teams ? 'teams' : 'freeForAll',
+      arena: this.selection.arena,
+      netPlayers,
+    };
+  }
+
   renderRoster() {
     const roster = this.root.querySelector('#roster');
     if (!roster || !this.mp) return;
+    const showTeams = this._mpTeamType === 'teams' && this.mp.players.length > 2 && this._mpTeamMap;
+    const teamColors = ['#4da3ff', '#ff6b6b'];
     roster.innerHTML = this.mp.players
       .map((p) => {
         const c = getCharacter(p.character);
+        const t = showTeams ? this._mpTeamMap[p.id] ?? 0 : null;
+        const teamTag = showTeams
+          ? `<span class="team-tag" style="background:${teamColors[t % 2]}">Team ${t + 1}</span>`
+          : '';
         return `<div class="roster-row">
           <span class="roster-dot" style="background:${c.color}"></span>
           <b>${p.name}</b><span class="roster-char">${c.name}</span>
+          ${teamTag}
           <span class="roster-ready ${p.ready ? 'on' : ''}">${p.ready ? 'READY' : '…'}</span>
           ${p.isHost ? '<span class="host-tag">HOST</span>' : ''}
         </div>`;
@@ -1435,17 +1535,44 @@ export class App {
   }
 
   startFromLobby(config) {
-    // The lobby/invite layer is transport-ready; live input sync plugs into
-    // MultiplayerService.sendState / on('state'). For now we launch a local
-    // match so the flow is fully playable end-to-end.
-    this.selection.mode = config.mode || 'oneVsOne';
-    this.selection.difficulty = config.difficulty || this.selection.difficulty;
-    this.selection.opponents = Math.max(1, (config.players?.length || 2) - 1);
-    if (this.mp) {
-      this.mp.leave();
-      this.mp = null;
+    // Real host-authoritative online match. The host authored `netPlayers`
+    // (identical roster on every client); we just find ourselves in it and
+    // wire the transport into the engine.
+    const players = config.netPlayers || [];
+    const localIndex = Math.max(0, players.findIndex((p) => p.netId === this.mp.playerId));
+    const role = this.mp.isHost ? 'host' : 'guest';
+    const net = {
+      role,
+      localNetId: this.mp.playerId,
+      send: (state) => this.mp.sendState(state),
+    };
+
+    this.audio.stopMusic();
+    this.showScreen('game');
+    this.root.querySelector('#pause-overlay')?.classList.add('hidden');
+    this.root.querySelector('#result-overlay')?.classList.add('hidden');
+    this._mode = 'multiplayer';
+    const si = this.root.querySelector('#stage-indicator');
+    if (si) {
+      si.classList.add('hidden');
+      si.innerHTML = '';
     }
-    this.startGame();
+
+    this._ensureEngine();
+    this.engine.resize();
+    this.engine.start({
+      network: true,
+      net,
+      netPlayers: players,
+      localIndex,
+      teamsMode: !!config.teamsMode,
+      mode: config.mode || 'freeForAll',
+      arena: config.arena || this.selection.arena,
+      playerCharacter: players[localIndex]?.character || this.selection.character,
+      playerName: players[localIndex]?.name || this.profile.name,
+      reduceMotion: this.settings.reduceMotion,
+    });
+    this._afterStart();
   }
 
   toast(msg) {
