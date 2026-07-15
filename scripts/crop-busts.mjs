@@ -24,7 +24,7 @@ const KEY_HIGH = 100;
 const KEY_LOW = 32;
 const ALPHA_MIN = 40;
 const OUT = 420; // square portrait size
-const FILL = 0.9; // bust occupies this fraction of the square
+const FILL = 1.0; // bust fills the square (bottom-anchored) — bigger, no float
 const MIN_ROW = 6; // opaque px in a row to count as "bust"
 const MIN_COL = 3;
 const GAP_ROWS = 10; // empty-row run that separates bust from the text below
@@ -116,15 +116,18 @@ for (let row = 0; row < ROWS; row += 1) {
     const s = (OUT * FILL) / Math.max(box.w, box.h);
     const dw = box.w * s;
     const dh = box.h * s;
-    const ox = (OUT - dw) / 2;
-    const oy = (OUT - dh) / 2;
+    const ox = (OUT - dw) / 2; // centered horizontally
+    const oy = OUT - dh; // anchored to the bottom of the card (no floating)
     for (let y = 0; y < dh; y += 1) for (let x = 0; x < dw; x += 1) {
       const sx = box.x + Math.floor(x / s);
       const sy = box.y + Math.floor(y / s);
       if (sx < 0 || sy < 0 || sx >= W || sy >= H) continue;
       const si = (sy * W + sx) * 4;
       if (data[si + 3] <= ALPHA_MIN) continue;
-      const di = (Math.floor(oy + y) * OUT + Math.floor(ox + x)) * 4;
+      const dx = Math.floor(ox + x);
+      const dy = Math.floor(oy + y);
+      if (dx < 0 || dy < 0 || dx >= OUT || dy >= OUT) continue;
+      const di = (dy * OUT + dx) * 4;
       out.data[di] = data[si];
       out.data[di + 1] = data[si + 1];
       out.data[di + 2] = data[si + 2];
