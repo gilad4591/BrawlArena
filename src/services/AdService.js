@@ -2,9 +2,13 @@ import { ADS } from './adsConfig.js';
 
 /**
  * Cross-platform ad wrapper.
- *   - Native (Android/iOS via Capacitor): Google AdMob banner + interstitial.
- *   - Web (browser build): Google AdSense unit, or a neutral placeholder when
- *     no publisher ID is configured yet.
+ *   - Native (Android/iOS via Capacitor): Google AdMob interstitial.
+ *   - Web (browser build): a full-screen interstitial overlay hosting a Google
+ *     AdSense unit (or a neutral placeholder until a slot is configured).
+ *
+ * We intentionally DON'T draw a persistent banner: it eats scarce vertical
+ * space on phones in landscape and covers UI. Instead an interstitial pops up
+ * every few finished matches, which reads cleaner on mobile.
  *
  * The rest of the app talks to this one class and never touches AdMob/AdSense
  * directly, so the game keeps working even when ads fail to load or a platform
@@ -16,10 +20,10 @@ export class AdService {
     this.native = false;
     this.platform = 'web';
     this.AdMob = null;
-    this.enums = null;
-    this._bannerVisible = false;
     this._matchCount = 0;
     this._interstitialReady = false;
+    this._overlay = null;
+    this._closeTimer = null;
   }
 
   async init() {
@@ -47,13 +51,7 @@ export class AdService {
     try {
       const mod = await import('@capacitor-community/admob');
       this.AdMob = mod.AdMob;
-      this.enums = {
-        BannerAdSize: mod.BannerAdSize,
-        BannerAdPosition: mod.BannerAdPosition,
-      };
-      await this.AdMob.initialize({
-        initializeForTesting: ADS.useTestAds,
-      });
+      await this.AdMob.initialize({ initializeForTesting: ADS.useTestAds });
       this.ready = true;
       this._prepareInterstitial();
     } catch (err) {
@@ -77,91 +75,109 @@ export class AdService {
 
   // -------------------------------------------------------------------- web
   _initWeb() {
-    this.container = document.getElementById('ad-banner');
-    if (!this.container) return;
-    const { adClient, adSlot } = ADS.web;
-    if (adClient && adSlot) {
-      // Inject the AdSense loader once.
-      if (!document.getElementById('adsense-lib')) {
-        const s = document.createElement('script');
-        s.id = 'adsense-lib';
-        s.async = true;
-        s.crossOrigin = 'anonymous';
-        s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`;
-        document.head.appendChild(s);
-      }
-      this.container.innerHTML = `
-        <ins class="adsbygoogle" style="display:block;width:100%;height:100%"
-          data-ad-client="${adClient}" data-ad-slot="${adSlot}"
-          data-ad-format="horizontal" data-full-width-responsive="true"></ins>`;
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch {
-        /* ignore */
-      }
-    } else {
-      // No publisher configured yet — show a neutral, non-clickable slot.
-      this.container.classList.add('placeholder');
-      this.container.innerHTML = '<span>Advertisement</span>';
+    // Make sure the AdSense loader is present (index.html includes it, but keep
+    // this resilient for standalone embeds). The unit itself is created lazily
+    // inside the interstitial overlay.
+    const { adClient } = ADS.web;
+    if (adClient && !document.getElementById('adsense-lib')) {
+      const s = document.createElement('script');
+      s.id = 'adsense-lib';
+      s.async = true;
+      s.crossOrigin = 'anonymous';
+      s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`;
+      document.head.appendChild(s);
     }
     this.ready = true;
   }
 
   // ------------------------------------------------------------- public API
-  /** Show the persistent banner (menus/lobbies). Safe to call repeatedly. */
-  async showBanner() {
-    if (this._bannerVisible) return;
-    this._bannerVisible = true;
-    if (this.native && this.AdMob) {
-      try {
-        await this.AdMob.showBanner({
-          adId: this.cfg.banner,
-          adSize: this.enums.BannerAdSize.ADAPTIVE_BANNER,
-          position: this.enums.BannerAdPosition.BOTTOM_CENTER,
-          margin: 0,
-          isTesting: ADS.useTestAds,
-        });
-      } catch (err) {
-        console.warn('[ads] showBanner failed:', err);
-      }
-    } else if (this.container) {
-      this.container.classList.remove('hidden');
-      document.body.classList.add('has-web-ad');
-    }
-  }
-
-  /** Hide the banner (during a match, for a clean fighting screen). */
-  async hideBanner() {
-    if (!this._bannerVisible) return;
-    this._bannerVisible = false;
-    if (this.native && this.AdMob) {
-      try {
-        await this.AdMob.hideBanner();
-      } catch {
-        /* ignore */
-      }
-    } else if (this.container) {
-      this.container.classList.add('hidden');
-      document.body.classList.remove('has-web-ad');
-    }
-  }
+  // Banners are gone; keep these as no-ops so existing callers stay happy.
+  async showBanner() {}
+  async hideBanner() {}
 
   /**
    * Called when a match ends. Shows a full-screen interstitial every
-   * `interstitialEveryMatches` matches (native only; web relies on the banner).
+   * `interstitialEveryMatches` matches.
    */
   async onMatchFinished() {
     this._matchCount += 1;
     if (this._matchCount % ADS.interstitialEveryMatches !== 0) return;
-    if (this.native && this.AdMob && this._interstitialReady) {
+    if (this.native) {
+      await this._showNativeInterstitial();
+    } else {
+      this._showWebInterstitial();
+    }
+  }
+
+  async _showNativeInterstitial() {
+    if (!this.AdMob || !this._interstitialReady) return;
+    try {
+      await this.AdMob.showInterstitial();
+    } catch (err) {
+      console.warn('[ads] showInterstitial failed:', err);
+    } finally {
+      this._interstitialReady = false;
+      this._prepareInterstitial(); // preload the next one
+    }
+  }
+
+  // ---- web interstitial: a dismissible full-screen modal with an ad unit ----
+  _showWebInterstitial() {
+    if (this._overlay) return; // already open
+    const { adClient, adSlot } = ADS.web;
+    const overlay = document.createElement('div');
+    overlay.className = 'ad-interstitial';
+    overlay.innerHTML = `
+      <div class="adi-card">
+        <div class="adi-label">Advertisement</div>
+        <div class="adi-slot" id="adi-slot">${
+          adClient && adSlot
+            ? `<ins class="adsbygoogle" style="display:block;width:100%;height:100%"
+                 data-ad-client="${adClient}" data-ad-slot="${adSlot}"
+                 data-ad-format="rectangle" data-full-width-responsive="true"></ins>`
+            : '<span class="adi-placeholder">Your ad could be here</span>'
+        }</div>
+        <button class="adi-close" id="adi-close" disabled>Skip in <b>5</b></button>
+      </div>`;
+    document.body.appendChild(overlay);
+    this._overlay = overlay;
+
+    if (adClient && adSlot) {
       try {
-        await this.AdMob.showInterstitial();
-      } catch (err) {
-        console.warn('[ads] showInterstitial failed:', err);
-      } finally {
-        this._interstitialReady = false;
-        this._prepareInterstitial(); // preload the next one
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch {
+        /* ignore */
       }
+    }
+
+    const btn = overlay.querySelector('#adi-close');
+    const num = btn.querySelector('b');
+    let left = 5;
+    this._closeTimer = setInterval(() => {
+      left -= 1;
+      if (left <= 0) {
+        clearInterval(this._closeTimer);
+        this._closeTimer = null;
+        btn.disabled = false;
+        btn.textContent = 'Continue ✕';
+      } else if (num) {
+        num.textContent = String(left);
+      }
+    }, 1000);
+
+    const close = () => this._closeWebInterstitial();
+    btn.addEventListener('click', () => { if (!btn.disabled) close(); });
+    // Fallback auto-dismiss so the overlay can never trap the player.
+    setTimeout(() => { if (this._overlay === overlay) { btn.disabled = false; close(); } }, 15000);
+  }
+
+  _closeWebInterstitial() {
+    if (this._closeTimer) { clearInterval(this._closeTimer); this._closeTimer = null; }
+    if (this._overlay) {
+      this._overlay.classList.add('closing');
+      const el = this._overlay;
+      this._overlay = null;
+      setTimeout(() => el.remove(), 220);
     }
   }
 }

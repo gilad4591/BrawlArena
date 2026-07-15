@@ -329,9 +329,6 @@ export class App {
     this.root.querySelectorAll('.screen').forEach((el) => el.classList.add('hidden'));
     this.root.querySelector(`#screen-${name}`)?.classList.remove('hidden');
     if (name === 'menu') requestAnimationFrame(() => this.drawMenuScene());
-    // Banner ad on menu/setup/lobby screens; hidden during the fight itself.
-    if (name === 'game') this.ads.hideBanner();
-    else this.ads.showBanner();
   }
 
   /**

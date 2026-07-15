@@ -39,3 +39,6 @@ ios/App/build/
 scripts/raw/*_check.png
 scripts/raw/portrait_check.png
 scripts/raw/_commitmsg.txt
+
+# responsive/layout screenshot captures (throwaway)
+scripts/raw/shots/

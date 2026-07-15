@@ -24,7 +24,7 @@ export const ADS = {
   useTestAds: true,
 
   // Show an interstitial after every N finished matches.
-  interstitialEveryMatches: 3,
+  interstitialEveryMatches: 2,
 
   android: {
     // Test App ID (also referenced in AndroidManifest for local testing):
@@ -43,7 +43,7 @@ export const ADS = {
 
   // AdSense (browser build). adClient is your publisher ID. adSlot is filled in
   // AFTER approval, once you create a Display ad unit (see notes at top of file).
-  // Until adSlot is set, a neutral "Advertisement" placeholder reserves the space.
+  // Until adSlot is set, the interstitial shows a neutral placeholder card.
   web: {
     adClient: 'ca-pub-9834744561471352',
     adSlot: '', // paste the ad-unit slot id here after AdSense approves the site
