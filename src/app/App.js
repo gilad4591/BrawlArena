@@ -1375,7 +1375,7 @@ export class App {
     this._ensureMp();
     const code = this.mp.createRoom({
       name: this.profile.name || 'Host',
-      character: this.selection.character,
+      character: null, // must be picked in the lobby
     });
     this.audio.select?.();
     this.renderLobby(code);
@@ -1403,7 +1403,7 @@ export class App {
       try {
         this.mp.joinRoom(code, {
           name: this.profile.name || 'Guest',
-          character: this.selection.character,
+          character: null, // must be picked in the lobby
         });
         this.renderLobby(code);
       } catch (err) {
@@ -1432,6 +1432,7 @@ export class App {
          </div>`
       : '';
 
+    const hasChar = !!this.mp.self?.character;
     body.innerHTML = `
       <div class="lobby">
         <div class="code-display">
@@ -1439,15 +1440,17 @@ export class App {
           <div class="code-big" id="code-big">${roomCode}</div>
           <div class="code-timer" id="code-timer"></div>
         </div>
+        <div class="mp-charpick" id="mp-charpick"></div>
         ${teamCtrls}
         <div class="roster" id="roster"></div>
         <div class="lobby-actions">
-          <button class="btn btn-secondary" id="lobby-ready">Ready</button>
+          <button class="btn btn-secondary ${hasChar ? '' : 'btn-disabled'}" id="lobby-ready">Ready</button>
           ${isHost ? '<button class="btn btn-primary" id="lobby-start">Start Match</button>' : '<p class="wait-host">Waiting for host to start…</p>'}
           <button class="btn btn-ghost" id="lobby-leave">Leave</button>
         </div>
       </div>`;
 
+    this._renderMpCharPick();
     this.renderRoster();
     this.updateLobbyTimer();
 
@@ -1455,6 +1458,10 @@ export class App {
       navigator.clipboard?.writeText(roomCode).then(() => this.toast('Code copied'));
     });
     body.querySelector('#lobby-ready').addEventListener('click', (e) => {
+      if (!this.mp.self?.character) {
+        this.toast('Pick a fighter first');
+        return;
+      }
       this.mp.toggleReady();
       e.target.classList.toggle('on', this.mp.self.ready);
     });
@@ -1473,6 +1480,10 @@ export class App {
       const cfg = this._buildMpStartConfig();
       if (cfg.netPlayers.length < 2) {
         this.toast('Need at least 2 players to start');
+        return;
+      }
+      if (cfg.netPlayers.some((p) => !p.character)) {
+        this.toast('Everyone must pick a fighter first');
         return;
       }
       if (cfg.teamsMode && new Set(cfg.netPlayers.map((p) => p.team)).size < 2) {
@@ -1521,6 +1532,39 @@ export class App {
     };
   }
 
+  /** Compact fighter picker inside the multiplayer lobby. */
+  _renderMpCharPick() {
+    const wrap = this.root.querySelector('#mp-charpick');
+    if (!wrap || !this.mp?.self) return;
+    const chosen = this.mp.self.character;
+    const roster = CHARACTERS.filter((c) => this.isUnlocked(c.id));
+    wrap.innerHTML = `
+      <label class="opt-label">Your fighter${chosen ? '' : ' <span class="opt-hint">tap to pick</span>'}</label>
+      <div class="mp-charrow">
+        ${roster
+          .map(
+            (c) => `<button class="mp-charcell ${c.id === chosen ? 'active' : ''}" data-char="${c.id}"
+              style="--c:${c.color};--a:${c.accent}">
+              <span class="char-portrait" data-portrait="${c.id}"></span>
+              <span class="mp-charname">${c.name}</span>
+            </button>`,
+          )
+          .join('')}
+      </div>`;
+    wrap.querySelectorAll('[data-portrait]').forEach((holder) => {
+      holder.appendChild(this.portraitCanvas(getCharacter(holder.dataset.portrait), 72));
+    });
+    wrap.querySelectorAll('[data-char]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.mp.setCharacter(btn.dataset.char);
+        this.selection.character = btn.dataset.char;
+        this.audio.select?.();
+        this.haptics.tap();
+        this.renderLobby();
+      });
+    });
+  }
+
   renderRoster() {
     const roster = this.root.querySelector('#roster');
     if (!roster || !this.mp) return;
@@ -1528,14 +1572,16 @@ export class App {
     const teamColors = ['#4da3ff', '#ff6b6b'];
     roster.innerHTML = this.mp.players
       .map((p) => {
-        const c = getCharacter(p.character);
+        const c = p.character ? getCharacter(p.character) : null;
+        const dotColor = c ? c.color : '#4a4f66';
+        const charName = c ? c.name : 'Choosing…';
         const t = showTeams ? this._mpTeamMap[p.id] ?? 0 : null;
         const teamTag = showTeams
           ? `<span class="team-tag" style="background:${teamColors[t % 2]}">Team ${t + 1}</span>`
           : '';
         return `<div class="roster-row">
-          <span class="roster-dot" style="background:${c.color}"></span>
-          <b>${p.name}</b><span class="roster-char">${c.name}</span>
+          <span class="roster-dot" style="background:${dotColor}"></span>
+          <b>${p.name}</b><span class="roster-char">${charName}</span>
           ${teamTag}
           <span class="roster-ready ${p.ready ? 'on' : ''}">${p.ready ? 'READY' : '…'}</span>
           ${p.isHost ? '<span class="host-tag">HOST</span>' : ''}
