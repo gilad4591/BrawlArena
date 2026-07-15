@@ -5,16 +5,40 @@ an original fighter, then battle CPU opponents 1v1, free-for-all, or in teams on
 single screen. Built with **Vite + vanilla JS + HTML5 Canvas** and wrapped for
 **iOS & Android** with **Capacitor**.
 
+## Development milestones (big steps)
+
+How the game grew, roughly in order:
+
+1. **Core game** — 2.5D engine (physics, depth, combat, specials), touch +
+   keyboard controls, difficulty-scaled AI, and modes (1v1 / free-for-all / teams).
+2. **Real art pipeline** — replaced procedural rigs with AI-generated sprite
+   sheets; built scripts to chroma-key/clean sheets, extract poses, and crop
+   character portraits for the select screen & HUD.
+3. **Roster & progression** — grew to **10 fighters** (plus unlockables), an XP /
+   level system, and power-balanced stats across the cast.
+4. **Depth features** — per-fighter special combos, pick-up props/weapons,
+   timed player-only power-ups, screen shake / hit-stop / K.O. "game feel",
+   survival podium & results screens.
+5. **Solo Campaign** — 5 stages vs. Bruiser / Mage / Gang-Leader enemies with a
+   two-phase boss fight.
+6. **Multiplayer** — invite-code lobby + host-authoritative netcode over a small
+   WebSocket relay (FFA / teams, random team assignment).
+7. **Polish & UX** — main-menu splash art, boot loading screen, settings, stats,
+   Hebrew translation with a language switcher (RTL), and app-lifecycle pause.
+8. **Shipping** — AdMob/AdSense ads (interstitial every few rounds), full mobile
+   **landscape** layout, GitHub Actions Android **AAB** build, Play Store assets,
+   and a branded app icon.
+
+> A fuller narrative of every step lives in the chat history; this list is the
+> 10,000-ft view.
+
 ## Features
 
-- **6 original fighters**, each with unique stats and a signature special:
-  - **Blaze** — balanced all-rounder, *Fireball* projectile.
-  - **Frost** — zoner, *Ice Shard* that freezes (extra stun).
-  - **Volt** — fragile rushdown, *Thunder Dash*.
-  - **Boulder** — heavy tank, *Quake Slam* ground AOE.
-  - **Gale** — agile juggler, *Cyclone Rise* launcher.
-  - **Nyx** — trickster, homing *Void Orb*.
-- **Modes:** 1 v 1, Free-for-all (up to 3 CPUs, everyone for themselves), Teams (2 v 2).
+- **10 original fighters** (plus unlockables), each with unique stats and a
+  signature special (fireball, freezing ice shard, thunder dash, ground AOE,
+  launcher, homing orb, and more), balanced for comparable overall power.
+- **Modes:** 1 v 1, Free-for-all (up to 8 CPUs, everyone for themselves), Teams,
+  and a 5-stage **Solo Campaign**.
 - **Difficulty:** Beginner / Pro / Expert (affects AI reaction, aggression,
   blocking, special usage, movement and damage).
 - **2.5D depth movement** (x / depth / jump) like classic beat-em-ups.
