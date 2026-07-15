@@ -24,8 +24,9 @@ const KEY_HIGH = 100;
 const KEY_LOW = 32;
 const ALPHA_MIN = 40;
 const OUT = 420; // square portrait size
-const FILL = 1.08; // bust slightly overfills the square — bigger, no float
-const V_BIAS = 0.68; // vertical placement (0=top, 1=bottom); biased low but with a small bottom margin
+const FILL_H = 1.04; // scale so the bust fills the square height (kills vertical float)
+const CAP_W = 1.3; // but allow only this much horizontal overflow (limits side clipping)
+const V_BIAS = 0.6; // vertical placement of any leftover gap (0=top, 1=bottom)
 const MIN_ROW = 6; // opaque px in a row to count as "bust"
 const MIN_COL = 3;
 const GAP_ROWS = 10; // empty-row run that separates bust from the text below
@@ -114,11 +115,20 @@ for (let row = 0; row < ROWS; row += 1) {
     if (!box) { console.log(`${name}: EMPTY cell`); continue; }
     const out = new PNG({ width: OUT, height: OUT });
     out.data.fill(0);
-    const s = (OUT * FILL) / Math.max(box.w, box.h);
+    // Fill the square by height; cap horizontal overflow so wide busts don't
+    // clip too hard. Center on the body CENTROID (not the raw bbox) so a thin
+    // staff / crystal / weapon doesn't drag the character off to one side.
+    const s = Math.min((OUT * FILL_H) / box.h, (OUT * CAP_W) / box.w);
     const dw = box.w * s;
     const dh = box.h * s;
-    const ox = (OUT - dw) / 2; // centered horizontally
-    const oy = (OUT - dh) * V_BIAS; // biased low, keeps a small symmetric bottom margin
+    let sumX = 0;
+    let cnt = 0;
+    for (let y = box.y; y < box.y + box.h; y += 1) for (let x = box.x; x < box.x + box.w; x += 1) {
+      if (A(x, y) > ALPHA_MIN) { sumX += x; cnt += 1; }
+    }
+    const cxSrc = cnt ? sumX / cnt : box.x + box.w / 2;
+    const ox = OUT / 2 - (cxSrc - box.x) * s; // map body centroid to the center
+    const oy = (OUT - dh) * V_BIAS;
     for (let y = 0; y < dh; y += 1) for (let x = 0; x < dw; x += 1) {
       const sx = box.x + Math.floor(x / s);
       const sy = box.y + Math.floor(y / s);
