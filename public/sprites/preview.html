@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sprite Frame Preview</title>
+    <style>
+      body { background: #12151f; color: #e7ecff; font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
+      h1 { font-size: 18px; }
+      .controls { margin-bottom: 14px; }
+      input { width: 260px; padding: 6px 8px; border-radius: 8px; border: 1px solid #333; background: #1b1f2e; color: #fff; }
+      .grid { display: flex; flex-wrap: wrap; gap: 10px; }
+      .cell { background: #000; border: 1px solid #2a2f42; border-radius: 8px; padding: 6px; text-align: center; }
+      .cell canvas { display: block; image-rendering: pixelated; }
+      .idx { font-size: 12px; color: #8fa0d0; margin-top: 4px; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <h1>Sprite Frame Preview — read the index under each frame, then map them in <code>src/game/sprites.js</code></h1>
+    <div class="controls">
+      Sheet: <input id="name" value="roster" /> <button id="load">Load</button>
+      &nbsp; Zoom: <input id="zoom" type="range" min="1" max="4" value="2" style="width:120px" />
+    </div>
+    <div class="grid" id="grid"></div>
+    <script type="module">
+      const grid = document.getElementById('grid');
+      const nameInput = document.getElementById('name');
+      const zoomInput = document.getElementById('zoom');
+
+      async function load() {
+        const name = nameInput.value.trim();
+        const img = new Image();
+        img.src = `/sprites/${name}.png`;
+        await img.decode();
+        const meta = await fetch(`/sprites/${name}.frames.json`).then((r) => r.json());
+        render(img, meta.frames);
+      }
+
+      function render(img, frames) {
+        grid.innerHTML = '';
+        const zoom = Number(zoomInput.value);
+        frames.forEach((f, i) => {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          const c = document.createElement('canvas');
+          c.width = f.w * zoom;
+          c.height = f.h * zoom;
+          const ctx = c.getContext('2d');
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, f.x, f.y, f.w, f.h, 0, 0, f.w * zoom, f.h * zoom);
+          const label = document.createElement('div');
+          label.className = 'idx';
+          label.textContent = `#${i} (${f.w}x${f.h})`;
+          cell.appendChild(c);
+          cell.appendChild(label);
+          grid.appendChild(cell);
+        });
+      }
+
+      document.getElementById('load').addEventListener('click', load);
+      zoomInput.addEventListener('input', load);
+      load();
+    </script>
+  </body>
+</html>

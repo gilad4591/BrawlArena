@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.log
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.iml
+
+# Capacitor generated web copy
+android/app/src/main/assets/public/
+
+# Android / Gradle build artifacts
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+.gradle/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# iOS (if added later)
+ios/App/Pods/
+ios/App/build/
+
+# Env / secrets
+.env
+.env.local

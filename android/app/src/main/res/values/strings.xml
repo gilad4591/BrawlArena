@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Brawl Arena</string>
+    <string name="title_activity_main">Brawl Arena</string>
+    <string name="package_name">com.gilad4591.brawlarena</string>
+    <string name="custom_url_scheme">com.gilad4591.brawlarena</string>
+</resources>
