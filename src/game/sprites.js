@@ -14,7 +14,7 @@ const BASE = import.meta.env.BASE_URL || '/';
 // Bump this whenever portrait/sprite PNGs are re-exported. Vite does NOT hash
 // files under public/, so browsers (and the dev server) can serve a stale
 // cached copy after art updates — the version query forces a fresh fetch.
-const ASSET_VERSION = '12';
+const ASSET_VERSION = '13';
 const v = (url) => `${url}${url.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`;
 
 /**
