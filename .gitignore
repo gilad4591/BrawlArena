@@ -38,3 +38,4 @@ ios/App/build/
 # grid-sheet verification montages (throwaway)
 scripts/raw/*_check.png
 scripts/raw/portrait_check.png
+scripts/raw/_commitmsg.txt

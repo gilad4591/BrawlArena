@@ -446,12 +446,11 @@ body,
   background: var(--panel);
   border: 2px solid transparent;
   border-radius: 14px;
-  padding: 8px 11px 10px;
+  padding: 10px; /* symmetric on all sides */
   display: flex;
   flex-direction: column;
-  gap: 6px;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   cursor: pointer;
   overflow: hidden; /* clip the portrait to the card's rounded frame */
   transition: transform 0.08s ease, border-color 0.15s ease;

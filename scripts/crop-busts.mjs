@@ -24,7 +24,8 @@ const KEY_HIGH = 100;
 const KEY_LOW = 32;
 const ALPHA_MIN = 40;
 const OUT = 420; // square portrait size
-const FILL = 1.0; // bust fills the square (bottom-anchored) — bigger, no float
+const FILL = 1.08; // bust slightly overfills the square — bigger, no float
+const V_BIAS = 0.68; // vertical placement (0=top, 1=bottom); biased low but with a small bottom margin
 const MIN_ROW = 6; // opaque px in a row to count as "bust"
 const MIN_COL = 3;
 const GAP_ROWS = 10; // empty-row run that separates bust from the text below
@@ -117,7 +118,7 @@ for (let row = 0; row < ROWS; row += 1) {
     const dw = box.w * s;
     const dh = box.h * s;
     const ox = (OUT - dw) / 2; // centered horizontally
-    const oy = OUT - dh; // anchored to the bottom of the card (no floating)
+    const oy = (OUT - dh) * V_BIAS; // biased low, keeps a small symmetric bottom margin
     for (let y = 0; y < dh; y += 1) for (let x = 0; x < dw; x += 1) {
       const sx = box.x + Math.floor(x / s);
       const sy = box.y + Math.floor(y / s);

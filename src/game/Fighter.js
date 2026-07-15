@@ -90,6 +90,11 @@ export class Fighter {
     this._lastTapDir = 0;
     this._lastTapT = -1;
     this._dashWindow = 0; // >0 means a fresh double-tap-forward is buffered
+    // Attack input buffering + melee combo chain.
+    this._atkBuffer = 0; // seconds a pressed attack stays "live" to fire
+    this._comboChain = 0; // 1..3 consecutive melee hits
+    this._comboChainT = -1; // animClock of the last chained attack
+    this._isFinisher = false; // current swing is the 3rd (knockback) hit
     // Held prop / weapon.
     this.heldItem = null; // { def, uses }
     this._throwPending = false;
@@ -161,8 +166,16 @@ export class Fighter {
     if (canAct) {
       if (c.consume('special')) this._trySpecial(engine);
     }
-    if (!this.busy) {
-      if (c.consume('attack')) this._startAttack();
+    // Attack is buffered for a short window so a press isn't dropped when it
+    // lands during hitstun or the tail of the previous swing — this is what
+    // makes "move + hit" feel responsive. The buffered swing also cancels the
+    // recover phase of the current attack so chains flow (jab-jab-finisher).
+    if (c.consume('attack')) this._atkBuffer = 0.18;
+    this._atkBuffer = Math.max(0, this._atkBuffer - dt);
+    const inRecover = this.state === 'attack' && this.stateTime >= ATTACK.windup + ATTACK.active;
+    if (this._atkBuffer > 0 && (!this.busy || inRecover)) {
+      this._startAttack();
+      this._atkBuffer = 0;
     }
     if (c.consume('throw') && this.heldItem) this._throwPending = true;
     if (canAct && this.grounded) {
@@ -250,11 +263,20 @@ export class Fighter {
   }
 
   _startAttack() {
+    // Chain consecutive swings: 1 -> 2 -> 3 (finisher), resetting if too slow.
+    if (this._comboChainT >= 0 && this.animClock - this._comboChainT < 0.6) {
+      this._comboChain = (this._comboChain % 3) + 1;
+    } else {
+      this._comboChain = 1;
+    }
+    this._comboChainT = this.animClock;
+    this._isFinisher = this._comboChain === 3;
     this.state = 'attack';
     this.stateTime = 0;
     this.attackHits.clear();
     this._swingConsumed = false;
-    this.vx *= 0.3;
+    // The finisher steps in a touch further for reach; jabs barely slow you.
+    this.vx *= this._isFinisher ? 0.5 : 0.3;
   }
 
   _trySpecial(engine) {
@@ -287,11 +309,14 @@ export class Fighter {
     if (this.stateTime > ATTACK.windup + ATTACK.active) return null;
     const weaponBonus = this.heldItem ? this.heldItem.def.bonus || 0 : 0;
     const weaponReach = this.heldItem ? 12 : 0;
+    // The 3rd combo hit is a knockback finisher: extra damage + launch.
+    const fin = this._isFinisher;
     return {
-      reach: this.char.reach + weaponReach,
+      reach: this.char.reach + weaponReach + (fin ? 8 : 0),
       zTol: 34,
-      damage: this.char.attackPower * this.mods.damageDealt + weaponBonus,
-      knockback: this.heldItem ? 1.2 : 1,
+      damage: (this.char.attackPower * (fin ? 1.55 : 1)) * this.mods.damageDealt + weaponBonus,
+      knockback: (this.heldItem ? 1.2 : 1) * (fin ? 2.1 : 1),
+      finisher: fin,
       weapon: !!this.heldItem,
     };
   }

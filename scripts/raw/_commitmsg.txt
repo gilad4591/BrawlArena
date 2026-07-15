@@ -1,5 +1,0 @@
-Bottom-anchor and enlarge select/HUD portrait busts
-
-- crop-busts.mjs now fills the square (FILL 1.0) and anchors the bust to the
-  bottom edge so portraits no longer float in the card; add dest bounds clamp.
-- Re-export all 10 portraits; bump ASSET_VERSION to 10 for cache-bust.

@@ -713,7 +713,7 @@ export class GameEngine {
         if (attacker.attackHits.has(def.id)) continue;
         if (attacker.containsHit(hb, def)) {
           attacker.attackHits.add(def.id);
-          this._applyHit(attacker, def, hb.damage, { knockback: hb.knockback });
+          this._applyHit(attacker, def, hb.damage, { knockback: hb.knockback, launch: hb.finisher });
           // Weapon swings wear out and eventually break.
           if (hb.weapon && attacker.heldItem && !attacker._swingConsumed) {
             attacker._swingConsumed = true;

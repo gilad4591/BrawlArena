@@ -84,11 +84,30 @@ for (let pass = 0; pass < 2; pass += 1) {
   kill.forEach((i) => { data[i] = 0; });
 }
 
-// Tight bounding box within each cell. A column/row must carry a minimum run of
-// solid pixels to count, so faint residual near the cell borders is ignored.
-const MIN_RUN = 4;
+// Per-cell extraction via connected components. The character body is the
+// largest component (always kept); nearby effects (fireballs, auras) are kept
+// too. Small blobs living in the bottom band of the cell are the baked-in pose
+// LABEL text (IDLE/WALK/...) and are dropped, so they never enter the frame.
 const cellW = W / COLS;
 const cellH = H / ROWS;
+
+// Some sheets draw thin grid/divider lines ON the cell boundaries. Clear a
+// narrow band along every internal boundary so a line can't merge with the
+// body (characters always sit inside their cell with a margin).
+const CLEAR = 3;
+for (let c = 1; c < COLS; c += 1) {
+  const bx = Math.round(c * cellW);
+  for (let y = 0; y < H; y += 1) for (let d = -CLEAR; d <= CLEAR; d += 1) {
+    const x = bx + d; if (x >= 0 && x < W) data[(y * W + x) * 4 + 3] = 0;
+  }
+}
+for (let r = 1; r < ROWS; r += 1) {
+  const by = Math.round(r * cellH);
+  for (let x = 0; x < W; x += 1) for (let d = -CLEAR; d <= CLEAR; d += 1) {
+    const y = by + d; if (y >= 0 && y < H) data[(y * W + x) * 4 + 3] = 0;
+  }
+}
+
 const frames = [];
 for (let row = 0; row < ROWS; row += 1) {
   for (let col = 0; col < COLS; col += 1) {
@@ -96,25 +115,64 @@ for (let row = 0; row < ROWS; row += 1) {
     const y0 = Math.floor(row * cellH);
     const x1 = Math.floor((col + 1) * cellW);
     const y1 = Math.floor((row + 1) * cellH);
-    let minX = x1;
-    let minY = y1;
-    let maxX = x0;
-    let maxY = y0;
-    for (let x = x0; x < x1; x += 1) {
-      let c = 0;
-      for (let y = y0; y < y1; y += 1) if (A(x, y) > ALPHA_MIN) c += 1;
-      if (c >= MIN_RUN) { if (x < minX) minX = x; if (x > maxX) maxX = x; }
+    // Label zone: bottom 26% of the cell (where the text sits).
+    const textTop = y0 + cellH * 0.74;
+    const seen = new Set();
+    const comps = [];
+    for (let sy = y0; sy < y1; sy += 1) {
+      for (let sx = x0; sx < x1; sx += 1) {
+        const k0 = sy * W + sx;
+        if (seen.has(k0) || A(sx, sy) <= ALPHA_MIN) continue;
+        const stack = [k0];
+        seen.add(k0);
+        let n = 0;
+        let cminX = sx;
+        let cmaxX = sx;
+        let cminY = sy;
+        let cmaxY = sy;
+        while (stack.length) {
+          const k = stack.pop();
+          const x = k % W;
+          const y = (k - x) / W;
+          n += 1;
+          if (x < cminX) cminX = x;
+          if (x > cmaxX) cmaxX = x;
+          if (y < cminY) cminY = y;
+          if (y > cmaxY) cmaxY = y;
+          const nb = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+          for (const [nx, ny] of nb) {
+            if (nx < x0 || nx >= x1 || ny < y0 || ny >= y1) continue;
+            const nk = ny * W + nx;
+            if (seen.has(nk) || A(nx, ny) <= ALPHA_MIN) continue;
+            seen.add(nk);
+            stack.push(nk);
+          }
+        }
+        comps.push({ n, minX: cminX, maxX: cmaxX, minY: cminY, maxY: cmaxY });
+      }
     }
-    for (let y = y0; y < y1; y += 1) {
-      let c = 0;
-      for (let x = x0; x < x1; x += 1) if (A(x, y) > ALPHA_MIN) c += 1;
-      if (c >= MIN_RUN) { if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    if (!comps.length) { frames.push({ x: x0, y: y0, w: 4, h: 4 }); continue; }
+    comps.sort((a, b) => b.n - a.n);
+    const body = comps[0];
+    // A component is label text if it lives entirely in the bottom band and is
+    // short (letter height). Keep everything else (body + effects).
+    const isText = (c) => c.minY >= textTop && (c.maxY - c.minY) < cellH * 0.2;
+    let minX = body.minX;
+    let maxX = body.maxX;
+    let minY = body.minY;
+    let maxY = body.maxY;
+    // A near-full-cell but sparse component is a leftover divider outline.
+    const isFrame = (c) =>
+      c.maxX - c.minX > cellW * 0.92 && c.maxY - c.minY > cellH * 0.92 &&
+      c.n / ((c.maxX - c.minX + 1) * (c.maxY - c.minY + 1)) < 0.2;
+    for (const c of comps) {
+      if (c === body || isText(c) || isFrame(c) || c.n < 24) continue;
+      if (c.minX < minX) minX = c.minX;
+      if (c.maxX > maxX) maxX = c.maxX;
+      if (c.minY < minY) minY = c.minY;
+      if (c.maxY > maxY) maxY = c.maxY;
     }
-    if (maxX < minX) {
-      frames.push({ x: x0, y: y0, w: 4, h: 4 });
-    } else {
-      frames.push({ x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 });
-    }
+    frames.push({ x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 });
   }
 }
 
