@@ -25,6 +25,7 @@ android/local.properties
 *.aab
 *.keystore
 *.jks
+android/keystore.properties
 
 # iOS (if added later)
 ios/App/Pods/
