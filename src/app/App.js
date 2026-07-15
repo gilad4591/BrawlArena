@@ -210,7 +210,7 @@ export class App {
           <div class="howto-card special"><b>SP · Dash</b><span>Double-tap <b>forward</b>, then <b>SP</b> — a charging attack.</span></div>
           <div class="howto-card special"><b>SP · Air</b><span>Press <b>Jump</b>, then <b>SP</b> in the air for a launcher.</span></div>
           <div class="howto-card"><b>Weapons</b><span>Stand over an item and press <b>HIT</b> to pick it up. <b>THROW</b> hurls it; each weapon has limited swings.</span></div>
-          <div class="howto-card"><b>Desktop</b><span>Arrows move · <b>Enter</b> or <b>.</b> hit · <b>/</b> special · Space jump · Right-Shift block · <b>,</b> throw. (Left hand: WASD + J/K/L/T also work.)</span></div>
+          <div class="howto-card" id="howto-desktop"><b>Keyboard</b><span>Arrows move · <b>Enter</b> or <b>.</b> hit · <b>/</b> special · Space jump · Right-Shift block · <b>,</b> throw. (Left hand: WASD + J/K/L/T also work.)</span></div>
         </div>
         <button class="btn btn-secondary" data-action="menu">Got it</button>
       </div>
@@ -288,7 +288,7 @@ export class App {
       case 'campaign': this.showCampaign(); break;
       case 'menu': this.goMenu(); break;
       case 'multiplayer': this.showMultiplayer(); break;
-      case 'howto': this.showScreen('howto'); break;
+      case 'howto': this.showHowto(); break;
       case 'settings': this.showSettings(); break;
       case 'fight': this.startGame(); break;
       case 'pause': this.pauseGame(); break;
@@ -1322,6 +1322,18 @@ export class App {
   showMultiplayer() {
     this.showScreen('multiplayer');
     this.renderMpLanding();
+  }
+
+  /** True on Android/iOS (Capacitor injects a global) — no physical keyboard. */
+  _isNative() {
+    return !!(typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.());
+  }
+
+  showHowto() {
+    // The keyboard card is only relevant on desktop/web builds.
+    const kb = this.root.querySelector('#howto-desktop');
+    if (kb) kb.classList.toggle('hidden', this._isNative());
+    this.showScreen('howto');
   }
 
   _relayConfigured() {
