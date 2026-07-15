@@ -842,6 +842,15 @@ export class App {
 
   // ------------------------------------------------------------------- game
   async startGame() {
+    // Teams mode needs at least two populated teams.
+    if (MODES[this.selection.mode]?.teams) {
+      const total = this.selection.opponents + 1;
+      const teams = new Set(this.selection.teamAssign.slice(0, total));
+      if (teams.size < 2) {
+        this.toast('Teams mode needs at least two teams');
+        return;
+      }
+    }
     await StorageService.saveProfile({
       lastCharacter: this.selection.character,
       lastMode: this.selection.mode,
@@ -1461,7 +1470,16 @@ export class App {
       this.renderRoster();
     });
     body.querySelector('#lobby-start')?.addEventListener('click', () => {
-      this.mp.startMatch(this._buildMpStartConfig());
+      const cfg = this._buildMpStartConfig();
+      if (cfg.netPlayers.length < 2) {
+        this.toast('Need at least 2 players to start');
+        return;
+      }
+      if (cfg.teamsMode && new Set(cfg.netPlayers.map((p) => p.team)).size < 2) {
+        this.toast('Teams mode needs at least two teams');
+        return;
+      }
+      this.mp.startMatch(cfg);
     });
     body.querySelector('#lobby-leave').addEventListener('click', () => {
       this.mp.leave();
