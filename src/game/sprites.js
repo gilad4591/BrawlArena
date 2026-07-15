@@ -14,7 +14,7 @@ const BASE = import.meta.env.BASE_URL || '/';
 // Bump this whenever portrait/sprite PNGs are re-exported. Vite does NOT hash
 // files under public/, so browsers (and the dev server) can serve a stale
 // cached copy after art updates — the version query forces a fresh fetch.
-const ASSET_VERSION = '7';
+const ASSET_VERSION = '8';
 const v = (url) => `${url}${url.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`;
 
 /**
@@ -144,19 +144,22 @@ export const SPRITE_DEFS = {
       ko: { frames: [29], loop: false },
     },
   },
-  // ---- Elemental roster (all 1024x1024 sheets, ~150px tall figures) ----
+  // ---- Elemental roster ----
+  // Frost/Tide/Sage were regenerated as clean 4x2 = 8-pose chroma sheets
+  // (grid-sheet.mjs). Frame order per cell (reading L->R, top->bottom):
+  //   0 idle · 1 walk · 2 jump · 3 attack · 4 special · 5 hit · 6 defend · 7 ko
   frost: {
-    sheet: 'sprites/frost.png', frames: 'sprites/frost.frames.json', scale: 0.95,
-    faceRight: true, portraitFrame: 0, portraitZoom: 1.12,
+    sheet: 'sprites/frost.png', frames: 'sprites/frost.frames.json', scale: 1.0,
+    faceRight: true, portraitFrame: 0, portraitZoom: 1.14,
     animations: {
-      idle: { frames: [0, 1, 2, 3], fps: 4, loop: true },
-      walk: { frames: [8, 9, 10, 11], fps: 9, loop: true },
-      jump: { frames: [16], loop: false },
-      attack: { frames: [23, 24], fps: 10, loop: false },
-      special: { frames: [24], loop: false },
-      hit: { frames: [35], loop: false },
-      defend: { frames: [30], loop: false },
-      ko: { frames: [40], loop: false },
+      idle: { frames: [0], fps: 2, loop: true },
+      walk: { frames: [1, 0], fps: 6, loop: true },
+      jump: { frames: [2], loop: false },
+      attack: { frames: [3], fps: 9, loop: false },
+      special: { frames: [4], loop: false },
+      hit: { frames: [5], loop: false },
+      defend: { frames: [6], loop: false },
+      ko: { frames: [7], loop: false },
     },
   },
   aurex: {
@@ -202,17 +205,17 @@ export const SPRITE_DEFS = {
     },
   },
   tide: {
-    sheet: 'sprites/tide.png', frames: 'sprites/tide.frames.json', scale: 0.95,
-    faceRight: true, portraitFrame: 0, portraitZoom: 1.12,
+    sheet: 'sprites/tide.png', frames: 'sprites/tide.frames.json', scale: 1.0,
+    faceRight: true, portraitFrame: 0, portraitZoom: 1.14,
     animations: {
-      idle: { frames: [0, 1, 2, 3], fps: 4, loop: true },
-      walk: { frames: [8, 9, 10, 11], fps: 9, loop: true },
-      jump: { frames: [13], loop: false },
-      attack: { frames: [16, 17], fps: 11, loop: false },
-      special: { frames: [20], loop: false },
-      hit: { frames: [41], loop: false },
-      defend: { frames: [31], loop: false },
-      ko: { frames: [43], loop: false },
+      idle: { frames: [0], fps: 2, loop: true },
+      walk: { frames: [1, 0], fps: 6, loop: true },
+      jump: { frames: [2], loop: false },
+      attack: { frames: [3], fps: 9, loop: false },
+      special: { frames: [4], loop: false },
+      hit: { frames: [5], loop: false },
+      defend: { frames: [6], loop: false },
+      ko: { frames: [7], loop: false },
     },
   },
   nox: {
@@ -258,17 +261,17 @@ export const SPRITE_DEFS = {
     },
   },
   sage: {
-    sheet: 'sprites/sage.png', frames: 'sprites/sage.frames.json', scale: 0.95,
-    faceRight: true, flipStates: ['walk'], portraitFrame: 0, portraitZoom: 1.12,
+    sheet: 'sprites/sage.png', frames: 'sprites/sage.frames.json', scale: 1.02,
+    faceRight: true, portraitFrame: 0, portraitZoom: 1.12,
     animations: {
-      idle: { frames: [0, 1, 2, 3], fps: 4, loop: true },
-      walk: { frames: [8, 9, 10, 11], fps: 9, loop: true },
-      jump: { frames: [16], loop: false },
-      attack: { frames: [23], fps: 8, loop: false },
-      special: { frames: [31], loop: false },
-      hit: { frames: [32], loop: false },
-      defend: { frames: [21], loop: false },
-      ko: { frames: [32], loop: false },
+      idle: { frames: [0], fps: 2, loop: true },
+      walk: { frames: [1, 0], fps: 6, loop: true },
+      jump: { frames: [2], loop: false },
+      attack: { frames: [3], fps: 9, loop: false },
+      special: { frames: [4], loop: false },
+      hit: { frames: [5], loop: false },
+      defend: { frames: [6], loop: false },
+      ko: { frames: [7], loop: false },
     },
   },
   // ---- Campaign enemies (1024x575 labelled sheets) ----
@@ -329,7 +332,10 @@ export const SPRITE_DEFS = {
 // Painted busts (cropped from the "Character Select Screen 2" mockup) mapped to
 // each fighter by element. Sylva (archer) and Sage (wizard) have no matching
 // bust, so they fall back to their crisp 1024px sprite crops.
-const PORTRAIT_IDS = ['blaze', 'frost', 'shade', 'volt', 'golem', 'tide', 'nox', 'aurex', 'sylva', 'sage'];
+// frost/tide/sage intentionally omitted: their regenerated chroma sprites are
+// crisp, so we crop the portrait straight from the idle frame — this keeps the
+// select/HUD bust identical to the in-game character (no painted mismatch).
+const PORTRAIT_IDS = ['blaze', 'shade', 'volt', 'golem', 'nox', 'aurex', 'sylva'];
 const portraits = new Map();
 
 function loadImage(url) {

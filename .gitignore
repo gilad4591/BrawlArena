@@ -34,3 +34,7 @@ ios/App/build/
 # Env / secrets
 .env
 .env.local
+
+# grid-sheet verification montages (throwaway)
+scripts/raw/*_check.png
+scripts/raw/portrait_check.png

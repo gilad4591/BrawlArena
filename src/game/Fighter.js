@@ -53,8 +53,10 @@ export class Fighter {
 
     // Body-size multiplier (campaign enemies scale up/down from the roster base).
     this.sizeMul = character.sizeMul || 1;
-    this.width = (44 + (character.weight - 1) * 10) * this.sizeMul;
-    this.height = (98 + (character.weight - 1) * 14) * this.sizeMul;
+    // Bumped ~16% over the original 44/98 base so fighters read bigger on screen
+    // (the sprite and its hitbox scale together, preserving relative sizes).
+    this.width = (50 + (character.weight - 1) * 11) * this.sizeMul;
+    this.height = (114 + (character.weight - 1) * 16) * this.sizeMul;
 
     this.x = x;
     this.z = z;
