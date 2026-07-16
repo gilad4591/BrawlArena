@@ -93,6 +93,13 @@ export class AdService {
       s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`;
       document.head.appendChild(s);
     }
+    // Ask Google's H5 Games Ads to preload interstitials so the between-matches
+    // adBreak() can show instantly. Safe no-op if the API isn't available.
+    try {
+      window.adConfig?.({ preloadAdBreaks: 'on', sound: 'on' });
+    } catch {
+      /* ignore */
+    }
     this.ready = true;
   }
 
@@ -128,8 +135,33 @@ export class AdService {
     }
   }
 
-  // ---- web interstitial: a dismissible full-screen modal with an ad unit ----
+  /**
+   * Web interstitial between matches. Prefers Google's built-in H5 Games Ads
+   * (adBreak) — a full-screen ad managed entirely by Google, shown only between
+   * gameplay, with no ad-unit slot to configure. Falls back to our own overlay
+   * only if that API isn't available (e.g. the ads script was blocked).
+   */
   _showWebInterstitial() {
+    if (this._overlay) return; // manual overlay already open
+    if (typeof window.adBreak === 'function') {
+      try {
+        window.adBreak({
+          type: 'next', // an ad "between levels" — here, between matches
+          name: 'match_end',
+          beforeAd: () => this._muteForAd?.(true),
+          afterAd: () => this._muteForAd?.(false),
+          adBreakDone: () => this._muteForAd?.(false),
+        });
+        return;
+      } catch {
+        /* fall through to the manual overlay */
+      }
+    }
+    this._showOverlayInterstitial();
+  }
+
+  // ---- fallback web interstitial: a dismissible full-screen modal ----
+  _showOverlayInterstitial() {
     if (this._overlay) return; // already open
     const { adClient, adSlot } = ADS.web;
     const overlay = document.createElement('div');

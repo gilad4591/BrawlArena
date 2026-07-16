@@ -54,6 +54,8 @@ async function bootstrap() {
   await purchases.init();
   await ads.init();
   ads.setPurchases(purchases); // no interstitials once "Remove Ads" is owned
+  // Duck the game audio while a full-screen web ad (H5 adBreak) is on screen.
+  ads._muteForAd = (m) => (m ? audio.suspend() : audio.resume());
   bootProgress(70);
 
   const app = new App(document.getElementById('app'), { audio, haptics, ads, purchases });

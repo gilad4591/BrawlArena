@@ -86,6 +86,11 @@ export class App {
       CHARACTERS.some((c) => c.id === this.profile.lastCharacter) &&
       this.unlocked.has(this.profile.lastCharacter);
     this.selection.character = lastOk ? this.profile.lastCharacter : 'blaze';
+    // On web there is no Store/IAP, so premium fighters must never be playable —
+    // reset a stale premium pick that an old profile may still carry.
+    if (!this._isNative() && PREMIUM_CHARACTERS.some((c) => c.id === this.selection.character)) {
+      this.selection.character = 'blaze';
+    }
     this.selection.mode = this.profile.lastMode || 'oneVsOne';
     this.selection.difficulty = this.profile.lastDifficulty || 2;
     this.selection.arena = this.profile.lastArena || 'forest';
@@ -636,6 +641,18 @@ export class App {
     return this.unlocked?.has(id);
   }
 
+  /**
+   * Fighters the player may actually pick on this screen: unlocked AND — on the
+   * web build, where the Store/IAP doesn't exist — never premium. This guards
+   * every roster (arcade, campaign, multiplayer) even if a stale saved profile
+   * still lists premium ids as "unlocked".
+   */
+  _pickableRoster() {
+    return CHARACTERS.filter(
+      (c) => this.isUnlocked(c.id) && (this._isNative() || !c.premium),
+    );
+  }
+
   _buildXpBar() {
     const el = this.root.querySelector('#xp-bar');
     if (!el) return;
@@ -1062,7 +1079,7 @@ export class App {
 
     const fighters = this.root.querySelector('#camp-fighters');
     if (fighters) {
-      const unlocked = CHARACTERS.filter((c) => this.isUnlocked(c.id));
+      const unlocked = this._pickableRoster();
       fighters.innerHTML = unlocked
         .map(
           (c) => `<button class="camp-fighter ${c.id === this.selection.character ? 'active' : ''}"
@@ -1807,7 +1824,7 @@ export class App {
     const wrap = this.root.querySelector('#mp-charpick');
     if (!wrap || !this.mp?.self) return;
     const chosen = this.mp.self.character;
-    const roster = CHARACTERS.filter((c) => this.isUnlocked(c.id));
+    const roster = this._pickableRoster();
     wrap.innerHTML = `
       <label class="opt-label">Your fighter${chosen ? '' : ' <span class="opt-hint">tap to pick</span>'}</label>
       <div class="mp-charrow">
