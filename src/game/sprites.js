@@ -14,7 +14,7 @@ const BASE = import.meta.env.BASE_URL || '/';
 // Bump this whenever portrait/sprite PNGs are re-exported. Vite does NOT hash
 // files under public/, so browsers (and the dev server) can serve a stale
 // cached copy after art updates — the version query forces a fresh fetch.
-const ASSET_VERSION = '20';
+const ASSET_VERSION = '21';
 const v = (url) => `${url}${url.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`;
 
 /**
@@ -302,6 +302,34 @@ export const SPRITE_DEFS = {
       ko: { frames: [8], loop: false },
     },
   },
+  umbra: {
+    sheet: 'sprites/umbra.png', frames: 'sprites/umbra.frames.json', scale: 1.0,
+    faceRight: true, portraitFrame: 0, portraitZoom: 1.1,
+    animations: {
+      idle: { frames: [0], fps: 2, loop: true },
+      walk: { frames: [1, 0], fps: 6, loop: true },
+      jump: { frames: [5], loop: false },
+      attack: { frames: [3, 4], fps: 9, loop: false },
+      special: { frames: [9], loop: false },
+      hit: { frames: [7], loop: false },
+      defend: { frames: [6], loop: false },
+      ko: { frames: [8], loop: false },
+    },
+  },
+  titania: {
+    sheet: 'sprites/titania.png', frames: 'sprites/titania.frames.json', scale: 1.0,
+    faceRight: true, portraitFrame: 0, portraitZoom: 1.1,
+    animations: {
+      idle: { frames: [0], fps: 2, loop: true },
+      walk: { frames: [1, 0], fps: 6, loop: true },
+      jump: { frames: [5], loop: false },
+      attack: { frames: [3, 4], fps: 9, loop: false },
+      special: { frames: [9], loop: false },
+      hit: { frames: [7], loop: false },
+      defend: { frames: [6], loop: false },
+      ko: { frames: [8], loop: false },
+    },
+  },
   // ---- Campaign enemies (1024x575 labelled sheets) ----
   grunt: {
     sheet: 'sprites/grunt.png', frames: 'sprites/grunt.frames.json', scale: 0.95,
@@ -363,10 +391,10 @@ export const SPRITE_DEFS = {
 // Full painted-bust roster. All 10 busts were regenerated as a matching set
 // (crop-busts.mjs) from flat-magenta reference sheets, so the select/HUD
 // portrait now matches each in-game character across the whole roster.
-const PORTRAIT_IDS = ['blaze', 'frost', 'tide', 'volt', 'sylva', 'shade', 'nox', 'golem', 'aurex', 'sage', 'solaris', 'tempest'];
+const PORTRAIT_IDS = ['blaze', 'frost', 'tide', 'volt', 'sylva', 'shade', 'nox', 'golem', 'aurex', 'sage', 'solaris', 'tempest', 'umbra', 'titania'];
 // Premium fighters ship a matching dark "locked" bust used on the select grid
 // while the fighter is still locked (bought via the Store).
-const LOCKED_PORTRAIT_IDS = ['solaris', 'tempest'];
+const LOCKED_PORTRAIT_IDS = ['solaris', 'tempest', 'umbra', 'titania'];
 const portraits = new Map();
 const lockedPortraits = new Map();
 

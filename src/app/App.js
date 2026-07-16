@@ -124,15 +124,15 @@ export class App {
             <button class="btn btn-primary" data-action="campaign">Solo Campaign</button>
             <button class="btn btn-secondary" data-action="setup">Arcade</button>
             <button class="btn btn-secondary" data-action="multiplayer">Multiplayer</button>
-            <button class="btn btn-ghost" data-action="store">Store</button>
+            ${this._isNative() ? '<button class="btn btn-ghost" data-action="store">Store</button>' : ''}
             <button class="btn btn-ghost" data-action="howto">How to Play</button>
             <button class="btn btn-ghost" data-action="settings">Settings</button>
           </div>
         </div>
-        <p class="footer-note">Cross-platform · iOS · Android${
+        <p class="footer-note">${
           this._isNative()
             ? ''
-            : ' · <a href="/about.html" class="foot-link">About</a> · <a href="/privacy.html" class="foot-link">Privacy</a>'
+            : '<a href="/about.html" class="foot-link">About</a> · <a href="/privacy.html" class="foot-link">Privacy</a>'
         }</p>
       </div>
 
@@ -657,7 +657,10 @@ export class App {
   buildSetup() {
     const grid = this.root.querySelector('#char-grid');
     if (grid) {
-      grid.innerHTML = CHARACTERS.map((c) => {
+      // Premium (purchasable) fighters only exist on native builds where the
+      // Store / in-app billing is available. On web they're hidden entirely.
+      const roster = CHARACTERS.filter((c) => this._isNative() || !c.premium);
+      grid.innerHTML = roster.map((c) => {
         const locked = !this.isUnlocked(c.id);
         // Premium fighters show their portrait + price and open the Store on tap;
         // XP fighters stay hidden behind the classic "??? / 🔒 XP" tease.
@@ -968,6 +971,7 @@ export class App {
       arena: this.selection.arena,
       playerName: this.profile.name,
       reduceMotion: this.settings.reduceMotion,
+      excludePremium: !this._isNative(),
     });
 
     this._afterStart();
@@ -1393,6 +1397,8 @@ export class App {
 
   // ------------------------------------------------------------------- store
   showStore() {
+    // The Store (in-app billing) is native-only; ignore any stray web trigger.
+    if (!this._isNative()) return;
     this.buildStore();
     this.showScreen('store');
   }

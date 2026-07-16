@@ -1,5 +1,5 @@
 import { ARENA_DEPTH, DIFFICULTY, MODES } from './constants.js';
-import { getCharacter, CHARACTERS } from './characters.js';
+import { getCharacter, CHARACTERS, isPremium } from './characters.js';
 import { getArena } from './arenas.js';
 import { Fighter } from './Fighter.js';
 import { Controller } from './input.js';
@@ -255,7 +255,10 @@ export class GameEngine {
 
   _buildParticipants(config, mode) {
     const list = [];
-    const pool = CHARACTERS.map((c) => c.id).filter((id) => id !== config.playerCharacter);
+    const pool = CHARACTERS.map((c) => c.id)
+      .filter((id) => id !== config.playerCharacter)
+      // On web, premium fighters don't exist at all — keep them out of the CPU pool.
+      .filter((id) => !(config.excludePremium && isPremium(id)));
     const pick = () => {
       if (!pool.length) return CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)].id;
       const i = Math.floor(Math.random() * pool.length);
