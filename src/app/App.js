@@ -123,7 +123,7 @@ export class App {
         <canvas id="menu-canvas" class="menu-canvas"></canvas>
         <div class="menu-scrim"></div>
         <div class="menu-content">
-          <img class="menu-badge" src="/favicon.svg?v=2" alt="" width="88" height="88" />
+          <img class="menu-badge" src="/icons/icon-192.png?v=3" alt="" width="88" height="88" />
           <h1 class="logo">BRAWL<span>ARENA</span></h1>
           <p class="tagline">Pick a fighter. Own the arena.</p>
           <div class="btn-row col menu-buttons">
