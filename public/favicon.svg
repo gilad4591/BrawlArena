@@ -1,22 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+    
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ff6a2b"/>
-      <stop offset="0.55" stop-color="#ff5d3b"/>
+      <stop offset="0" stop-color="#ff7a33"/>
+      <stop offset="0.5" stop-color="#ff5d3b"/>
       <stop offset="1" stop-color="#ffb03b"/>
     </linearGradient>
-    <linearGradient id="h" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#232a44"/>
-      <stop offset="1" stop-color="#0e1220"/>
+    <radialGradient id="glow" cx="0.5" cy="0.36" r="0.72">
+      <stop offset="0" stop-color="#ffe0a0" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffe0a0" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="vig" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#3a0f00" stop-opacity="0.42"/>
     </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
-  <g fill="url(#h)">
-    <rect x="19" y="18" width="6.5" height="14" rx="3.2"/>
-    <rect x="27.5" y="18" width="6.5" height="14" rx="3.2"/>
-    <rect x="36" y="18" width="6.5" height="14" rx="3.2"/>
-    <rect x="44.5" y="18" width="6.5" height="14" rx="3.2"/>
-    <rect x="18" y="27" width="33" height="24" rx="8"/>
-    <rect x="14" y="38" width="24" height="11" rx="5.5"/>
-  </g>
-</svg>
+    <linearGradient id="hand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a3350"/>
+      <stop offset="1" stop-color="#0c1120"/>
+    </linearGradient>
+    <linearGradient id="thumb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#323b5e"/>
+      <stop offset="1" stop-color="#141a2c"/>
+    </linearGradient>
+    <filter id="ds" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs><clipPath id="c"><rect x="0" y="0" width="512" height="512" rx="96"/></clipPath>
+    <g clip-path="url(#c)">
+      <rect width="512" height="512" fill="url(#bg)"/>
+      <rect width="512" height="512" fill="url(#glow)"/>
+      <line x1="402.1181646939384" y1="288.87057944609387" x2="458.9418954082478" y2="303.98691589735256" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="363.1067528562622" y1="356.7219916071077" x2="404.7593789670308" y2="398.22498834320515" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="295.3961730868307" y1="395.977332302356" x2="310.7169070650426" y2="452.74629486438334" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="217.12942055390616" y1="396.1181646939384" x2="202.01308410264744" y2="452.9418954082478" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="149.27800839289227" y1="357.1067528562622" x2="107.77501165679482" y2="398.7593789670308" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="110.02266769764395" y1="289.39617308683063" x2="53.2537051356166" y2="304.71690706504256" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="109.88183530606159" y1="211.1294205539062" x2="53.0581045917522" y2="196.0130841026475" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="148.89324714373782" y1="143.27800839289227" x2="107.24062103296919" y2="101.77501165679482" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="216.60382691316923" y1="104.02266769764401" x2="201.28309293495727" y2="47.253705135616656" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="294.8705794460938" y1="103.88183530606159" x2="309.9869158973525" y2="47.0581045917522" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="362.7219916071077" y1="142.8932471437378" x2="404.22498834320515" y2="101.24062103296916" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/><line x1="401.977332302356" y1="210.60382691316923" x2="458.74629486438334" y2="195.28309293495724" stroke="#fff" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/>
+      <ellipse cx="256" cy="410" rx="120" ry="26" fill="#000" opacity="0.22"/>
+      <g filter="url(#ds)"><g transform="translate(256,258) scale(1.52) translate(-100,-108)">
+    <!-- back of hand -->
+    <rect x="34" y="70" width="132" height="108" rx="30" fill="url(#hand)"/>
+    <!-- four fingers / knuckles -->
+    <rect x="40" y="34" width="30" height="56" rx="14" fill="url(#hand)"/><rect x="74" y="34" width="30" height="56" rx="14" fill="url(#hand)"/><rect x="108" y="34" width="30" height="56" rx="14" fill="url(#hand)"/><rect x="142" y="34" width="30" height="56" rx="14" fill="url(#hand)"/>
+    <!-- knuckle shadow line -->
+    <rect x="40" y="86" width="132" height="10" rx="5" fill="#000" opacity="0.18"/>
+    <!-- thumb wrapping across the front -->
+    <rect x="26" y="120" width="88" height="44" rx="22" fill="url(#thumb)"/>
+    <!-- thumb tip -->
+    <rect x="86" y="120" width="46" height="44" rx="22" fill="url(#thumb)"/>
+    <!-- soft top highlight -->
+    <rect x="44" y="40" width="120" height="20" rx="10" fill="#fff" opacity="0.12"/>
+  </g></g>
+      <rect width="512" height="512" fill="url(#vig)"/>
+      <rect x="10" y="10" width="492" height="492" rx="86" fill="none" stroke="#fff" stroke-opacity="0.16" stroke-width="8"/>
+    </g>
+  </svg>

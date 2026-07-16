@@ -337,8 +337,17 @@ body,
 }
 
 /* Staggered entrance for the title, tagline and each menu button. */
-.menu-content > .logo {
+.menu-badge {
+  width: clamp(64px, 14vw, 92px);
+  height: auto;
+  display: block;
+  margin: 0 auto 2px;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.55));
   animation: rise-in 0.5s ease both;
+}
+
+.menu-content > .logo {
+  animation: rise-in 0.5s 0.04s ease both;
 }
 
 .menu-content > .tagline {
@@ -1831,6 +1840,7 @@ body,
   }
 
   /* Menu: smaller logo/buttons so the whole stack fits without scrolling. */
+  .menu-badge { width: clamp(44px, 8vh, 60px); margin-bottom: 0; }
   .logo { font-size: clamp(2rem, 7vw, 2.8rem); }
   .logo span { font-size: 0.4em; letter-spacing: 6px; margin-top: 2px; }
   .menu-content { gap: 7px; padding-bottom: calc(30px + env(safe-area-inset-bottom)); }
