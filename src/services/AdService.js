@@ -138,22 +138,50 @@ export class AdService {
   /**
    * Web interstitial between matches. Prefers Google's built-in H5 Games Ads
    * (adBreak) — a full-screen ad managed entirely by Google, shown only between
-   * gameplay, with no ad-unit slot to configure. Falls back to our own overlay
-   * only if that API isn't available (e.g. the ads script was blocked).
+   * gameplay, with no ad-unit slot to configure.
+   *
+   * Crucially it FALLS BACK to our own overlay whenever Google doesn't actually
+   * render an ad: the script is blocked by an ad-blocker (very common), the SDK
+   * hasn't loaded yet, or there's simply no fill. Without this the player would
+   * just see nothing. We detect "no ad shown" via the adBreakDone status and a
+   * short watchdog timer (adBreakDone never fires when the SDK is blocked).
    */
   _showWebInterstitial() {
     if (this._overlay) return; // manual overlay already open
+
     if (typeof window.adBreak === 'function') {
+      let adShown = false;
+      let settled = false;
+      const finish = (showFallback) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(watchdog);
+        this._muteForAd?.(false);
+        if (showFallback && !adShown) this._showOverlayInterstitial();
+      };
+      // If the SDK is blocked/not loaded, adBreakDone never fires — so after a
+      // beat with nothing shown we surface our own overlay instead.
+      const watchdog = setTimeout(() => finish(true), 1800);
       try {
         window.adBreak({
           type: 'next', // an ad "between levels" — here, between matches
           name: 'match_end',
-          beforeAd: () => this._muteForAd?.(true),
+          beforeAd: () => {
+            adShown = true;
+            clearTimeout(watchdog);
+            this._muteForAd?.(true);
+          },
           afterAd: () => this._muteForAd?.(false),
-          adBreakDone: () => this._muteForAd?.(false),
+          adBreakDone: (info) => {
+            const st = info && info.breakStatus;
+            // 'viewed'/'dismissed' => a real ad played; anything else (noAd*,
+            // frequencyCapped, error, notReady…) => show our fallback overlay.
+            finish(st !== 'viewed' && st !== 'dismissed');
+          },
         });
         return;
       } catch {
+        clearTimeout(watchdog);
         /* fall through to the manual overlay */
       }
     }
