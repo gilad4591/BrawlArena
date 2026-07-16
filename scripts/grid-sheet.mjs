@@ -25,8 +25,11 @@ const COLS = Number(colsA) || 4;
 const ROWS = Number(rowsA) || 2;
 const KEY = (keyA || 'magenta').toLowerCase();
 
-const KEY_HIGH = 100; // metric above this -> fully background
-const KEY_LOW = 32; //   metric below this -> fully foreground
+// Thresholds are env-overridable: some AI sheets use a muted chroma whose
+// metric peaks well below the default (e.g. green ~88 instead of ~200), so a
+// lower KEY_HIGH is needed to fully clear the background.
+const KEY_HIGH = Number(process.env.KEY_HIGH) || 100; // metric above this -> fully background
+const KEY_LOW = Number(process.env.KEY_LOW) || 32; //   metric below this -> fully foreground
 const ALPHA_MIN = 40; // opacity considered "solid" for bbox scan
 
 const p = PNG.sync.read(fs.readFileSync(src));

@@ -20,6 +20,7 @@ import {
   drawSpritePortrait,
   drawPaintedPortrait,
   getPortraitImage,
+  getLockedPortraitImage,
 } from '../game/sprites.js';
 import { StorageService } from '../services/StorageService.js';
 import { MultiplayerService } from '../services/MultiplayerService.js';
@@ -677,7 +678,14 @@ export class App {
       }).join('');
       grid.querySelectorAll('[data-portrait]').forEach((holder) => {
         const c = getCharacter(holder.dataset.portrait);
-        holder.appendChild(this.portraitCanvas(c, 128));
+        // Premium fighters that aren't owned yet show their dark "locked" bust.
+        const showLocked = c.premium && !this.isUnlocked(c.id);
+        holder.appendChild(this.portraitCanvas(c, 128, showLocked));
+        // If a purpose-made (already dark) locked bust is used, mark the card so
+        // CSS skips the extra darken filter that would crush it to a black void.
+        if (showLocked && getLockedPortraitImage(c.id)) {
+          holder.closest('.char-card')?.classList.add('has-locked-art');
+        }
       });
       grid.querySelectorAll('[data-char]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -863,7 +871,7 @@ export class App {
     this.selection.teamAssign = assign;
   }
 
-  portraitCanvas(char, size) {
+  portraitCanvas(char, size, locked = false) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const c = document.createElement('canvas');
     c.width = size * dpr;
@@ -877,7 +885,7 @@ export class App {
     // Prefer the high-quality painted bust; if this character reuses another's
     // sprites (e.g. Glacia -> Zara) borrow that painted bust with a hue tint so
     // it stays crisp instead of falling back to a blocky sprite crop.
-    if (drawPaintedPortrait(ctx, char.id, size)) return c;
+    if (drawPaintedPortrait(ctx, char.id, size, locked)) return c;
     if (char.spriteBase && char.spriteBase !== char.id && getPortraitImage(char.spriteBase)) {
       if (char.tint) ctx.filter = `hue-rotate(${char.tint}deg) saturate(1.2)`;
       const drew = drawPaintedPortrait(ctx, char.spriteBase, size);

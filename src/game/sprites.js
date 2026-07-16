@@ -14,7 +14,7 @@ const BASE = import.meta.env.BASE_URL || '/';
 // Bump this whenever portrait/sprite PNGs are re-exported. Vite does NOT hash
 // files under public/, so browsers (and the dev server) can serve a stale
 // cached copy after art updates — the version query forces a fresh fetch.
-const ASSET_VERSION = '19';
+const ASSET_VERSION = '20';
 const v = (url) => `${url}${url.includes('?') ? '&' : '?'}v=${ASSET_VERSION}`;
 
 /**
@@ -270,6 +270,38 @@ export const SPRITE_DEFS = {
       ko: { frames: [7], loop: false },
     },
   },
+  // ---- Premium fighters (clean 4x3 = 12-pose chroma sheets, grid-sheet.mjs) ----
+  // Cell order L->R, top->bottom:
+  //   0 idle · 1 stance · 2 run · 3 punch · 4 kick · 5 stance/jump · 6 guard
+  //   7 air/hurt · 8 knockdown · 9 special · 10 reach/bolt · 11 victory
+  solaris: {
+    sheet: 'sprites/solaris.png', frames: 'sprites/solaris.frames.json', scale: 1.0,
+    faceRight: true, portraitFrame: 0, portraitZoom: 1.1,
+    animations: {
+      idle: { frames: [0], fps: 2, loop: true },
+      walk: { frames: [2, 0], fps: 6, loop: true },
+      jump: { frames: [7], loop: false },
+      attack: { frames: [3, 4], fps: 9, loop: false },
+      special: { frames: [9], loop: false },
+      hit: { frames: [10], loop: false },
+      defend: { frames: [6], loop: false },
+      ko: { frames: [8], loop: false },
+    },
+  },
+  tempest: {
+    sheet: 'sprites/tempest.png', frames: 'sprites/tempest.frames.json', scale: 1.0,
+    faceRight: true, portraitFrame: 0, portraitZoom: 1.1,
+    animations: {
+      idle: { frames: [0], fps: 2, loop: true },
+      walk: { frames: [1, 0], fps: 6, loop: true },
+      jump: { frames: [5], loop: false },
+      attack: { frames: [3, 4], fps: 9, loop: false },
+      special: { frames: [9, 10], fps: 8, loop: false },
+      hit: { frames: [7], loop: false },
+      defend: { frames: [6], loop: false },
+      ko: { frames: [8], loop: false },
+    },
+  },
   // ---- Campaign enemies (1024x575 labelled sheets) ----
   grunt: {
     sheet: 'sprites/grunt.png', frames: 'sprites/grunt.frames.json', scale: 0.95,
@@ -331,8 +363,12 @@ export const SPRITE_DEFS = {
 // Full painted-bust roster. All 10 busts were regenerated as a matching set
 // (crop-busts.mjs) from flat-magenta reference sheets, so the select/HUD
 // portrait now matches each in-game character across the whole roster.
-const PORTRAIT_IDS = ['blaze', 'frost', 'tide', 'volt', 'sylva', 'shade', 'nox', 'golem', 'aurex', 'sage'];
+const PORTRAIT_IDS = ['blaze', 'frost', 'tide', 'volt', 'sylva', 'shade', 'nox', 'golem', 'aurex', 'sage', 'solaris', 'tempest'];
+// Premium fighters ship a matching dark "locked" bust used on the select grid
+// while the fighter is still locked (bought via the Store).
+const LOCKED_PORTRAIT_IDS = ['solaris', 'tempest'];
 const portraits = new Map();
+const lockedPortraits = new Map();
 
 function loadImage(url) {
   return new Promise((resolve, reject) => {
@@ -344,24 +380,35 @@ function loadImage(url) {
 }
 
 export async function loadPortraits() {
-  await Promise.all(
-    PORTRAIT_IDS.map(async (id) => {
+  await Promise.all([
+    ...PORTRAIT_IDS.map(async (id) => {
       try {
         portraits.set(id, await loadImage(v(`${BASE}portraits/${id}.png`)));
       } catch {
         /* fall back to sprite crop */
       }
     }),
-  );
+    ...LOCKED_PORTRAIT_IDS.map(async (id) => {
+      try {
+        lockedPortraits.set(id, await loadImage(v(`${BASE}portraits/${id}_locked.png`)));
+      } catch {
+        /* fall back to the dimmed unlocked bust */
+      }
+    }),
+  ]);
 }
 
 export function getPortraitImage(charId) {
   return portraits.get(charId) || null;
 }
 
+export function getLockedPortraitImage(charId) {
+  return lockedPortraits.get(charId) || null;
+}
+
 /** Draw a painted portrait bust, cover-fit into a square box. Returns false if none. */
-export function drawPaintedPortrait(ctx, charId, size) {
-  const img = portraits.get(charId);
+export function drawPaintedPortrait(ctx, charId, size, locked = false) {
+  const img = (locked && lockedPortraits.get(charId)) || portraits.get(charId);
   if (!img) return false;
   const scale = Math.max(size / img.width, size / img.height);
   const dw = img.width * scale;

@@ -223,9 +223,9 @@ export const CHARACTERS = [
   },
 
   // ------------------------------------------------------------------------
-  // Premium (purchasable) fighters. Built on existing sheets (spriteBase + hue
-  // `tint`) so they're playable immediately; dedicated art can be swapped in
-  // later without touching this data. Tuned ~5% above the standard roster's
+  // Premium (purchasable) fighters. Solaris + Tempest ship dedicated 12-pose
+  // sheets and painted busts; Umbra + Titania still ride an existing sheet
+  // (spriteBase + hue `tint`) until their art lands. Tuned ~5% above the roster's
   // TOTAL rating — the HP baseline stays 200 (so bars match), and the edge
   // comes from a little extra speed + power.
   {
@@ -238,8 +238,6 @@ export const CHARACTERS = [
     style: { build: 'normal', skin: '#f0c890', hair: '#ffd24a', hairStyle: 'spiky', eye: '#fff0a0', crest: 'flame' },
     premium: true,
     productId: 'char_solaris',
-    spriteBase: 'aurex',
-    tint: 28,
     unlockXp: 0,
     maxHp: 200,
     maxMp: 108,
@@ -263,8 +261,6 @@ export const CHARACTERS = [
     style: { build: 'slim', skin: '#dcc0a4', hair: '#2a4faa', hairStyle: 'spiky', eye: '#d0f0ff', crest: 'spark' },
     premium: true,
     productId: 'char_tempest',
-    spriteBase: 'volt',
-    tint: 60,
     unlockXp: 0,
     maxHp: 200,
     maxMp: 100,

@@ -2166,6 +2166,12 @@ body,
   filter: grayscale(0.35) brightness(0.72);
 }
 
+/* Cards showing a purpose-made dark "locked" silhouette bust: render it almost
+   as authored (tiny lift so the shape reads) instead of crushing it further. */
+.char-card.locked.premium.has-locked-art .char-portrait canvas {
+  filter: brightness(1.12) contrast(1.05);
+}
+
 /* -------------------------------------------------------------- i18n / RTL */
 /* The gameplay layer is coordinate-driven and its controls are physically
    placed, so keep it LTR even in Hebrew; only the surrounding menus flip. */
