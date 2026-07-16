@@ -328,8 +328,57 @@ const frozen = {
   },
 };
 
-export const ARENAS = [forest, dojo, volcano, frozen];
+// ---------------------------------------------------------------- Premium arenas
+// Painted background images (public/arenas/<id>.png). `bg` makes the engine draw
+// the image instead of the procedural scene; the `draw` below is only a themed
+// two-band fallback used if the image ever fails to load. Marked premium: true
+// so they're gated behind the Store (native only), like premium fighters.
+function imageArena({ id, name, swatch, bg, skyTop, skyBot, floorTop, floorBot }) {
+  return {
+    id,
+    name,
+    swatch,
+    bg,
+    premium: true,
+    draw(ctx, info) {
+      const { w, h, floorTopY } = info;
+      const sky = ctx.createLinearGradient(0, 0, 0, floorTopY);
+      sky.addColorStop(0, skyTop);
+      sky.addColorStop(1, skyBot);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, floorTopY);
+      const floor = ctx.createLinearGradient(0, floorTopY, 0, h);
+      floor.addColorStop(0, floorTop);
+      floor.addColorStop(1, floorBot);
+      ctx.fillStyle = floor;
+      ctx.fillRect(0, floorTopY, w, h - floorTopY);
+    },
+  };
+}
+
+const colosseum = imageArena({
+  id: 'colosseum', name: 'Colosseum', swatch: '#d9b87a', bg: 'arenas/colosseum.png',
+  skyTop: '#f6d99b', skyBot: '#c99a63', floorTop: '#e9dcc0', floorBot: '#c9b58f',
+});
+const neonCity = imageArena({
+  id: 'neon_rooftop', name: 'Neon City', swatch: '#4fd6ff', bg: 'arenas/neon_rooftop.png',
+  skyTop: '#0d1630', skyBot: '#243a6a', floorTop: '#3a4560', floorBot: '#1a2236',
+});
+const graveyard = imageArena({
+  id: 'shadow_graveyard', name: 'Shadow Graveyard', swatch: '#8f6bd0', bg: 'arenas/shadow_graveyard.png',
+  skyTop: '#20143a', skyBot: '#3a2f66', floorTop: '#7a6a5a', floorBot: '#3a3040',
+});
+const skyTemple = imageArena({
+  id: 'sky_temple', name: 'Sky Temple', swatch: '#ffd98a', bg: 'arenas/sky_temple.png',
+  skyTop: '#ffe3d0', skyBot: '#f6c9a0', floorTop: '#f3ead8', floorBot: '#d9c7a8',
+});
+
+export const ARENAS = [forest, dojo, volcano, frozen, colosseum, neonCity, graveyard, skyTemple];
 export const ARENA_MAP = Object.fromEntries(ARENAS.map((a) => [a.id, a]));
+export const PREMIUM_ARENAS = ARENAS.filter((a) => a.premium);
+export function isPremiumArena(id) {
+  return !!ARENA_MAP[id]?.premium;
+}
 export function getArena(id) {
   return ARENA_MAP[id] || forest;
 }

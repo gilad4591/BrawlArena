@@ -31,6 +31,8 @@ const HE = {
   'No more interstitials — ever.': 'בלי פרסומות קופצות — לתמיד.',
   'All Premium Fighters': 'כל הלוחמים המיוחדים',
   'Unlock every premium fighter at once.': 'פותח את כל הלוחמים המיוחדים בבת אחת.',
+  'Premium Arenas': 'זירות מיוחדות',
+  'Unlock every premium battle arena.': 'פותח את כל זירות הקרב המיוחדות.',
   'Premium Fighters': 'לוחמים מיוחדים',
   'Restore Purchases': 'שחזור רכישות',
   Unlock: 'פתיחה',
@@ -75,6 +77,10 @@ const HE = {
   Dojo: 'דוג׳ו',
   Volcano: 'הר געש',
   'Frozen Peak': 'פסגה קפואה',
+  Colosseum: 'קולוסיאום',
+  'Neon City': 'עיר ניאון',
+  'Shadow Graveyard': 'בית קברות אפל',
+  'Sky Temple': 'מקדש שמימי',
 
   // --- In-game controls / banners ---
   DEF: 'הגנה',

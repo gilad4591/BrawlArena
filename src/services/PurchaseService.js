@@ -2,6 +2,7 @@ import { StorageService } from './StorageService.js';
 import {
   ALL_PRODUCT_IDS,
   ALL_CHARACTERS_ID,
+  ARENA_PACK_ID,
   REMOVE_ADS_ID,
   PRODUCT_TO_CHARACTER,
 } from './purchasesConfig.js';
@@ -24,11 +25,12 @@ import { PREMIUM_CHARACTERS } from '../game/characters.js';
  *   - NATIVE without a billing plugin     -> purchases report "unavailable"
  *       (never grants for free), so shipping without the plugin is safe.
  *
- * To go live on Android:
- *   1. `npm i @capacitor-community/in-app-purchases` (or wire cordova-plugin-purchase),
- *      then `npx cap sync android`.
- *   2. Create the product IDs from purchasesConfig.js in Play Console.
- *   3. Implement the two TODO calls in `_loadNativeAdapter()` for your plugin.
+ * To go live on Android (no backend / no third-party account needed):
+ *   1. `npm i @capgo/native-purchases` then `npx cap sync android`.
+ *      (@capgo/native-purchases talks directly to Google Play Billing.)
+ *   2. Create the product IDs from purchasesConfig.js in Play Console as
+ *      one-time (managed) products, then activate them.
+ *   3. Nothing else — `_loadNativeAdapter()` below already wires the plugin.
  */
 export class PurchaseService {
   constructor() {
@@ -75,6 +77,11 @@ export class PurchaseService {
 
   ownsRemoveAds() {
     return this.owns(REMOVE_ADS_ID);
+  }
+
+  /** True if the premium arena pack has been purchased. */
+  ownsArenas() {
+    return this.owns(ARENA_PACK_ID);
   }
 
   /** True if a specific premium character is unlocked (directly or via bundle). */
@@ -184,42 +191,67 @@ export class PurchaseService {
   async _loadNativeAdapter() {
     try {
       // The specifier is assembled at runtime + marked @vite-ignore so the
-      // bundler doesn't try to resolve (and fail on) a plugin that isn't
-      // installed yet. Once you `npm i @capacitor-community/in-app-purchases`
-      // this import resolves and real billing activates automatically.
-      const specifier = ['@capacitor-community', 'in-app-purchases'].join('/');
+      // bundler never tries to resolve (and fail on) the plugin at build time —
+      // it only exists inside the native Android/iOS app. Once you
+      // `npm i @capgo/native-purchases` + `npx cap sync`, real billing activates.
+      const specifier = ['@capgo', 'native-purchases'].join('/');
       const mod = await import(/* @vite-ignore */ specifier).catch(() => null);
       if (!mod) return null;
-      const IAP_PLUGIN = mod.InAppPurchases || mod.default || mod;
-      const cache = { products: {}, owned: new Set() };
+      const NativePurchases = mod.NativePurchases || mod.default || mod;
+      // All our products are one-time (managed) in-app products, not subs.
+      const INAPP = (mod.PURCHASE_TYPE && mod.PURCHASE_TYPE.INAPP) || 'inapp';
+
+      // Bail out cleanly on emulators / devices without Play billing.
+      if (NativePurchases.isBillingSupported) {
+        const s = await NativePurchases.isBillingSupported().catch(() => ({}));
+        if (!s?.isBillingSupported) return null;
+      }
+
+      const idOf = (x) => x?.productIdentifier || x?.productId || x?.identifier;
+      const cache = { products: {} };
       return {
         async init(ids) {
-          // TODO(store): confirm this matches your installed plugin's API.
-          const { products } = await IAP_PLUGIN.getProducts({ productIds: ids });
-          for (const p of products || []) cache.products[p.id || p.productId] = p;
+          const { products } = await NativePurchases.getProducts({
+            productIdentifiers: ids,
+            productType: INAPP,
+          });
+          for (const p of products || []) cache.products[p.identifier || p.id] = p;
         },
         async getPrices() {
           const out = {};
           for (const [id, p] of Object.entries(cache.products)) {
-            out[id] = p.price || p.priceString || p.localizedPrice;
+            out[id] = p.priceString || p.displayPrice || p.price || '';
           }
           return out;
         },
         async getOwned() {
-          const { purchases } = await IAP_PLUGIN.restorePurchases?.() || {};
-          const ids = (purchases || []).map((x) => x.productId || x.id);
-          ids.forEach((i) => cache.owned.add(i));
-          return ids;
+          const { purchases } = (await NativePurchases.getPurchases({ productType: INAPP }).catch(
+            () => ({ purchases: [] }),
+          )) || { purchases: [] };
+          return (purchases || []).map(idOf).filter(Boolean);
         },
         async buy(productId) {
-          const res = await IAP_PLUGIN.purchaseProduct({ productId });
-          const ok = !!(res && (res.transactionId || res.purchase || res.success));
-          if (ok) cache.owned.add(productId);
-          return { ok, error: ok ? undefined : 'cancelled' };
+          try {
+            const res = await NativePurchases.purchaseProduct({
+              productIdentifier: productId,
+              productType: INAPP,
+            });
+            const ok = !!(res && res.transactionId);
+            return { ok, error: ok ? undefined : 'Purchase cancelled.' };
+          } catch (err) {
+            return { ok: false, error: String(err?.message || err) };
+          }
         },
         async restore() {
-          const { purchases } = await IAP_PLUGIN.restorePurchases?.() || {};
-          return (purchases || []).map((x) => x.productId || x.id);
+          try {
+            await NativePurchases.restorePurchases?.();
+          } catch {
+            /* ignore — we re-query owned state below */
+          }
+          const { purchases } = (await NativePurchases.getPurchases({ productType: INAPP }).catch(
+            () => ({ purchases: [] }),
+          )) || { purchases: [] };
+          return (purchases || []).map(idOf).filter(Boolean);
         },
       };
     } catch (err) {

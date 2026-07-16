@@ -8,10 +8,10 @@ import {
   LOCKED_CHARACTERS,
   PREMIUM_CHARACTERS,
 } from '../game/characters.js';
-import { IAP, REMOVE_ADS_ID, ALL_CHARACTERS_ID } from '../services/purchasesConfig.js';
+import { IAP, REMOVE_ADS_ID, ALL_CHARACTERS_ID, ARENA_PACK_ID } from '../services/purchasesConfig.js';
 import { STAGES } from '../game/enemies.js';
 import { MODES, DIFFICULTY, TEAM_COLORS } from '../game/constants.js';
-import { ARENAS, loadArenaImages } from '../game/arenas.js';
+import { ARENAS, loadArenaImages, isPremiumArena } from '../game/arenas.js';
 import { makePortraitCanvas } from '../game/portraits.js';
 import {
   loadAllSprites,
@@ -781,12 +781,24 @@ export class App {
 
     const arenaRow = this.root.querySelector('#arena-row');
     if (arenaRow) {
-      arenaRow.innerHTML = ARENAS.map(
-        (a) => `<button class="chip arena-chip ${a.id === this.selection.arena ? 'active' : ''}"
-          data-arena="${a.id}"><span class="arena-swatch" style="background:${a.swatch}"></span>${a.name}</button>`,
-      ).join('');
+      // Premium arenas exist only on native (where the Store lives). On web
+      // they're hidden entirely; on native, locked ones open the Store on tap.
+      const arenas = ARENAS.filter((a) => this._isNative() || !a.premium);
+      arenaRow.innerHTML = arenas
+        .map((a) => {
+          const arenaLocked = a.premium && !this.purchases.ownsArenas();
+          return `<button class="chip arena-chip ${a.id === this.selection.arena ? 'active' : ''} ${arenaLocked ? 'locked' : ''}"
+          data-arena="${a.id}" ${arenaLocked ? 'data-arena-premium="1"' : ''}><span class="arena-swatch" style="background:${a.swatch}"></span>${a.name}${arenaLocked ? ' ★' : ''}</button>`;
+        })
+        .join('');
       arenaRow.querySelectorAll('[data-arena]').forEach((btn) => {
         btn.addEventListener('click', () => {
+          if (btn.dataset.arenaPremium) {
+            this.audio.select?.();
+            this.haptics.tap();
+            this.showStore();
+            return;
+          }
           this.selection.arena = btn.dataset.arena;
           this.audio.select?.();
           this.haptics.tap();
@@ -936,6 +948,10 @@ export class App {
 
   // ------------------------------------------------------------------- game
   async startGame() {
+    // Never launch into a premium arena that isn't owned (e.g. stale profile).
+    if (isPremiumArena(this.selection.arena) && !this.purchases.ownsArenas()) {
+      this.selection.arena = 'forest';
+    }
     // Teams mode needs at least two populated teams.
     if (MODES[this.selection.mode]?.teams) {
       const total = this.selection.opponents + 1;
@@ -1438,6 +1454,7 @@ export class App {
       <div class="store-section">
         ${bigCard(REMOVE_ADS_ID, IAP.removeAds.title, IAP.removeAds.desc, ownRemoveAds)}
         ${bigCard(ALL_CHARACTERS_ID, IAP.allCharacters.title, IAP.allCharacters.desc, ownAll)}
+        ${bigCard(ARENA_PACK_ID, IAP.arenaPack.title, IAP.arenaPack.desc, this.purchases.ownsArenas())}
       </div>
       <div class="store-label">Premium Fighters</div>
       <div class="store-grid">

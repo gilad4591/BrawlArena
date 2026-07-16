@@ -17,6 +17,7 @@ import { PREMIUM_CHARACTERS } from '../game/characters.js';
  */
 export const REMOVE_ADS_ID = 'remove_ads';
 export const ALL_CHARACTERS_ID = 'all_characters';
+export const ARENA_PACK_ID = 'arena_pack';
 
 export const IAP = {
   removeAds: {
@@ -29,6 +30,11 @@ export const IAP = {
     title: 'All Premium Fighters',
     desc: 'Unlock every premium fighter at once.',
   },
+  arenaPack: {
+    id: ARENA_PACK_ID,
+    title: 'Premium Arenas',
+    desc: 'Unlock every premium battle arena.',
+  },
 };
 
 // Product id -> the character id it unlocks (built from the roster).
@@ -40,5 +46,6 @@ export const PRODUCT_TO_CHARACTER = Object.fromEntries(
 export const ALL_PRODUCT_IDS = [
   REMOVE_ADS_ID,
   ALL_CHARACTERS_ID,
+  ARENA_PACK_ID,
   ...PREMIUM_CHARACTERS.map((c) => c.productId),
 ];

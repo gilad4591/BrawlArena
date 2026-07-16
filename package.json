@@ -26,7 +26,8 @@
     "@capacitor/preferences": "^8.0.0",
     "@capacitor/screen-orientation": "^8.0.0",
     "@capacitor/splash-screen": "^8.0.0",
-    "@capacitor/status-bar": "^8.0.0"
+    "@capacitor/status-bar": "^8.0.0",
+    "@capgo/native-purchases": "^8.6.4"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.0",
