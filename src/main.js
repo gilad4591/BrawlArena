@@ -3,6 +3,7 @@ import { App } from './app/App.js';
 import { AudioService } from './services/AudioService.js';
 import { HapticsService } from './services/HapticsService.js';
 import { AdService } from './services/AdService.js';
+import { PurchaseService } from './services/PurchaseService.js';
 
 async function initNativeShell() {
   try {
@@ -48,11 +49,14 @@ async function bootstrap() {
   const audio = new AudioService();
   const haptics = new HapticsService();
   const ads = new AdService();
+  const purchases = new PurchaseService();
   await audio.init();
+  await purchases.init();
   await ads.init();
+  ads.setPurchases(purchases); // no interstitials once "Remove Ads" is owned
   bootProgress(70);
 
-  const app = new App(document.getElementById('app'), { audio, haptics, ads });
+  const app = new App(document.getElementById('app'), { audio, haptics, ads, purchases });
   await app.init();
   bootProgress(100);
 

@@ -24,6 +24,12 @@ export class AdService {
     this._interstitialReady = false;
     this._overlay = null;
     this._closeTimer = null;
+    this.purchases = null;
+  }
+
+  /** Wire the purchase service so we can honor the "Remove Ads" entitlement. */
+  setPurchases(purchases) {
+    this.purchases = purchases;
   }
 
   async init() {
@@ -100,6 +106,7 @@ export class AdService {
    * `interstitialEveryMatches` matches.
    */
   async onMatchFinished() {
+    if (this.purchases?.ownsRemoveAds()) return; // paid to remove ads
     this._matchCount += 1;
     if (this._matchCount % ADS.interstitialEveryMatches !== 0) return;
     if (this.native) {

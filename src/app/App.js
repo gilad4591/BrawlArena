@@ -1,6 +1,14 @@
 import { GameEngine } from '../game/GameEngine.js';
 import { bindHumanControls } from '../game/input.js';
-import { CHARACTERS, getCharacter, SPECIAL_SLOTS, STARTER_IDS, LOCKED_CHARACTERS } from '../game/characters.js';
+import {
+  CHARACTERS,
+  getCharacter,
+  SPECIAL_SLOTS,
+  STARTER_IDS,
+  LOCKED_CHARACTERS,
+  PREMIUM_CHARACTERS,
+} from '../game/characters.js';
+import { IAP, REMOVE_ADS_ID, ALL_CHARACTERS_ID } from '../services/purchasesConfig.js';
 import { STAGES } from '../game/enemies.js';
 import { MODES, DIFFICULTY, TEAM_COLORS } from '../game/constants.js';
 import { ARENAS, loadArenaImages } from '../game/arenas.js';
@@ -18,11 +26,22 @@ import { MultiplayerService } from '../services/MultiplayerService.js';
 import { t, tpl, getLang, setLang, attachTranslator, retranslate } from '../i18n.js';
 
 export class App {
-  constructor(root, { audio, haptics, ads }) {
+  constructor(root, { audio, haptics, ads, purchases }) {
     this.root = root;
     this.audio = audio;
     this.haptics = haptics;
     this.ads = ads || { showBanner() {}, hideBanner() {}, onMatchFinished() {} };
+    this.purchases = purchases || {
+      owns: () => false,
+      ownsRemoveAds: () => false,
+      ownsCharacter: () => true,
+      ownedCharacterIds: () => [],
+      priceFor: () => '',
+      buy: async () => ({ ok: false, error: 'unavailable' }),
+      restore: async () => ({ ok: true, restored: 0 }),
+      onChange: () => () => {},
+      storeAvailable: true,
+    };
     this.settings = null;
     this.stats = null;
     this.profile = null;
@@ -48,9 +67,20 @@ export class App {
     await loadAllSprites();
     await loadPortraits();
     await loadArenaImages();
-    // XP / unlocked roster (merge any starters in case of old saves).
+    // XP / unlocked roster (merge starters + purchased premium fighters).
     this.xp = this.profile.xp || 0;
-    this.unlocked = new Set([...(this.profile.unlocked || []), ...STARTER_IDS]);
+    this.unlocked = new Set([
+      ...(this.profile.unlocked || []),
+      ...STARTER_IDS,
+      ...this.purchases.ownedCharacterIds(),
+    ]);
+    // Re-sync unlocks + refresh the storefront whenever an entitlement changes
+    // (e.g. a restore resolves after launch).
+    this.purchases.onChange?.(() => {
+      for (const id of this.purchases.ownedCharacterIds()) this.unlocked.add(id);
+      if (this.state === 'store') this.buildStore();
+      if (this.state === 'setup') this.buildSetup();
+    });
     const lastOk =
       CHARACTERS.some((c) => c.id === this.profile.lastCharacter) &&
       this.unlocked.has(this.profile.lastCharacter);
@@ -93,6 +123,7 @@ export class App {
             <button class="btn btn-primary" data-action="campaign">Solo Campaign</button>
             <button class="btn btn-secondary" data-action="setup">Arcade</button>
             <button class="btn btn-secondary" data-action="multiplayer">Multiplayer</button>
+            <button class="btn btn-ghost" data-action="store">Store</button>
             <button class="btn btn-ghost" data-action="howto">How to Play</button>
             <button class="btn btn-ghost" data-action="settings">Settings</button>
           </div>
@@ -225,6 +256,15 @@ export class App {
         <button class="btn btn-secondary" data-action="menu">Got it</button>
       </div>
 
+      <div id="screen-store" class="screen store hidden">
+        <div class="setup-head">
+          <button class="icon-btn" data-action="menu">‹</button>
+          <h2>Store</h2>
+        </div>
+        <div class="store-body" id="store-body"></div>
+        <button class="btn btn-ghost btn-restore" data-action="restore">Restore Purchases</button>
+      </div>
+
       <div id="screen-settings" class="screen settings hidden">
         <div class="setup-head">
           <button class="icon-btn" data-action="menu">‹</button>
@@ -305,6 +345,8 @@ export class App {
       case 'campaign': this.showCampaign(); break;
       case 'menu': this.goMenu(); break;
       case 'multiplayer': this.showMultiplayer(); break;
+      case 'store': this.showStore(); break;
+      case 'restore': this.restorePurchases(); break;
       case 'howto': this.showHowto(); break;
       case 'settings': this.showSettings(); break;
       case 'fight': this.startGame(); break;
@@ -616,12 +658,21 @@ export class App {
     if (grid) {
       grid.innerHTML = CHARACTERS.map((c) => {
         const locked = !this.isUnlocked(c.id);
+        // Premium fighters show their portrait + price and open the Store on tap;
+        // XP fighters stay hidden behind the classic "??? / 🔒 XP" tease.
+        const premiumLocked = locked && c.premium;
+        const lockAttr = premiumLocked ? 'data-premium="1"' : locked ? 'data-locked="1"' : '';
+        const lockTag = premiumLocked
+          ? `<span class="char-lock premium">★ ${this.purchases.priceFor(c.productId)}</span>`
+          : locked
+            ? `<span class="char-lock">🔒 ${c.unlockXp} XP</span>`
+            : '';
         return `
-        <button class="char-card ${c.id === this.selection.character ? 'active' : ''} ${locked ? 'locked' : ''}"
-          data-char="${c.id}" ${locked ? 'data-locked="1"' : ''} style="--c:${c.color};--a:${c.accent}">
+        <button class="char-card ${c.id === this.selection.character ? 'active' : ''} ${locked ? 'locked' : ''} ${premiumLocked ? 'premium' : ''}"
+          data-char="${c.id}" ${lockAttr} style="--c:${c.color};--a:${c.accent}">
           <span class="char-portrait" data-portrait="${c.id}"></span>
-          <span class="char-name">${locked ? '???' : c.name}</span>
-          ${locked ? `<span class="char-lock">🔒 ${c.unlockXp} XP</span>` : ''}
+          <span class="char-name">${locked && !c.premium ? '???' : c.name}</span>
+          ${lockTag}
         </button>`;
       }).join('');
       grid.querySelectorAll('[data-portrait]').forEach((holder) => {
@@ -630,6 +681,13 @@ export class App {
       });
       grid.querySelectorAll('[data-char]').forEach((btn) => {
         btn.addEventListener('click', () => {
+          if (btn.dataset.premium) {
+            // Locked premium fighter — send the player to the Store.
+            this.audio.select?.();
+            this.haptics.tap();
+            this.showStore();
+            return;
+          }
           if (btn.dataset.locked) {
             this.audio.block?.();
             this.haptics.tap();
@@ -1323,6 +1381,83 @@ export class App {
     const volEl = this.root.querySelector('#volume-slider');
     if (volEl) volEl.value = Math.round((this.settings?.volume ?? 0.8) * 100);
     this.showScreen('settings');
+  }
+
+  // ------------------------------------------------------------------- store
+  showStore() {
+    this.buildStore();
+    this.showScreen('store');
+  }
+
+  buildStore() {
+    const body = this.root.querySelector('#store-body');
+    if (!body) return;
+
+    const ownRemoveAds = this.purchases.ownsRemoveAds();
+    const ownAll = this.purchases.owns(ALL_CHARACTERS_ID);
+
+    const bigCard = (id, title, desc, owned) => `
+      <button class="store-card store-feature ${owned ? 'owned' : ''}" data-buy="${id}" ${owned ? 'disabled' : ''}>
+        <div class="store-info"><b>${title}</b><span>${desc}</span></div>
+        <span class="store-price">${owned ? '✓ Owned' : this.purchases.priceFor(id)}</span>
+      </button>`;
+
+    const charCard = (c) => {
+      const owned = this.purchases.ownsCharacter(c.id);
+      return `
+      <button class="store-card store-char ${owned ? 'owned' : ''}" data-buy="${c.productId}"
+        ${owned ? 'disabled' : ''} style="--c:${c.color};--a:${c.accent}">
+        <span class="store-portrait" data-portrait="${c.id}"></span>
+        <div class="store-info"><b>${c.name}</b><span>${c.tagline}</span></div>
+        <span class="store-price">${owned ? '✓ Owned' : this.purchases.priceFor(c.productId)}</span>
+      </button>`;
+    };
+
+    body.innerHTML = `
+      <div class="store-section">
+        ${bigCard(REMOVE_ADS_ID, IAP.removeAds.title, IAP.removeAds.desc, ownRemoveAds)}
+        ${bigCard(ALL_CHARACTERS_ID, IAP.allCharacters.title, IAP.allCharacters.desc, ownAll)}
+      </div>
+      <div class="store-label">Premium Fighters</div>
+      <div class="store-grid">
+        ${PREMIUM_CHARACTERS.map(charCard).join('')}
+      </div>`;
+
+    body.querySelectorAll('[data-portrait]').forEach((holder) => {
+      holder.appendChild(this.portraitCanvas(getCharacter(holder.dataset.portrait), 96));
+    });
+    body.querySelectorAll('[data-buy]').forEach((btn) => {
+      btn.addEventListener('click', () => this.buyProduct(btn.dataset.buy));
+    });
+  }
+
+  async buyProduct(productId) {
+    this.audio.select?.();
+    this.haptics.tap();
+    if (this.purchases.owns(productId)) return;
+    if (this.purchases.native && !this.purchases.storeAvailable) {
+      this.toast('Store not available on this build');
+      return;
+    }
+    const res = await this.purchases.buy(productId);
+    if (res.ok) {
+      for (const id of this.purchases.ownedCharacterIds()) this.unlocked.add(id);
+      this.audio.select?.();
+      this.haptics.impact?.('Medium');
+      this.toast('Purchase complete — thank you!');
+      this.buildStore();
+    } else {
+      this.toast(res.error || 'Purchase failed');
+    }
+  }
+
+  async restorePurchases() {
+    this.audio.select?.();
+    this.haptics.tap();
+    const res = await this.purchases.restore();
+    for (const id of this.purchases.ownedCharacterIds()) this.unlocked.add(id);
+    this.buildStore();
+    this.toast(res.ok ? tpl('Restored {n} purchase(s)', { n: res.restored }) : 'Restore failed');
   }
 
   async confirmReset() {

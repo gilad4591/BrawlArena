@@ -221,6 +221,113 @@ export const CHARACTERS = [
       { name: 'Void Pillar', slot: 'air', type: 'aoe', mpCost: 30, damage: 16, radius: 130, color: '#c9a0ff', knockback: 1.2 },
     ],
   },
+
+  // ------------------------------------------------------------------------
+  // Premium (purchasable) fighters. Built on existing sheets (spriteBase + hue
+  // `tint`) so they're playable immediately; dedicated art can be swapped in
+  // later without touching this data. Tuned ~5% above the standard roster's
+  // TOTAL rating — the HP baseline stays 200 (so bars match), and the edge
+  // comes from a little extra speed + power.
+  {
+    id: 'solaris',
+    name: 'Solaris',
+    tagline: 'Sun Champion',
+    archetype: 'Radiant all-rounder',
+    color: '#ffb020',
+    accent: '#fff0a0',
+    style: { build: 'normal', skin: '#f0c890', hair: '#ffd24a', hairStyle: 'spiky', eye: '#fff0a0', crest: 'flame' },
+    premium: true,
+    productId: 'char_solaris',
+    spriteBase: 'aurex',
+    tint: 28,
+    unlockXp: 0,
+    maxHp: 200,
+    maxMp: 108,
+    speed: 266,
+    weight: 1.15,
+    attackPower: 12,
+    reach: 66,
+    specials: [
+      { name: 'Solar Flare', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 18, speed: 490, radius: 18, color: '#ffd24a', knockback: 1.2 },
+      { name: 'Radiant Charge', slot: 'dash', type: 'rush', mpCost: 24, damage: 21, speed: 1340, color: '#fff0a0', knockback: 1.4 },
+      { name: 'Sunrise', slot: 'air', type: 'uppercut', mpCost: 26, damage: 19, launch: 640, color: '#ffd24a', knockback: 1.0 },
+    ],
+  },
+  {
+    id: 'tempest',
+    name: 'Tempest',
+    tagline: 'Storm Lord',
+    archetype: 'Lightning rushdown',
+    color: '#4aa0ff',
+    accent: '#d0f0ff',
+    style: { build: 'slim', skin: '#dcc0a4', hair: '#2a4faa', hairStyle: 'spiky', eye: '#d0f0ff', crest: 'spark' },
+    premium: true,
+    productId: 'char_tempest',
+    spriteBase: 'volt',
+    tint: 60,
+    unlockXp: 0,
+    maxHp: 200,
+    maxMp: 100,
+    speed: 318,
+    weight: 0.88,
+    attackPower: 10,
+    reach: 58,
+    specials: [
+      { name: 'Storm Bolt', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 13, speed: 720, radius: 10, color: '#d0f0ff', knockback: 0.8 },
+      { name: 'Gale Dash', slot: 'dash', type: 'rush', mpCost: 22, damage: 20, speed: 1540, color: '#8fd0ff', knockback: 1.1 },
+      { name: 'Tempest Rise', slot: 'air', type: 'uppercut', mpCost: 24, damage: 17, launch: 600, color: '#d0f0ff', knockback: 0.7 },
+    ],
+  },
+  {
+    id: 'umbra',
+    name: 'Umbra',
+    tagline: 'Night Reaper',
+    archetype: 'Shadow striker',
+    color: '#7a3fb0',
+    accent: '#c98bff',
+    style: { build: 'slim', skin: '#d0b088', hair: '#140a24', hairStyle: 'spiky', eye: '#c98bff', crest: 'shadow' },
+    premium: true,
+    productId: 'char_umbra',
+    spriteBase: 'shade',
+    tint: 150,
+    unlockXp: 0,
+    maxHp: 200,
+    maxMp: 100,
+    speed: 315,
+    weight: 0.9,
+    attackPower: 10,
+    reach: 60,
+    specials: [
+      { name: 'Shadow Fang', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 15, speed: 640, radius: 11, color: '#c98bff', knockback: 0.8 },
+      { name: 'Reaper Rush', slot: 'dash', type: 'rush', mpCost: 22, damage: 20, speed: 1480, color: '#9a5fd0', knockback: 1.1 },
+      { name: 'Night Rise', slot: 'air', type: 'uppercut', mpCost: 24, damage: 17, launch: 580, color: '#c98bff', knockback: 0.7 },
+    ],
+  },
+  {
+    id: 'titania',
+    name: 'Titania',
+    tagline: 'Nature Queen',
+    archetype: 'Long-range control',
+    color: '#3fb07a',
+    accent: '#b0ff9a',
+    style: { build: 'slim', skin: '#e6c6a2', hair: '#2f7a3a', hairStyle: 'hood', eye: '#b0ff9a', crest: 'wind' },
+    premium: true,
+    productId: 'char_titania',
+    spriteBase: 'sylva',
+    tint: -40,
+    unlockXp: 0,
+    maxHp: 200,
+    maxMp: 110,
+    speed: 292,
+    weight: 0.95,
+    attackPower: 10,
+    reach: 62,
+    specials: [
+      { name: 'Thorn Arrow', slot: 'neutral', type: 'projectile', mpCost: 20, damage: 16, speed: 640, radius: 12, color: '#b0ff9a', knockback: 1.0, homing: 0.9 },
+      { name: 'Bloom Volley', slot: 'dash', type: 'multishot', mpCost: 24, damage: 11, speed: 640, radius: 10, color: '#b0ff9a', knockback: 0.7 },
+      { name: 'Sky Bloom', slot: 'air', type: 'uppercut', mpCost: 24, damage: 15, launch: 580, color: '#b0ff9a', knockback: 0.8 },
+    ],
+  },
 ];
 
 // Combo hint per slot (how the player triggers each special). Shared across the
@@ -242,13 +349,23 @@ export function getCharacter(id) {
   return CHARACTER_MAP[id] || CHARACTERS[0];
 }
 
-// Fighters unlocked from the start (no XP required).
-export const STARTER_IDS = CHARACTERS.filter((c) => (c.unlockXp || 0) === 0).map((c) => c.id);
+// Fighters unlocked from the start (no XP required). Premium fighters are
+// excluded — they only unlock through a purchase.
+export const STARTER_IDS = CHARACTERS.filter((c) => !c.premium && (c.unlockXp || 0) === 0).map(
+  (c) => c.id,
+);
 
-// Locked fighters ordered by the XP needed to unlock them.
-export const LOCKED_CHARACTERS = CHARACTERS.filter((c) => (c.unlockXp || 0) > 0).sort(
+// Locked fighters ordered by the XP needed to unlock them (premium excluded).
+export const LOCKED_CHARACTERS = CHARACTERS.filter((c) => !c.premium && (c.unlockXp || 0) > 0).sort(
   (a, b) => a.unlockXp - b.unlockXp,
 );
+
+// Purchasable fighters (shown in the Store, locked until bought).
+export const PREMIUM_CHARACTERS = CHARACTERS.filter((c) => c.premium);
+
+export function isPremium(id) {
+  return !!CHARACTER_MAP[id]?.premium;
+}
 
 /**
  * Rough overall "fighter rating" combining the three visible stats on the same

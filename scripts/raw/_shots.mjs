@@ -27,9 +27,19 @@ await page.goto(URL, { waitUntil: 'domcontentloaded' });
 await sleep(2500); // boot splash + menu paint
 await shot(page, '1-menu');
 
-// Enter Arcade setup.
+// Open the Store.
+await page.evaluate(() => document.querySelector('[data-action="store"]')?.click());
+await sleep(900);
+await shot(page, '5-store');
+
+// Back to menu, then into Arcade setup.
+await page.evaluate(() => document.querySelector('#screen-store [data-action="menu"]')?.click());
+await sleep(500);
 await page.evaluate(() => document.querySelector('[data-action="setup"]')?.click());
-await sleep(1200);
+await sleep(1000);
+// Scroll the grid so the premium fighters (end of roster) are visible.
+await page.evaluate(() => { const s = document.querySelector('#screen-setup'); if (s) s.scrollTop = 220; });
+await sleep(300);
 await shot(page, '2-setup');
 
 // Start the fight (first char is preselected).

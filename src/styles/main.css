@@ -416,7 +416,8 @@ body,
 .setup,
 .settings,
 .howto,
-.mp {
+.mp,
+.store {
   justify-content: flex-start;
   overflow-y: auto;
   gap: 14px;
@@ -1847,6 +1848,14 @@ body,
   .opt-label { font-size: 0.78rem; }
   .btn-fight { padding: 12px 26px; }
 
+  /* Store: denser cards + grid on short screens. */
+  .store-card { padding: 9px 10px; gap: 9px; border-radius: 11px; }
+  .store-info b { font-size: 0.9rem; }
+  .store-info span { font-size: 0.72rem; }
+  .store-price { font-size: 0.8rem; padding: 6px 10px; }
+  .store-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
+  .store-portrait canvas { width: 76px !important; height: 76px !important; }
+
   /* In-game HUD: slimmer bars so a crowded roster doesn't cover the arena. */
   .hud { top: max(4px, env(safe-area-inset-top)); left: 6px; right: 52px; gap: 5px; }
   .hud-fighter { min-width: 104px; max-width: 168px; padding: 3px 6px; gap: 5px; }
@@ -2010,6 +2019,151 @@ body,
 
 .hud-fighter.boss {
   outline: 2px solid #ff5252;
+}
+
+/* ------------------------------------------------------------------- store */
+.store-body {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.store-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.store-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary-2);
+  margin-top: 4px;
+}
+
+.store-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.store-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  color: var(--text);
+  transition: transform 0.08s ease, border-color 0.15s ease;
+}
+
+.store-card:not([disabled]):active {
+  transform: scale(0.98);
+}
+
+.store-card:not([disabled]):hover {
+  border-color: var(--primary);
+}
+
+.store-feature {
+  border-left: 4px solid var(--primary);
+}
+
+/* Premium fighter cards stack vertically so nothing crowds in a grid cell. */
+.store-char {
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+  gap: 8px;
+  border-left: none;
+  border-top: 4px solid var(--c, var(--primary));
+  overflow: hidden;
+}
+
+.store-portrait {
+  flex: 0 0 auto;
+  line-height: 0;
+  align-self: center;
+}
+
+.store-portrait canvas {
+  border-radius: 10px;
+  display: block;
+}
+
+.store-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.store-info b {
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.store-info span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.store-char .store-price {
+  align-self: center;
+}
+
+.store-price {
+  flex: 0 0 auto;
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: #06121e;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border-radius: 10px;
+  padding: 7px 12px;
+}
+
+.store-card.owned {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.store-card.owned .store-price {
+  background: none;
+  color: var(--ok);
+  padding: 7px 4px;
+}
+
+.btn-restore {
+  margin-top: 4px;
+}
+
+/* premium fighter cards in the select grid */
+.char-card.premium {
+  border-color: color-mix(in srgb, var(--primary-2) 55%, transparent);
+}
+
+.char-lock.premium {
+  color: #06121e;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border: none;
+  font-weight: 900;
+}
+
+.char-card.locked.premium .char-portrait canvas {
+  filter: grayscale(0.35) brightness(0.72);
 }
 
 /* -------------------------------------------------------------- i18n / RTL */

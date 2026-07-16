@@ -2,6 +2,7 @@ const KEYS = {
   SETTINGS: 'brawl_arena_settings',
   STATS: 'brawl_arena_stats',
   PROFILE: 'brawl_arena_profile',
+  PURCHASES: 'brawl_arena_purchases',
 };
 
 const DEFAULT_SETTINGS = {
@@ -93,7 +94,17 @@ export class StorageService {
     return merged;
   }
 
-  /** Wipe stats + progression (keeps audio/motion settings). */
+  /** Owned product ids (entitlements). Kept separate so a progress reset never
+   *  wipes real purchases. */
+  static async getPurchases() {
+    return await this.get(KEYS.PURCHASES, []);
+  }
+
+  static async savePurchases(ids) {
+    await this.set(KEYS.PURCHASES, [...new Set(ids)]);
+  }
+
+  /** Wipe stats + progression (keeps audio/motion settings AND purchases). */
   static async resetProgress() {
     await this.set(KEYS.STATS, { ...DEFAULT_STATS });
     await this.set(KEYS.PROFILE, { ...DEFAULT_PROFILE });
