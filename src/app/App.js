@@ -11,7 +11,7 @@ import {
 import { IAP, REMOVE_ADS_ID, ALL_CHARACTERS_ID, ARENA_PACK_ID } from '../services/purchasesConfig.js';
 import { STAGES } from '../game/enemies.js';
 import { MODES, DIFFICULTY, TEAM_COLORS } from '../game/constants.js';
-import { ARENAS, loadArenaImages, isPremiumArena } from '../game/arenas.js';
+import { ARENAS, ARENA_MAP, loadArenaImages, isPremiumArena } from '../game/arenas.js';
 import { makePortraitCanvas } from '../game/portraits.js';
 import {
   loadAllSprites,
@@ -788,9 +788,15 @@ export class App {
         .map((a) => {
           const arenaLocked = a.premium && !this.purchases.ownsArenas();
           return `<button class="chip arena-chip ${a.id === this.selection.arena ? 'active' : ''} ${arenaLocked ? 'locked' : ''}"
-          data-arena="${a.id}" ${arenaLocked ? 'data-arena-premium="1"' : ''}><span class="arena-swatch" style="background:${a.swatch}"></span>${a.name}${arenaLocked ? ' ★' : ''}</button>`;
+          data-arena="${a.id}" ${arenaLocked ? 'data-arena-premium="1"' : ''}><canvas class="arena-thumb" data-arena-thumb="${a.id}" width="96" height="58"></canvas>${a.name}${arenaLocked ? ' ★' : ''}</button>`;
         })
         .join('');
+      // Paint a mini preview into each chip: the real painted art for premium
+      // arenas, or a shrunk render of the procedural scene for the rest.
+      arenaRow.querySelectorAll('[data-arena-thumb]').forEach((cv) => {
+        const arena = ARENA_MAP[cv.dataset.arenaThumb];
+        if (arena) this._renderArenaThumb(cv, arena);
+      });
       arenaRow.querySelectorAll('[data-arena]').forEach((btn) => {
         btn.addEventListener('click', () => {
           if (btn.dataset.arenaPremium) {
@@ -805,6 +811,31 @@ export class App {
           this.buildSetup();
         });
       });
+    }
+  }
+
+  /** Render a small arena preview into a chip canvas (image or procedural). */
+  _renderArenaThumb(canvas, arena) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    if (arena.bgImage) {
+      // cover-fit the painted background into the thumbnail
+      const img = arena.bgImage;
+      const scale = Math.max(w / img.width, h / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    } else {
+      // draw the procedural scene at thumbnail scale (horizon ~60%)
+      try {
+        arena.draw(ctx, { w, h, floorTopY: Math.round(h * 0.6), time: 0 });
+      } catch {
+        ctx.fillStyle = arena.swatch || '#444';
+        ctx.fillRect(0, 0, w, h);
+      }
     }
   }
 

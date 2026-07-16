@@ -622,6 +622,16 @@ body,
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
+.arena-thumb {
+  width: 48px;
+  height: 29px;
+  border-radius: 5px;
+  display: block;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
 .char-name {
   font-weight: 800;
   font-size: 0.82rem;
