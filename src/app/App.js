@@ -666,8 +666,11 @@ export class App {
         // XP fighters stay hidden behind the classic "??? / 🔒 XP" tease.
         const premiumLocked = locked && c.premium;
         const lockAttr = premiumLocked ? 'data-premium="1"' : locked ? 'data-locked="1"' : '';
+        // Show the real store price only if Google Play provided one; otherwise
+        // just a premium star (no placeholder price shown up front).
+        const premiumPrice = this.purchases.priceFor(c.productId);
         const lockTag = premiumLocked
-          ? `<span class="char-lock premium">★ ${this.purchases.priceFor(c.productId)}</span>`
+          ? `<span class="char-lock premium">${premiumPrice ? `★ ${premiumPrice}` : '★'}</span>`
           : locked
             ? `<span class="char-lock">🔒 ${c.unlockXp} XP</span>`
             : '';
@@ -1410,10 +1413,14 @@ export class App {
     const ownRemoveAds = this.purchases.ownsRemoveAds();
     const ownAll = this.purchases.owns(ALL_CHARACTERS_ID);
 
+    // Price shows ONLY when the store reported a real localized price; before
+    // that (or if billing isn't wired) we show a neutral "Unlock" CTA instead
+    // of a made-up placeholder price.
+    const priceLabel = (id) => this.purchases.priceFor(id) || t('Unlock');
     const bigCard = (id, title, desc, owned) => `
       <button class="store-card store-feature ${owned ? 'owned' : ''}" data-buy="${id}" ${owned ? 'disabled' : ''}>
         <div class="store-info"><b>${title}</b><span>${desc}</span></div>
-        <span class="store-price">${owned ? '✓ Owned' : this.purchases.priceFor(id)}</span>
+        <span class="store-price">${owned ? '✓ Owned' : priceLabel(id)}</span>
       </button>`;
 
     const charCard = (c) => {
@@ -1423,7 +1430,7 @@ export class App {
         ${owned ? 'disabled' : ''} style="--c:${c.color};--a:${c.accent}">
         <span class="store-portrait" data-portrait="${c.id}"></span>
         <div class="store-info"><b>${c.name}</b><span>${c.tagline}</span></div>
-        <span class="store-price">${owned ? '✓ Owned' : this.purchases.priceFor(c.productId)}</span>
+        <span class="store-price">${owned ? '✓ Owned' : priceLabel(c.productId)}</span>
       </button>`;
     };
 

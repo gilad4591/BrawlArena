@@ -11,8 +11,9 @@ import { PREMIUM_CHARACTERS } from '../game/characters.js';
  * the user's store account). No custom login/backend is required for that —
  * the store account IS the identity. See PurchaseService for details.
  *
- * `price` here is only a FALLBACK label; when the native billing plugin is
- * wired the real localized price from the store replaces it.
+ * Prices are intentionally NOT defined here — they are shown ONLY when the real
+ * store (Google Play / App Store) reports a localized price for the account's
+ * region. Until then the UI shows a neutral "Unlock" CTA, never a placeholder.
  */
 export const REMOVE_ADS_ID = 'remove_ads';
 export const ALL_CHARACTERS_ID = 'all_characters';
@@ -22,16 +23,12 @@ export const IAP = {
     id: REMOVE_ADS_ID,
     title: 'Remove Ads',
     desc: 'No more interstitials — ever.',
-    price: '$2.99',
   },
   allCharacters: {
     id: ALL_CHARACTERS_ID,
     title: 'All Premium Fighters',
     desc: 'Unlock every premium fighter at once.',
-    price: '$5.99',
   },
-  // Default per-character price (store price overrides on native).
-  characterPrice: '$1.99',
 };
 
 // Product id -> the character id it unlocks (built from the roster).

@@ -33,6 +33,7 @@ const HE = {
   'Unlock every premium fighter at once.': 'פותח את כל הלוחמים המיוחדים בבת אחת.',
   'Premium Fighters': 'לוחמים מיוחדים',
   'Restore Purchases': 'שחזור רכישות',
+  Unlock: 'פתיחה',
   '✓ Owned': '✓ ברשותך',
   'Purchase complete — thank you!': 'הרכישה הושלמה — תודה!',
   'Purchase failed': 'הרכישה נכשלה',

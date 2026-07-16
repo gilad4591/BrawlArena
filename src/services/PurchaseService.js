@@ -4,7 +4,6 @@ import {
   ALL_CHARACTERS_ID,
   REMOVE_ADS_ID,
   PRODUCT_TO_CHARACTER,
-  IAP,
 } from './purchasesConfig.js';
 import { PREMIUM_CHARACTERS } from '../game/characters.js';
 
@@ -91,12 +90,13 @@ export class PurchaseService {
     return PREMIUM_CHARACTERS.filter((c) => all || this.owns(c.productId)).map((c) => c.id);
   }
 
-  /** Localized (or fallback) price label for a product id. */
+  /**
+   * Localized price label for a product id — ONLY when the store (Google Play /
+   * App Store) has actually reported one. Returns '' otherwise, so we never
+   * show a made-up placeholder price before the real store price is available.
+   */
   priceFor(productId) {
-    if (this.prices[productId]) return this.prices[productId];
-    if (productId === REMOVE_ADS_ID) return IAP.removeAds.price;
-    if (productId === ALL_CHARACTERS_ID) return IAP.allCharacters.price;
-    return IAP.characterPrice;
+    return this.prices[productId] || '';
   }
 
   /** Is real billing available on this platform? (false -> simulated on web). */
