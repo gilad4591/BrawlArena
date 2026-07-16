@@ -88,7 +88,7 @@ export class App {
     this.selection.character = lastOk ? this.profile.lastCharacter : 'blaze';
     // On web there is no Store/IAP, so premium fighters must never be playable —
     // reset a stale premium pick that an old profile may still carry.
-    if (!this._isNative() && PREMIUM_CHARACTERS.some((c) => c.id === this.selection.character)) {
+    if (!this._premiumEnabled() && PREMIUM_CHARACTERS.some((c) => c.id === this.selection.character)) {
       this.selection.character = 'blaze';
     }
     this.selection.mode = this.profile.lastMode || 'oneVsOne';
@@ -130,7 +130,7 @@ export class App {
             <button class="btn btn-primary" data-action="campaign">Solo Campaign</button>
             <button class="btn btn-secondary" data-action="setup">Arcade</button>
             <button class="btn btn-secondary" data-action="multiplayer">Multiplayer</button>
-            ${this._isNative() ? '<button class="btn btn-ghost" data-action="store">Store</button>' : ''}
+            ${this._storeEnabled() ? '<button class="btn btn-ghost" data-action="store">Store</button>' : ''}
             <button class="btn btn-ghost" data-action="howto">How to Play</button>
             <button class="btn btn-ghost" data-action="settings">Settings</button>
           </div>
@@ -649,7 +649,7 @@ export class App {
    */
   _pickableRoster() {
     return CHARACTERS.filter(
-      (c) => this.isUnlocked(c.id) && (this._isNative() || !c.premium),
+      (c) => this.isUnlocked(c.id) && (this._premiumEnabled() || !c.premium),
     );
   }
 
@@ -677,7 +677,7 @@ export class App {
     if (grid) {
       // Premium (purchasable) fighters only exist on native builds where the
       // Store / in-app billing is available. On web they're hidden entirely.
-      const roster = CHARACTERS.filter((c) => this._isNative() || !c.premium);
+      const roster = CHARACTERS.filter((c) => this._premiumEnabled() || !c.premium);
       grid.innerHTML = roster.map((c) => {
         const locked = !this.isUnlocked(c.id);
         // Premium fighters show their portrait + price and open the Store on tap;
@@ -801,7 +801,7 @@ export class App {
     if (arenaRow) {
       // Premium arenas exist only on native (where the Store lives). On web
       // they're hidden entirely; on native, locked ones open the Store on tap.
-      const arenas = ARENAS.filter((a) => this._isNative() || !a.premium);
+      const arenas = ARENAS.filter((a) => this._premiumEnabled() || !a.premium);
       arenaRow.innerHTML = arenas
         .map((a) => {
           const arenaLocked = a.premium && !this.purchases.ownsArenas();
@@ -1039,7 +1039,7 @@ export class App {
       arena: this.selection.arena,
       playerName: this.profile.name,
       reduceMotion: this.settings.reduceMotion,
-      excludePremium: !this._isNative(),
+      excludePremium: !this._premiumEnabled(),
     });
 
     this._afterStart();
@@ -1465,8 +1465,9 @@ export class App {
 
   // ------------------------------------------------------------------- store
   showStore() {
-    // The Store (in-app billing) is native-only; ignore any stray web trigger.
-    if (!this._isNative()) return;
+    // The Store is native-only AND gated behind `_storeEnabled()`; ignore any
+    // stray trigger while in-app purchases are switched off.
+    if (!this._premiumEnabled()) return;
     this.buildStore();
     this.showScreen('store');
   }
@@ -1597,6 +1598,19 @@ export class App {
   /** True on Android/iOS (Capacitor injects a global) — no physical keyboard. */
   _isNative() {
     return !!(typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.());
+  }
+
+  // In-app purchases aren't live yet, so the Store is switched off everywhere:
+  // no Store button, no navigation into it, and premium fighters/arenas stay
+  // hidden (rather than showing as permanently-locked dead-ends). Flip this to
+  // `true` once billing is verified on a real device.
+  _storeEnabled() {
+    return false;
+  }
+
+  // Premium content is only offered where it can actually be bought.
+  _premiumEnabled() {
+    return this._isNative() && this._storeEnabled();
   }
 
   showHowto() {

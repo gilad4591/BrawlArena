@@ -42,13 +42,26 @@ body,
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe` keeps the top reachable when content is taller than the viewport
+     (plain `center` would clip the overflow off the top, unreachable by scroll). */
+  justify-content: safe center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
   gap: 16px;
 }
 
 .screen.hidden {
   display: none;
+}
+
+/* The in-game screen fills the viewport with the canvas + overlays; it must
+   never scroll or show a scrollbar. */
+.screen.game-screen {
+  overflow: hidden;
+  padding: 0;
 }
 
 /* Generic hide helper. Elements toggled with a bare `hidden` class (team
@@ -327,7 +340,9 @@ body,
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   gap: 16px;
   padding: max(20px, env(safe-area-inset-top)) 20px max(80px, env(safe-area-inset-bottom));
 }
@@ -1820,6 +1835,16 @@ body,
 .toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* Very short landscape (small phones): drop the badge and squeeze the stack
+   so all menu buttons fit without scrolling. */
+@media (max-height: 400px) {
+  .menu-badge { display: none; }
+  .menu-content { gap: 5px; }
+  .menu-buttons .btn { padding: 7px 22px; }
+  .logo { font-size: clamp(1.7rem, 6vw, 2.3rem); }
+  .tagline { font-size: 0.72rem; margin: 0; }
 }
 
 /* ---------------------------------------------------------------------------
