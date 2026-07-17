@@ -439,6 +439,9 @@ body,
 .footer-note {
   position: absolute;
   bottom: max(14px, env(safe-area-inset-bottom));
+  /* Sit above .menu-content (z-index:2) so the About/Privacy links stay
+     clickable — otherwise the full-height menu box swallows the taps. */
+  z-index: 3;
   color: var(--muted);
   font-size: 0.78rem;
   letter-spacing: 1px;
@@ -469,10 +472,22 @@ body,
 
 .char-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 10px;
+  /* Fixed 5 columns => the 10-fighter roster always lays out as 2 tidy rows,
+     and the fr units keep every card sized as a share of the row (responsive). */
+  grid-template-columns: repeat(5, 1fr);
+  gap: clamp(6px, 1.2vw, 10px);
   width: 100%;
-  max-width: 620px;
+  max-width: min(680px, 96vw);
+  margin: 0 auto;
+}
+
+/* The bust canvas carries an inline pixel size for its bitmap resolution; force
+   it to fill the card (as a %) so it never overflows and clips the face. */
+.char-grid .char-portrait canvas {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
 }
 
 .char-card {
@@ -1885,8 +1900,8 @@ body,
   /* Character select: denser grid so 2 rows are visible, smaller labels. */
   .setup-head h2 { font-size: 1.1rem; }
   .char-grid {
-    grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
-    gap: 7px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: clamp(5px, 1vw, 7px);
   }
   .char-card { padding: 6px; gap: 4px; border-radius: 10px; }
   .char-name { font-size: 0.62rem; padding: 2px 3px; }
@@ -1931,7 +1946,7 @@ body,
 
 /* Very short (phones with tall aspect in landscape, e.g. 20:9 -> ~330px). */
 @media (max-height: 360px) {
-  .char-grid { grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); }
+  .char-grid { grid-template-columns: repeat(5, 1fr); gap: 5px; }
   .joystick { width: 92px; height: 92px; }
   .joystick-knob { width: 40px; height: 40px; margin: -20px 0 0 -20px; }
   .action-cluster { width: 146px; height: 146px; }

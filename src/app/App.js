@@ -138,7 +138,7 @@ export class App {
         <p class="footer-note">${
           this._isNative()
             ? ''
-            : '<a href="/about.html" class="foot-link">About</a> · <a href="/privacy.html" class="foot-link">Privacy</a>'
+            : '<a href="/about.html" class="foot-link" target="_blank" rel="noopener">About</a> · <a href="/privacy.html" class="foot-link" target="_blank" rel="noopener">Privacy</a>'
         }</p>
       </div>
 
@@ -704,7 +704,7 @@ export class App {
         const c = getCharacter(holder.dataset.portrait);
         // Premium fighters that aren't owned yet show their dark "locked" bust.
         const showLocked = c.premium && !this.isUnlocked(c.id);
-        holder.appendChild(this.portraitCanvas(c, 128, showLocked));
+        holder.appendChild(this.portraitCanvas(c, 160, showLocked));
         // If a purpose-made (already dark) locked bust is used, mark the card so
         // CSS skips the extra darken filter that would crush it to a black void.
         if (showLocked && getLockedPortraitImage(c.id)) {
