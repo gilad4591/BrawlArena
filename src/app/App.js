@@ -130,7 +130,7 @@ export class App {
             <button class="btn btn-primary" data-action="campaign">Solo Campaign</button>
             <button class="btn btn-secondary" data-action="setup">Arcade</button>
             <button class="btn btn-secondary" data-action="multiplayer">Multiplayer</button>
-            ${this._storeEnabled() ? '<button class="btn btn-ghost" data-action="store">Store</button>' : ''}
+            ${this._premiumEnabled() ? '<button class="btn btn-ghost" data-action="store">Store</button>' : ''}
             <button class="btn btn-ghost" data-action="howto">How to Play</button>
             <button class="btn btn-ghost" data-action="settings">Settings</button>
           </div>
