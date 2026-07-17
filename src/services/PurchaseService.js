@@ -190,12 +190,12 @@ export class PurchaseService {
    */
   async _loadNativeAdapter() {
     try {
-      // The specifier is assembled at runtime + marked @vite-ignore so the
-      // bundler never tries to resolve (and fail on) the plugin at build time —
-      // it only exists inside the native Android/iOS app. Once you
-      // `npm i @capgo/native-purchases` + `npx cap sync`, real billing activates.
-      const specifier = ['@capgo', 'native-purchases'].join('/');
-      const mod = await import(/* @vite-ignore */ specifier).catch(() => null);
+      // Import normally so Vite BUNDLES the plugin's JS bridge into the app —
+      // inside the native WebView a bare specifier can't be resolved at runtime,
+      // so the previous @vite-ignore approach left the adapter null ("Store not
+      // available"). The plugin is a dependency now, so this builds cleanly and
+      // is only ever *called* on native (guarded by `this.native`).
+      const mod = await import('@capgo/native-purchases').catch(() => null);
       if (!mod) return null;
       const NativePurchases = mod.NativePurchases || mod.default || mod;
       // All our products are one-time (managed) in-app products, not subs.
