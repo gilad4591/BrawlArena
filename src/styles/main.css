@@ -1244,8 +1244,13 @@ body,
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 18px;
+  /* Scroll-safe: a big free-for-all podium + buttons can be taller than a
+     short landscape screen, so allow scrolling and keep the top reachable. */
+  justify-content: safe center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: clamp(10px, 2.4vh, 18px);
+  padding: max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
   background: rgba(6, 8, 16, 0.82);
   backdrop-filter: blur(6px);
   z-index: 10;
@@ -1256,7 +1261,7 @@ body,
 }
 
 .overlay-title {
-  font-size: 2.6rem;
+  font-size: clamp(1.7rem, 6vh, 2.6rem);
   font-weight: 900;
   letter-spacing: 2px;
   color: var(--ok);
@@ -1496,7 +1501,7 @@ body,
 }
 
 .name-input {
-  width: 130px;
+  width: clamp(96px, 32vw, 140px);
   padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -1515,7 +1520,7 @@ body,
 .slider {
   -webkit-appearance: none;
   appearance: none;
-  width: 140px;
+  width: clamp(110px, 34vw, 160px);
   height: 6px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.18);
@@ -1634,8 +1639,11 @@ body,
 
 .howto-body {
   width: 100%;
-  max-width: 560px;
+  max-width: 760px;
   display: grid;
+  /* Two columns when there's width (landscape) so the card list needs far less
+     scrolling; collapses to one column on narrow screens. */
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 10px;
 }
 
@@ -1923,6 +1931,14 @@ body,
   .store-price { font-size: 0.8rem; padding: 6px 10px; }
   .store-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
   .store-portrait canvas { width: 76px !important; height: 76px !important; }
+
+  /* Results / pause overlay: compact so the podium + buttons need minimal scroll. */
+  .overlay { gap: 7px; }
+  .overlay-meta { font-size: 0.8rem; }
+  .overlay .btn { padding: 9px 24px; font-size: 0.95rem; }
+  .btn-row.col { gap: 7px; }
+  .podium { max-width: 380px; }
+  .podium-rest li { padding: 5px 8px; }
 
   /* In-game HUD: slimmer bars so a crowded roster doesn't cover the arena. */
   .hud { top: max(4px, env(safe-area-inset-top)); left: 6px; right: 52px; gap: 5px; }
