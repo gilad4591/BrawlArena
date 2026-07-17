@@ -1605,7 +1605,7 @@ export class App {
   // hidden (rather than showing as permanently-locked dead-ends). Flip this to
   // `true` once billing is verified on a real device.
   _storeEnabled() {
-    return false;
+    return true;
   }
 
   // Premium content is only offered where it can actually be bought.
