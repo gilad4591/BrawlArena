@@ -348,7 +348,9 @@ export class App {
     this.audio.select?.();
     this.haptics.tap();
     switch (action) {
-      case 'setup': this.showScreen('setup'); break;
+      // Rebuild so freshly-purchased/unlocked fighters show as unlocked
+      // immediately (previously only a relaunch refreshed the Arcade grid).
+      case 'setup': this.buildSetup(); this.showScreen('setup'); break;
       case 'campaign': this.showCampaign(); break;
       case 'menu': this.goMenu(); break;
       case 'multiplayer': this.showMultiplayer(); break;
