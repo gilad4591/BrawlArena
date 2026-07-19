@@ -986,13 +986,30 @@ body,
 }
 
 .hud-portrait {
+  position: relative;
   flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 0;
 }
 
 .hud-portrait canvas {
-  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
   display: block;
+}
+
+.hud-ring {
+  position: absolute;
+  inset: -3px;
+  background: var(--ring-url) center / contain no-repeat;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 
 .hud-bars {
@@ -1057,10 +1074,12 @@ body,
 .hud-hp,
 .hud-mp {
   height: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.38));
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  border-radius: 5px;
   overflow: hidden;
   margin-bottom: 3px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 -1px 2px rgba(0, 0, 0, 0.45);
 }
 
 .hud-hp b {
@@ -1068,6 +1087,7 @@ body,
   height: 100%;
   width: 100%;
   background: linear-gradient(90deg, #ff3b3b, #ff8f3b);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
   transition: width 0.12s linear;
 }
 
@@ -1080,6 +1100,7 @@ body,
   height: 100%;
   width: 100%;
   background: linear-gradient(90deg, #3b8bff, #4fd6ff);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
   transition: width 0.12s linear;
 }
 
@@ -1368,6 +1389,17 @@ body,
 .pod-medal {
   font-size: 1.4rem;
   line-height: 1;
+}
+
+.pod-medal-img {
+  width: 30px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.pod-1 .pod-medal-img {
+  width: 40px;
 }
 
 .pod-1 .pod-stand {

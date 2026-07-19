@@ -846,6 +846,10 @@ export class GameEngine {
       if (attacker === this.human && attacker._combo > this._humanBestCombo) {
         this._humanBestCombo = attacker._combo;
       }
+      // Big-combo banner for the player (fires once per milestone).
+      if (attacker === this.human && !this.roundOver && (attacker._combo === 5 || attacker._combo === 8 || attacker._combo === 12)) {
+        this.cb.onAnnounce?.('COMBO', 'go');
+      }
       if (attacker._combo >= 2) {
         const cx = view.screenX(attacker.x);
         const cy = view.screenY(attacker.x, attacker.z, attacker.height + attacker.y) - 40;

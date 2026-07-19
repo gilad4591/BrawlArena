@@ -1188,6 +1188,8 @@ export class App {
     // Shrink the bars (and drop portraits) once the arena gets crowded.
     const compact = fighters.length > 4;
     hud.classList.toggle('compact', compact);
+    const base = import.meta.env.BASE_URL || '/';
+    hud.style.setProperty('--ring-url', `url("${base}ui/hud/ui_portraitring.png?v=2")`);
     this._hudChars = {};
     hud.innerHTML = fighters
       .map((f) => {
@@ -1195,7 +1197,7 @@ export class App {
         return `
       <div class="hud-fighter ${f.isHuman ? 'human' : ''} ${f.char.isBoss ? 'boss' : ''}" data-id="${f.id}"
         style="border-left:3px solid ${f.teamColor}">
-        ${compact ? '' : `<span class="hud-portrait" data-portrait="${f.id}"></span>`}
+        ${compact ? '' : `<span class="hud-portrait" data-portrait="${f.id}"><i class="hud-ring"></i></span>`}
         <div class="hud-bars">
           <div class="hud-name" style="color:${f.teamColor}">${f.displayName}</div>
           <div class="hud-hp"><b data-hp></b></div>
@@ -1424,7 +1426,9 @@ export class App {
       el.innerHTML = '';
       return;
     }
-    const medal = { 1: '🥇', 2: '🥈', 3: '🥉' };
+    const base = import.meta.env.BASE_URL || '/';
+    const medalFile = { 1: 'trophy', 2: 'silver', 3: 'bronze' };
+    const medal = (p) => `<img class="pod-medal-img" src="${base}ui/rewards/reward_${medalFile[p]}.png?v=2" alt="#${p}">`;
     const byPlace = (p) => ranking.find((r) => r.place === p);
     const isYou = (r) => r.containsHuman ?? r.isHuman;
     const portraits = (r, size) =>
@@ -1439,7 +1443,7 @@ export class App {
         <div class="pod pod-${p} ${isYou(r) ? 'you' : ''}">
           <div class="pod-portraits ${r.members.length > 1 ? 'team' : ''}">${portraits(r, r.members.length > 1 ? 34 : 44)}</div>
           <span class="pod-name" style="color:${r.teamColor}">${r.name}</span>
-          <div class="pod-stand"><span class="pod-medal">${medal[p]}</span><b>${p}</b></div>
+          <div class="pod-stand"><span class="pod-medal">${medal(p)}</span><b>${p}</b></div>
         </div>`,
       )
       .join('');
