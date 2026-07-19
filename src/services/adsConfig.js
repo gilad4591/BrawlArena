@@ -51,6 +51,6 @@ export const ADS = {
   // Until adSlot is set, the interstitial shows a neutral placeholder card.
   web: {
     adClient: 'ca-pub-9834744561471352',
-    adSlot: '', // paste the ad-unit slot id here after AdSense approves the site
+    adSlot: '2985822188', // "Brawl Interstitial" Display unit
   },
 };
