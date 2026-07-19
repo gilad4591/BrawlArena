@@ -7,6 +7,7 @@ import { AIController } from './ai.js';
 import { Projectile } from './Projectile.js';
 import { Item, ITEM_DEFS, ITEM_IDS, STRONG_ITEM_IDS, POWERUP_DEFS, POWERUP_IDS } from './items.js';
 import { Particle, FloatingText, burst, spark, dust } from './effects.js';
+import { impactFx } from './vfx.js';
 import { getEnemy } from './enemies.js';
 import { buildSnapshot, readInput, applyInput, ProjProxy, ItemProxy } from './netcode.js';
 import { t, tpl } from '../i18n.js';
@@ -875,6 +876,8 @@ export class GameEngine {
     const view = this.view;
     const sx = view.screenX(f.x);
     const sy = view.floorLine(f.z);
+    // painted shockwave ring on the ground + spark particles
+    impactFx(this.effects, sx, sy - 6, 'shockwave', { size: spec.radius * 2.6, life: 0.34, startScale: 0.4, grow: 0.9 });
     // shockwave visual
     for (let i = 0; i < 22; i += 1) {
       const ang = (i / 22) * Math.PI * 2;

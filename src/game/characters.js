@@ -25,7 +25,7 @@ export const CHARACTERS = [
     attackPower: 11,
     reach: 64,
     specials: [
-      { name: 'Inferno Bolt', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 16, speed: 470, radius: 17, color: '#ff7a2f', knockback: 1.1 },
+      { name: 'Inferno Bolt', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 16, speed: 470, radius: 17, color: '#ff7a2f', knockback: 1.1, orb: 'fire' },
       { name: 'Blazing Charge', slot: 'dash', type: 'rush', mpCost: 24, damage: 19, speed: 1320, color: '#ffb03b', knockback: 1.3 },
       { name: 'Rising Flame', slot: 'air', type: 'uppercut', mpCost: 26, damage: 17, launch: 620, color: '#ff7a2f', knockback: 0.8 },
     ],
@@ -46,9 +46,9 @@ export const CHARACTERS = [
     attackPower: 10,
     reach: 62,
     specials: [
-      { name: 'Frost Bolt', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 15, speed: 460, radius: 16, color: '#bfefff', knockback: 0.9, freeze: 0.4 },
+      { name: 'Frost Bolt', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 15, speed: 460, radius: 16, color: '#bfefff', knockback: 0.9, freeze: 0.4, orb: 'ice' },
       { name: 'Glacier Rush', slot: 'dash', type: 'rush', mpCost: 24, damage: 17, speed: 1260, color: '#7ad0ff', knockback: 1.2 },
-      { name: 'Ice Fall', slot: 'air', type: 'multishot', mpCost: 26, damage: 10, speed: 600, radius: 10, color: '#dff4ff', knockback: 0.6 },
+      { name: 'Ice Fall', slot: 'air', type: 'multishot', mpCost: 26, damage: 10, speed: 600, radius: 10, color: '#dff4ff', knockback: 0.6, orb: 'ice' },
     ],
   },
   {
@@ -67,7 +67,7 @@ export const CHARACTERS = [
     attackPower: 10,
     reach: 66,
     specials: [
-      { name: 'Water Slash', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 15, speed: 500, radius: 15, color: '#67c8ff', knockback: 1.0 },
+      { name: 'Water Slash', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 15, speed: 500, radius: 15, color: '#67c8ff', knockback: 1.0, orb: 'water' },
       { name: 'Tidal Rush', slot: 'dash', type: 'rush', mpCost: 24, damage: 18, speed: 1320, color: '#8fd0ff', knockback: 1.2 },
       { name: 'Rising Wave', slot: 'air', type: 'uppercut', mpCost: 26, damage: 16, launch: 600, color: '#67c8ff', knockback: 0.8 },
     ],
@@ -88,7 +88,7 @@ export const CHARACTERS = [
     attackPower: 9,
     reach: 58,
     specials: [
-      { name: 'Spark Bolt', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 12, speed: 700, radius: 10, color: '#bcd6ff', knockback: 0.7 },
+      { name: 'Spark Bolt', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 12, speed: 700, radius: 10, color: '#bcd6ff', knockback: 0.7, orb: 'lightning' },
       { name: 'Thunder Dash', slot: 'dash', type: 'rush', mpCost: 22, damage: 18, speed: 1500, color: '#c3b0ff', knockback: 1.0 },
       { name: 'Bolt Uppercut', slot: 'air', type: 'uppercut', mpCost: 24, damage: 15, launch: 580, color: '#bcd6ff', knockback: 0.6 },
     ],
@@ -109,8 +109,8 @@ export const CHARACTERS = [
     attackPower: 9,
     reach: 60,
     specials: [
-      { name: 'Hunter Arrow', slot: 'neutral', type: 'projectile', mpCost: 20, damage: 15, speed: 620, radius: 12, color: '#d6f0a3', knockback: 0.9, homing: 0.8 },
-      { name: 'Spread Shot', slot: 'dash', type: 'multishot', mpCost: 24, damage: 10, speed: 620, radius: 10, color: '#cfe0a3', knockback: 0.6 },
+      { name: 'Hunter Arrow', slot: 'neutral', type: 'projectile', mpCost: 20, damage: 15, speed: 620, radius: 12, color: '#d6f0a3', knockback: 0.9, homing: 0.8, orb: 'toxic' },
+      { name: 'Spread Shot', slot: 'dash', type: 'multishot', mpCost: 24, damage: 10, speed: 620, radius: 10, color: '#cfe0a3', knockback: 0.6, orb: 'toxic' },
       { name: 'Sky Arrow', slot: 'air', type: 'uppercut', mpCost: 24, damage: 14, launch: 560, color: '#cfe0a3', knockback: 0.7 },
     ],
   },
@@ -130,7 +130,7 @@ export const CHARACTERS = [
     attackPower: 9,
     reach: 60,
     specials: [
-      { name: 'Toxic Fang', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 13, speed: 620, radius: 11, color: '#9fe08a', knockback: 0.7 },
+      { name: 'Toxic Fang', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 13, speed: 620, radius: 11, color: '#9fe08a', knockback: 0.7, orb: 'toxic' },
       { name: 'Shadow Rush', slot: 'dash', type: 'rush', mpCost: 22, damage: 18, speed: 1440, color: '#6fd06f', knockback: 1.0 },
       { name: 'Rising Fang', slot: 'air', type: 'uppercut', mpCost: 24, damage: 15, launch: 560, color: '#9fe08a', knockback: 0.6 },
     ],
@@ -152,7 +152,7 @@ export const CHARACTERS = [
     reach: 70,
     sizeMul: 0.95,
     specials: [
-      { name: 'Void Blast', slot: 'neutral', type: 'projectile', mpCost: 26, damage: 17, speed: 440, radius: 18, color: '#b78bff', knockback: 1.3 },
+      { name: 'Void Blast', slot: 'neutral', type: 'projectile', mpCost: 26, damage: 17, speed: 440, radius: 18, color: '#b78bff', knockback: 1.3, orb: 'void' },
       { name: 'Dark Charge', slot: 'dash', type: 'rush', mpCost: 28, damage: 20, speed: 1120, color: '#8b5cff', knockback: 1.7 },
       { name: 'Doom Splitter', slot: 'air', type: 'uppercut', mpCost: 30, damage: 19, launch: 600, color: '#b78bff', knockback: 1.0 },
     ],
@@ -174,7 +174,7 @@ export const CHARACTERS = [
     reach: 68,
     sizeMul: 0.96,
     specials: [
-      { name: 'Boulder Throw', slot: 'neutral', type: 'projectile', mpCost: 26, damage: 18, speed: 400, radius: 20, color: '#b6e05a', knockback: 1.4 },
+      { name: 'Boulder Throw', slot: 'neutral', type: 'projectile', mpCost: 26, damage: 18, speed: 400, radius: 20, color: '#b6e05a', knockback: 1.4, orb: 'toxic' },
       { name: 'Bull Rush', slot: 'dash', type: 'rush', mpCost: 28, damage: 21, speed: 1080, color: '#9ab04a', knockback: 1.8 },
       { name: 'Quake Slam', slot: 'air', type: 'aoe', mpCost: 30, damage: 20, radius: 150, color: '#b6e05a', knockback: 1.6 },
     ],
@@ -195,7 +195,7 @@ export const CHARACTERS = [
     attackPower: 11,
     reach: 64,
     specials: [
-      { name: 'Dragon Bolt', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 16, speed: 470, radius: 17, color: '#ffcf5e', knockback: 1.1 },
+      { name: 'Dragon Bolt', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 16, speed: 470, radius: 17, color: '#ffcf5e', knockback: 1.1, orb: 'holy' },
       { name: 'Golden Charge', slot: 'dash', type: 'rush', mpCost: 24, damage: 19, speed: 1300, color: '#ffe08a', knockback: 1.3 },
       { name: 'Rising Dragon', slot: 'air', type: 'uppercut', mpCost: 26, damage: 17, launch: 620, color: '#ffcf5e', knockback: 0.9 },
     ],
@@ -216,7 +216,7 @@ export const CHARACTERS = [
     attackPower: 11,
     reach: 62,
     specials: [
-      { name: 'Arcane Bolt', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 15, speed: 420, radius: 18, color: '#c9a0ff', knockback: 0.9, homing: 0.6 },
+      { name: 'Arcane Bolt', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 15, speed: 420, radius: 18, color: '#c9a0ff', knockback: 0.9, homing: 0.6, orb: 'void' },
       { name: 'Meteor', slot: 'dash', type: 'aoe', mpCost: 32, damage: 20, radius: 150, color: '#ff8a3a', knockback: 1.4 },
       { name: 'Void Pillar', slot: 'air', type: 'aoe', mpCost: 30, damage: 16, radius: 130, color: '#c9a0ff', knockback: 1.2 },
     ],
@@ -246,7 +246,7 @@ export const CHARACTERS = [
     attackPower: 12,
     reach: 66,
     specials: [
-      { name: 'Solar Flare', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 18, speed: 490, radius: 18, color: '#ffd24a', knockback: 1.2 },
+      { name: 'Solar Flare', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 18, speed: 490, radius: 18, color: '#ffd24a', knockback: 1.2, orb: 'holy' },
       { name: 'Radiant Charge', slot: 'dash', type: 'rush', mpCost: 24, damage: 21, speed: 1340, color: '#fff0a0', knockback: 1.4 },
       { name: 'Sunrise', slot: 'air', type: 'uppercut', mpCost: 26, damage: 19, launch: 640, color: '#ffd24a', knockback: 1.0 },
     ],
@@ -269,7 +269,7 @@ export const CHARACTERS = [
     attackPower: 10,
     reach: 58,
     specials: [
-      { name: 'Storm Bolt', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 13, speed: 720, radius: 10, color: '#d0f0ff', knockback: 0.8 },
+      { name: 'Storm Bolt', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 13, speed: 720, radius: 10, color: '#d0f0ff', knockback: 0.8, orb: 'lightning' },
       { name: 'Gale Dash', slot: 'dash', type: 'rush', mpCost: 22, damage: 20, speed: 1540, color: '#8fd0ff', knockback: 1.1 },
       { name: 'Tempest Rise', slot: 'air', type: 'uppercut', mpCost: 24, damage: 17, launch: 600, color: '#d0f0ff', knockback: 0.7 },
     ],
@@ -292,7 +292,7 @@ export const CHARACTERS = [
     attackPower: 10,
     reach: 60,
     specials: [
-      { name: 'Shadow Fang', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 15, speed: 640, radius: 11, color: '#c98bff', knockback: 0.8 },
+      { name: 'Shadow Fang', slot: 'neutral', type: 'projectile', mpCost: 18, damage: 15, speed: 640, radius: 11, color: '#c98bff', knockback: 0.8, orb: 'void' },
       { name: 'Reaper Rush', slot: 'dash', type: 'rush', mpCost: 22, damage: 20, speed: 1480, color: '#9a5fd0', knockback: 1.1 },
       { name: 'Night Rise', slot: 'air', type: 'uppercut', mpCost: 24, damage: 17, launch: 580, color: '#c98bff', knockback: 0.7 },
     ],
@@ -315,8 +315,8 @@ export const CHARACTERS = [
     attackPower: 10,
     reach: 62,
     specials: [
-      { name: 'Thorn Arrow', slot: 'neutral', type: 'projectile', mpCost: 20, damage: 16, speed: 640, radius: 12, color: '#b0ff9a', knockback: 1.0, homing: 0.9 },
-      { name: 'Bloom Volley', slot: 'dash', type: 'multishot', mpCost: 24, damage: 11, speed: 640, radius: 10, color: '#b0ff9a', knockback: 0.7 },
+      { name: 'Thorn Arrow', slot: 'neutral', type: 'projectile', mpCost: 20, damage: 16, speed: 640, radius: 12, color: '#b0ff9a', knockback: 1.0, homing: 0.9, orb: 'toxic' },
+      { name: 'Bloom Volley', slot: 'dash', type: 'multishot', mpCost: 24, damage: 11, speed: 640, radius: 10, color: '#b0ff9a', knockback: 0.7, orb: 'toxic' },
       { name: 'Sky Bloom', slot: 'air', type: 'uppercut', mpCost: 24, damage: 15, launch: 580, color: '#b0ff9a', knockback: 0.8 },
     ],
   },

@@ -1,4 +1,5 @@
 import { ARENA_DEPTH } from './constants.js';
+import { ORB_IMAGES } from './vfx.js';
 
 export class Projectile {
   constructor(owner, spec) {
@@ -76,6 +77,20 @@ export class Projectile {
     const sx = view.screenX(this.x);
     const sy = view.screenY(this.x, this.z, this.y);
     const r = this.radius * scale;
+
+    // Painted orb sprite (glowing energy ball) if this spec has one.
+    const img = this.spec.orb && ORB_IMAGES[this.spec.orb];
+    if (img && img.complete && img.naturalWidth) {
+      const h = r * 3.6;
+      const w = h * (img.naturalWidth / img.naturalHeight);
+      ctx.translate(sx, sy);
+      // sheet orbs point left; flip so the tail trails behind travel direction
+      if (this.vx > 0) ctx.scale(-1, 1);
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.restore();
+      return;
+    }
+
     const grad = ctx.createRadialGradient(sx, sy, 1, sx, sy, r * 1.6);
     grad.addColorStop(0, '#fff');
     grad.addColorStop(0.4, this.color);

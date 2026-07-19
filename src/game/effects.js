@@ -1,3 +1,5 @@
+import { IMPACT_IMAGES, ImpactFx } from './vfx.js';
+
 export class Particle {
   constructor(x, y, opts = {}) {
     this.x = x;
@@ -80,6 +82,10 @@ export class FloatingText {
 
 /** Bright, fast impact spark used when a hit connects. */
 export function spark(list, x, y, color = '#fff') {
+  // painted starburst flash (falls back silently to particles if not loaded)
+  if (IMPACT_IMAGES.starburst) {
+    list.push(new ImpactFx(x, y, IMPACT_IMAGES.starburst, { size: 46, life: 0.2, startScale: 0.5, grow: 0.7, spin: (Math.random() - 0.5) * 6 }));
+  }
   list.push(new Particle(x, y, { color: '#ffffff', size: 10, vx: 0, vy: 0, gravity: 0, life: 0.12 }));
   for (let i = 0; i < 8; i += 1) {
     const ang = (i / 8) * Math.PI * 2;
