@@ -1323,8 +1323,8 @@ export class App {
     if (podium) podium.innerHTML = '';
 
     // XP: reward per stage cleared, big bonus for finishing the campaign.
-    let gained = 30 + (result.stagesCleared || 0) * 55;
-    if (result.win) gained += 200;
+    let gained = 12 + (result.stagesCleared || 0) * 14;
+    if (result.win) gained += 60;
     this.xp += gained;
     const unlocked = [];
     for (const c of LOCKED_CHARACTERS) {
@@ -1364,10 +1364,10 @@ export class App {
   }
 
   _awardXp(result, you, count) {
-    let gained = 40; // participation
-    if (result.win) gained += 80;
-    if (you) gained += Math.max(0, count - you.place) * 12;
-    if (you && you.alive) gained += 25; // survival bonus
+    let gained = 10; // participation
+    if (result.win) gained += 20;
+    if (you) gained += Math.max(0, count - you.place) * 3; // placement
+    if (you && you.alive) gained += 6; // survival bonus
     this.xp += gained;
 
     const unlocked = [];
