@@ -12,6 +12,7 @@ import { IAP, REMOVE_ADS_ID, ALL_CHARACTERS_ID, ARENA_PACK_ID } from '../service
 import { STAGES } from '../game/enemies.js';
 import { MODES, DIFFICULTY, TEAM_COLORS } from '../game/constants.js';
 import { ARENAS, ARENA_MAP, loadArenaImages, isPremiumArena } from '../game/arenas.js';
+import { loadItemImages } from '../game/items.js';
 import { makePortraitCanvas } from '../game/portraits.js';
 import {
   loadAllSprites,
@@ -69,6 +70,7 @@ export class App {
     await loadAllSprites();
     await loadPortraits();
     await loadArenaImages();
+    await loadItemImages();
     // XP / unlocked roster (merge starters + purchased premium fighters).
     this.xp = this.profile.xp || 0;
     this.unlocked = new Set([

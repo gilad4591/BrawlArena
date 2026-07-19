@@ -51,6 +51,32 @@ export const POWERUP_DEFS = {
 
 export const POWERUP_IDS = Object.keys(POWERUP_DEFS);
 
+/**
+ * Painted item/prop/power-up icons (transparent PNGs, see public/ui/items/).
+ * Any def id without an image falls back to its emoji glyph automatically.
+ */
+export const ITEM_IMAGES = {};
+const ITEM_IMG_VERSION = '1';
+
+export async function loadItemImages() {
+  const base = import.meta.env.BASE_URL || '/';
+  const ids = ['potion', 'energy', 'power', 'shield', 'bat', 'sword', 'rock', 'crate', 'hp'];
+  await Promise.all(
+    ids.map(
+      (id) =>
+        new Promise((res) => {
+          const img = new Image();
+          img.onload = () => {
+            ITEM_IMAGES[id] = img;
+            res();
+          };
+          img.onerror = () => res();
+          img.src = `${base}ui/items/${id}.png?v=${ITEM_IMG_VERSION}`;
+        }),
+    ),
+  );
+}
+
 export class Item {
   constructor(def, x, z, y = 0) {
     this.def = def;
@@ -113,11 +139,21 @@ export class Item {
     }
     ctx.restore();
 
-    ctx.save();
-    ctx.font = `${Math.round(26 * scale)}px system-ui`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(this.def.glyph, sx, sy);
-    ctx.restore();
+    const img = ITEM_IMAGES[this.def.id];
+    if (img && img.complete && img.naturalWidth) {
+      const h = (isBuff ? 30 : 34) * scale;
+      const w = h * (img.naturalWidth / img.naturalHeight);
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(img, sx - w / 2, sy - h / 2, w, h);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.font = `${Math.round(26 * scale)}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(this.def.glyph, sx, sy);
+      ctx.restore();
+    }
   }
 }
