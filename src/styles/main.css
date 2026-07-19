@@ -1223,6 +1223,13 @@ body,
   animation: announce-pop 0.85s ease-out forwards;
 }
 
+.announce-img {
+  display: block;
+  width: min(62vw, 420px);
+  height: auto;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.6));
+}
+
 .announce.ko {
   color: #ffd23b;
   text-shadow: 0 0 24px rgba(255, 90, 40, 0.9), 0 6px 14px rgba(0, 0, 0, 0.85);

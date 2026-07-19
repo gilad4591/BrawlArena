@@ -11,6 +11,7 @@ import {
   TEAM_COLORS,
 } from './constants.js';
 import { getSpriteSet, frameForState } from './sprites.js';
+import { STATUS_IMAGES, drawVfx } from './vfx.js';
 
 // Melee combo timing (seconds)
 const ATTACK = { windup: 0.07, active: 0.11, recover: 0.16 };
@@ -81,6 +82,7 @@ export class Fighter {
     this.powerTimer = 0; // +Power buff seconds remaining
     this.powerMult = 1.4;
     this.shieldTimer = 0; // invincibility seconds remaining
+    this.frozenTimer = 0; // ice-hit visual (encasement)
     this.pendingSpecial = null; // consumed by engine
     this.animClock = 0;
     this.deathTime = 0; // time since KO
@@ -146,6 +148,7 @@ export class Fighter {
     this.invuln = Math.max(0, this.invuln - dt);
     this.powerTimer = Math.max(0, (this.powerTimer || 0) - dt);
     this.shieldTimer = Math.max(0, (this.shieldTimer || 0) - dt);
+    this.frozenTimer = Math.max(0, (this.frozenTimer || 0) - dt);
     this.mp = Math.min(this.maxMp, this.mp + MP_REGEN * dt);
     this.stateTime += dt;
 
@@ -368,6 +371,7 @@ export class Fighter {
       this.state = 'hit';
       this.stateTime = 0;
       this.hitDuration = HITSTUN + (opts.freeze ?? 0);
+      if (opts.freeze) this.frozenTimer = 0.45 + opts.freeze;
       this.facing = -dir;
     }
 
@@ -421,61 +425,42 @@ export class Fighter {
     ctx.fill();
     ctx.restore();
 
-    // power-up auras (player buffs)
+    // power-up aura (player buff) — golden rays behind the fighter
     if (this.alive && this.powerTimer > 0) {
-      const pulse = 0.3 + Math.sin(Date.now() / 80) * 0.12;
-      ctx.save();
-      ctx.globalAlpha = pulse;
       const cy = bodyBottom - h * 0.5;
-      const g = ctx.createRadialGradient(sx, cy, 2, sx, cy, w * 2);
-      g.addColorStop(0, 'rgba(255,171,61,0.9)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(sx, cy, w * 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-    if (this.alive && this.shieldTimer > 0) {
-      ctx.save();
-      const cy = bodyBottom - h * 0.5;
-      const flicker = this.shieldTimer < 1.2 ? (Math.floor(Date.now() / 100) % 2 ? 0.5 : 0.85) : 0.75;
-      ctx.globalAlpha = flicker;
-      ctx.strokeStyle = '#5fe6ff';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.ellipse(sx, cy, w * 1.15, h * 0.62, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = flicker * 0.18;
-      ctx.fillStyle = '#5fe6ff';
-      ctx.fill();
-      ctx.restore();
+      const pulse = 0.55 + Math.sin(Date.now() / 80) * 0.18;
+      if (STATUS_IMAGES.powerup) {
+        drawVfx(ctx, STATUS_IMAGES.powerup, sx, cy, h * 1.7, { additive: true, alpha: pulse });
+      } else {
+        ctx.save();
+        ctx.globalAlpha = pulse * 0.5;
+        const g = ctx.createRadialGradient(sx, cy, 2, sx, cy, w * 2);
+        g.addColorStop(0, 'rgba(255,171,61,0.9)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(sx, cy, w * 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
     }
 
-    // rage aura (low-HP last stand)
+    // rage aura (low-HP last stand) — red flame swirl
     if (this.rage && this.alive) {
-      const pulse = 0.35 + Math.sin(Date.now() / 90) * 0.15;
-      ctx.save();
-      ctx.globalAlpha = pulse;
-      const cx = sx;
       const cy = bodyBottom - h * 0.5;
-      const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, w * 2.2);
-      g.addColorStop(0, 'rgba(255,80,40,0.9)');
-      g.addColorStop(0.6, 'rgba(255,40,20,0.35)');
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(cx, cy, w * 2.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-      // rising ember flecks
-      if (Math.random() < 0.5) {
+      const pulse = 0.6 + Math.sin(Date.now() / 90) * 0.2;
+      if (STATUS_IMAGES.rage) {
+        drawVfx(ctx, STATUS_IMAGES.rage, sx, cy, h * 1.85, { additive: true, alpha: pulse });
+      } else {
         ctx.save();
-        ctx.globalAlpha = 0.8;
-        ctx.fillStyle = '#ffb03b';
-        const ex = sx + (Math.random() * 2 - 1) * w * 0.6;
-        const ey = bodyBottom - Math.random() * h;
-        ctx.fillRect(ex, ey, 2, 3);
+        ctx.globalAlpha = pulse * 0.5;
+        const g = ctx.createRadialGradient(sx, cy, 2, sx, cy, w * 2.2);
+        g.addColorStop(0, 'rgba(255,80,40,0.9)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(sx, cy, w * 2.2, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
       }
     }
@@ -508,6 +493,33 @@ export class Fighter {
 
     if (this.spriteSet) this._drawSprite(ctx, sx, bodyBottom, h);
     else this._renderRig(ctx, sx, bodyBottom, w, h, crestColor);
+
+    // --- status overlays drawn OVER the body ---
+    const midY = bodyBottom - h * 0.5;
+    // frozen encasement (ice hits)
+    if (this.alive && this.frozenTimer > 0 && STATUS_IMAGES.frozen) {
+      drawVfx(ctx, STATUS_IMAGES.frozen, sx, bodyBottom - h * 0.42, h * 1.25, { additive: true, alpha: 0.85 });
+    }
+    // invincibility shield bubble
+    if (this.alive && this.shieldTimer > 0) {
+      const flicker = this.shieldTimer < 1.2 ? (Math.floor(Date.now() / 100) % 2 ? 0.45 : 0.85) : 0.7;
+      if (STATUS_IMAGES.shield) {
+        drawVfx(ctx, STATUS_IMAGES.shield, sx, midY, h * 1.5, { additive: true, alpha: flicker });
+      } else {
+        ctx.save();
+        ctx.globalAlpha = flicker;
+        ctx.strokeStyle = '#5fe6ff';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(sx, midY, w * 1.15, h * 0.62, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    // dizzy stars while launched/staggered
+    if (this.alive && this.state === 'hit' && !this.grounded && STATUS_IMAGES.dizzy) {
+      drawVfx(ctx, STATUS_IMAGES.dizzy, sx, bodyBottom - h * 1.02, h * 0.55, { additive: true, alpha: 0.9 });
+    }
 
     // held prop / weapon near the hand
     if (this.heldItem && this.alive) {

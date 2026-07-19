@@ -7,7 +7,7 @@ import { AIController } from './ai.js';
 import { Projectile } from './Projectile.js';
 import { Item, ITEM_DEFS, ITEM_IDS, STRONG_ITEM_IDS, POWERUP_DEFS, POWERUP_IDS } from './items.js';
 import { Particle, FloatingText, burst, spark, dust } from './effects.js';
-import { impactFx } from './vfx.js';
+import { impactFx, slashFx, dustFx } from './vfx.js';
 import { getEnemy } from './enemies.js';
 import { buildSnapshot, readInput, applyInput, ProjProxy, ItemProxy } from './netcode.js';
 import { t, tpl } from '../i18n.js';
@@ -160,6 +160,7 @@ export class GameEngine {
         });
       });
       this._spawnItems();
+      this._humanTookDamage = false;
       this.cb.onAnnounce?.('FIGHT!', 'go');
     }
 
@@ -240,6 +241,7 @@ export class GameEngine {
     });
     // Only the host spawns items (they're part of the authoritative sim).
     if (isHost) this._spawnItems();
+    this._humanTookDamage = false;
     this.cb.onAnnounce?.('FIGHT!', 'go');
   }
 
@@ -690,7 +692,14 @@ export class GameEngine {
       if (f._dash) this._processDash(f, dt);
       // Hard-landing dust when returning to the ground.
       if (wasAir && f.grounded && f.alive) {
-        dust(this.effects, this.view.screenX(f.x), this.view.screenY(f.x, f.z, f.y), 10);
+        const lx = this.view.screenX(f.x);
+        const ly = this.view.screenY(f.x, f.z, f.y);
+        dustFx(this.effects, lx, ly, 'land', { size: f.width * 2.4, life: 0.5, rise: 12 });
+        dust(this.effects, lx, ly, 6);
+      }
+      // Takeoff puff on the first airborne frame of a jump.
+      if (!wasAir && !f.grounded && f.vy > 0 && f.alive) {
+        dustFx(this.effects, this.view.screenX(f.x), this.view.screenY(f.x, f.z, f.y), 'jump', { size: f.width * 2, life: 0.4, rise: 8 });
       }
       f._wasAir = !f.grounded;
       // Combo decay.
@@ -718,6 +727,16 @@ export class GameEngine {
         if (attacker.containsHit(hb, def)) {
           attacker.attackHits.add(def.id);
           this._applyHit(attacker, def, hb.damage, { knockback: hb.knockback, launch: hb.finisher });
+          // Melee slash arc at the strike point (melee-only, so it stays readable).
+          if (def.alive && def.shieldTimer <= 0) {
+            const slx = this.view.screenX(def.x);
+            const sly = this.view.screenY(def.x, def.z, def.height * 0.5 + def.y);
+            slashFx(this.effects, slx, sly, this._slashName(attacker), {
+              flip: attacker.facing < 0,
+              size: 60 + (hb.finisher ? 24 : 0),
+              rot: (Math.random() - 0.5) * 0.3,
+            });
+          }
           // Weapon swings wear out and eventually break.
           if (hb.weapon && attacker.heldItem && !attacker._swingConsumed) {
             attacker._swingConsumed = true;
@@ -799,6 +818,8 @@ export class GameEngine {
     const wasAlive = def.alive;
     const result = def.takeHit(dmg, dir, opts, this);
     if (!result) return;
+    // Track flawless rounds for the "PERFECT" bonus.
+    if (def === this.human && !result.blocked && result.damage > 0) this._humanTookDamage = true;
     // Credit the player for KOs they personally landed.
     if (wasAlive && !def.alive && attacker === this.human) this._humanKOs += 1;
     const view = this.view;
@@ -865,11 +886,24 @@ export class GameEngine {
         f._dash = { time: 0.22, spec, hits: new Set() };
         f.invuln = 0.25;
         f.vx = f.facing * spec.speed;
-        dust(this.effects, this.view.screenX(f.x), this.view.screenY(f.x, f.z, f.y), 12);
+        dustFx(this.effects, this.view.screenX(f.x), this.view.screenY(f.x, f.z, f.y), 'dash', { size: f.width * 3, life: 0.35, flip: f.facing < 0, rise: 4 });
+        dust(this.effects, this.view.screenX(f.x), this.view.screenY(f.x, f.z, f.y), 6);
         break;
       default:
         break;
     }
+  }
+
+  // Pick a slash-arc color from the attacker's accent hue.
+  _slashName(f) {
+    const hex = (f.char?.accent || '#ffffff').replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16) || 255;
+    const g = parseInt(hex.slice(2, 4), 16) || 255;
+    const b = parseInt(hex.slice(4, 6), 16) || 255;
+    if (Math.max(r, g, b) - Math.min(r, g, b) < 42) return 'white';
+    if (r >= g && r >= b) return b > 150 ? 'void' : 'fire';
+    if (g >= r && g >= b) return 'green';
+    return b > 150 && r > 120 ? 'void' : 'blue';
   }
 
   _doAOE(f, spec) {
@@ -950,7 +984,8 @@ export class GameEngine {
       // Cinematic finish: brief slow-motion + banner.
       this._slowmo = 1.0;
       this.addShake(14);
-      this.cb.onAnnounce?.('K.O.!', 'ko');
+      const flawless = this._winnerTeam != null && this._winnerTeam === this.human?.team && this.human?.alive && !this._humanTookDamage;
+      this.cb.onAnnounce?.(flawless ? 'PERFECT' : 'K.O.!', 'ko');
     }
   }
 

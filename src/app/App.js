@@ -1220,7 +1220,13 @@ export class App {
   showAnnounce(text, kind = 'go') {
     const el = this.root.querySelector('#announce');
     if (!el) return;
-    el.textContent = text;
+    const bannerKey = { 'FIGHT!': 'fight', 'K.O.!': 'ko', PERFECT: 'perfect', COMBO: 'combo' }[text];
+    if (bannerKey) {
+      const base = import.meta.env.BASE_URL || '/';
+      el.innerHTML = `<img class="announce-img" src="${base}ui/banners/banner_${bannerKey}.png?v=2" alt="${text}">`;
+    } else {
+      el.textContent = text;
+    }
     el.className = `announce show ${kind}`;
     clearTimeout(this._announceT);
     this._announceT = setTimeout(() => {
