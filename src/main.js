@@ -69,7 +69,10 @@ async function bootstrap() {
   ads.setPurchases(purchases); // no interstitials once "Remove Ads" is owned
   // Duck the game audio while a full-screen web ad (H5 adBreak) is on screen.
   ads._muteForAd = (m) => (m ? audio.suspend() : audio.resume());
-  leaderboard.init(); // native + configured only; safe no-op otherwise
+  // Await so `leaderboard.available` is settled BEFORE the menu is built —
+  // otherwise the 🏆 button is omitted and never re-added. Native + configured
+  // only; it's a fast no-op on web.
+  await leaderboard.init();
   bootProgress(70);
 
   const app = new App(document.getElementById('app'), { audio, haptics, ads, purchases, leaderboard });

@@ -432,5 +432,6 @@ export class WebSocketTransport {
       /* ignore */
     }
     this.ws = null;
+    this.queue = []; // drop any unsent frames so a stale join can't replay
   }
 }

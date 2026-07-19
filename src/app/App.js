@@ -1661,6 +1661,7 @@ export class App {
   renderMpLanding() {
     const body = this.root.querySelector('#mp-body');
     if (!body) return;
+    this._mpInLobby = false;
     body.innerHTML = `
       <p class="mp-intro">Play with a friend via a private invite code. Codes are
       6 digits and expire fast for safety.</p>
@@ -1685,7 +1686,11 @@ export class App {
   _ensureMp() {
     if (!this.mp) {
       this.mp = new MultiplayerService();
-      this.mp.on('players', () => this.renderLobby());
+      // Only REFRESH a lobby that's already open — never let a stray roster
+      // event turn the join/landing screen into a phantom lobby.
+      this.mp.on('players', () => {
+        if (this._mpInLobby) this.renderLobby();
+      });
       this.mp.on('tick', () => this.updateLobbyTimer());
       this.mp.on('expired', () => {
         this.renderMpLanding();
@@ -1709,6 +1714,7 @@ export class App {
 
   mpJoinPrompt() {
     const body = this.root.querySelector('#mp-body');
+    this._mpInLobby = false;
     body.innerHTML = `
       <div class="join-box">
         <label>Enter invite code</label>
@@ -1756,6 +1762,7 @@ export class App {
   renderLobby(code) {
     const body = this.root.querySelector('#mp-body');
     if (!body || !this.mp?.connected) return;
+    this._mpInLobby = true;
     const roomCode = code || this.mp.room.code;
     const players = this.mp.players;
     const isHost = this.mp.isHost;
