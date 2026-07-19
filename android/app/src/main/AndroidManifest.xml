@@ -39,6 +39,13 @@
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-9834744561471352~7947465285" />
+
+        <!-- Play Games Services app id (leaderboards). Value lives in
+             strings.xml (game_services_project_id) — replace the placeholder
+             there with the real Play Console Project ID. -->
+        <meta-data
+            android:name="com.google.android.gms.games.APP_ID"
+            android:value="@string/game_services_project_id" />
     </application>
 
     <!-- Permissions -->

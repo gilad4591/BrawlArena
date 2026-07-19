@@ -4,6 +4,7 @@ import { AudioService } from './services/AudioService.js';
 import { HapticsService } from './services/HapticsService.js';
 import { AdService } from './services/AdService.js';
 import { PurchaseService } from './services/PurchaseService.js';
+import { LeaderboardService } from './services/LeaderboardService.js';
 
 async function initNativeShell() {
   try {
@@ -50,15 +51,17 @@ async function bootstrap() {
   const haptics = new HapticsService();
   const ads = new AdService();
   const purchases = new PurchaseService();
+  const leaderboard = new LeaderboardService();
   await audio.init();
   await purchases.init();
   await ads.init();
   ads.setPurchases(purchases); // no interstitials once "Remove Ads" is owned
   // Duck the game audio while a full-screen web ad (H5 adBreak) is on screen.
   ads._muteForAd = (m) => (m ? audio.suspend() : audio.resume());
+  leaderboard.init(); // native + configured only; safe no-op otherwise
   bootProgress(70);
 
-  const app = new App(document.getElementById('app'), { audio, haptics, ads, purchases });
+  const app = new App(document.getElementById('app'), { audio, haptics, ads, purchases, leaderboard });
   await app.init();
   bootProgress(100);
 

@@ -4,4 +4,10 @@
     <string name="title_activity_main">Brawl Arena</string>
     <string name="package_name">com.gilad4591.brawlarena</string>
     <string name="custom_url_scheme">com.gilad4591.brawlarena</string>
+    <!-- Play Games Services numeric Project ID (a.k.a. App ID). Replace the
+         placeholder with the real value from Play Console -> Play Games Services
+         -> Configuration. Must be a STRING (keep the quotes/type) or the Games
+         SDK mangles it. A present placeholder keeps the app from crashing at
+         launch; sign-in simply stays inactive until the real id is set. -->
+    <string name="game_services_project_id">000000000000</string>
 </resources>

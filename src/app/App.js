@@ -27,10 +27,11 @@ import { MultiplayerService } from '../services/MultiplayerService.js';
 import { t, tpl, getLang, setLang, attachTranslator, retranslate } from '../i18n.js';
 
 export class App {
-  constructor(root, { audio, haptics, ads, purchases }) {
+  constructor(root, { audio, haptics, ads, purchases, leaderboard }) {
     this.root = root;
     this.audio = audio;
     this.haptics = haptics;
+    this.leaderboard = leaderboard || { available: false, submitScore() {}, show() {} };
     this.ads = ads || { showBanner() {}, hideBanner() {}, onMatchFinished() {} };
     this.purchases = purchases || {
       owns: () => false,
@@ -131,6 +132,7 @@ export class App {
             <button class="btn btn-secondary" data-action="setup">Arcade</button>
             <button class="btn btn-secondary" data-action="multiplayer">Multiplayer</button>
             ${this._premiumEnabled() ? '<button class="btn btn-ghost" data-action="store">Store</button>' : ''}
+            ${this.leaderboard?.available ? '<button class="btn btn-ghost" data-action="leaderboard">🏆 Leaderboard</button>' : ''}
             <button class="btn btn-ghost" data-action="howto">How to Play</button>
             <button class="btn btn-ghost" data-action="settings">Settings</button>
           </div>
@@ -355,6 +357,7 @@ export class App {
       case 'menu': this.goMenu(); break;
       case 'multiplayer': this.showMultiplayer(); break;
       case 'store': this.showStore(); break;
+      case 'leaderboard': this.leaderboard?.show?.(); break;
       case 'restore': this.restorePurchases(); break;
       case 'howto': this.showHowto(); break;
       case 'settings': this.showSettings(); break;
@@ -1297,6 +1300,7 @@ export class App {
 
     this.stats = await StorageService.updateStats(this._statsDelta(result));
     await StorageService.saveProfile({ xp: this.xp, unlocked: [...this.unlocked] });
+    this.leaderboard.submitScore?.(this.xp);
     this._matchResulted = true;
   }
 
@@ -1345,6 +1349,7 @@ export class App {
       unlocked: [...this.unlocked],
       campaignProgress: progress,
     });
+    this.leaderboard.submitScore?.(this.xp);
     this._matchResulted = true;
   }
 
