@@ -92,6 +92,8 @@ export class Fighter {
     this._dashWindow = 0; // >0 means a fresh double-tap-forward is buffered
     // Attack input buffering + melee combo chain.
     this._atkBuffer = 0; // seconds a pressed attack stays "live" to fire
+    this._spBuffer = 0; // same idea for special...
+    this._jumpBuffer = 0; // ...and jump
     this._comboChain = 0; // 1..3 consecutive melee hits
     this._comboChainT = -1; // animClock of the last chained attack
     this._isFinisher = false; // current swing is the 3rd (knockback) hit
@@ -162,31 +164,39 @@ export class Fighter {
     }
     this._prevMoveDir = dirX;
 
-    // ---- action inputs (edge-triggered) ----
-    if (canAct) {
-      if (c.consume('special')) this._trySpecial(engine);
-    }
-    // Attack is buffered for a short window so a press isn't dropped when it
-    // lands during hitstun or the tail of the previous swing — this is what
-    // makes "move + hit" feel responsive. The buffered swing also cancels the
-    // recover phase of the current attack so chains flow (jab-jab-finisher).
+    // ---- action inputs (all edge-triggered AND buffered) ----
+    // Every action press is latched into a short time window instead of being
+    // acted on only if the fighter happens to be free THIS frame. That's what
+    // stops presses from feeling "swallowed": tap attack/jump/special a hair
+    // early (mid-swing, just before landing, during hitstun) and it still fires
+    // the instant the fighter can act. Stale presses expire so nothing fires
+    // seconds late.
     if (c.consume('attack')) this._atkBuffer = 0.18;
+    if (c.consume('special')) this._spBuffer = 0.22;
+    if (c.consume('jump')) this._jumpBuffer = 0.16;
     this._atkBuffer = Math.max(0, this._atkBuffer - dt);
+    this._spBuffer = Math.max(0, this._spBuffer - dt);
+    this._jumpBuffer = Math.max(0, this._jumpBuffer - dt);
+
+    // Special: fire as soon as we're free; keep buffering if it's momentarily
+    // unaffordable so a press right before the meter fills still lands.
+    if (this._spBuffer > 0 && canAct && this._trySpecial(engine)) {
+      this._spBuffer = 0;
+    }
+    // Attack buffer also cancels the recover tail of the current swing so
+    // chains flow (jab-jab-finisher).
     const inRecover = this.state === 'attack' && this.stateTime >= ATTACK.windup + ATTACK.active;
     if (this._atkBuffer > 0 && (!this.busy || inRecover)) {
       this._startAttack();
       this._atkBuffer = 0;
     }
     if (c.consume('throw') && this.heldItem) this._throwPending = true;
-    if (canAct && this.grounded) {
-      if (c.consume('jump')) {
-        this.vy = JUMP_VELOCITY;
-        this.state = 'jump';
-        engine.audio?.jump();
-      }
-    } else {
-      // drop queued jump/attack while busy so it doesn't buffer forever
-      c.consume('jump');
+    // Jump buffer lets a press just before touchdown pop the instant we land.
+    if (this._jumpBuffer > 0 && canAct && this.grounded) {
+      this.vy = JUMP_VELOCITY;
+      this.state = 'jump';
+      this._jumpBuffer = 0;
+      engine.audio?.jump();
     }
 
     // ---- movement ----
@@ -292,7 +302,7 @@ export class Fighter {
       s = specials[0];
       idx = 0;
     }
-    if (this.mp < s.mpCost) return;
+    if (this.mp < s.mpCost) return false;
     this._dashWindow = 0;
     this.mp -= s.mpCost;
     this.state = 'special';
@@ -300,6 +310,7 @@ export class Fighter {
     this.attackHits.clear();
     this.pendingSpecial = s;
     engine.audio?.special();
+    return true;
   }
 
   /** Melee hitbox during active frames, else null. */
