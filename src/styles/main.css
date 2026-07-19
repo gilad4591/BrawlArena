@@ -202,10 +202,11 @@ body,
 }
 .mp-charrow {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   overflow-x: auto;
   padding: 6px 2px 10px;
-  scroll-snap-type: x proximity;
 }
 .mp-charcell {
   flex: 0 0 auto;

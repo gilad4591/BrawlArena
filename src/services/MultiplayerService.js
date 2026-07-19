@@ -16,7 +16,7 @@
 
 const CODE_LENGTH = 6;
 const DEFAULT_EXPIRY_MS = 90 * 1000; // fast-expiring invite
-const JOIN_TIMEOUT_MS = 4000; // how long a guest waits for the host to answer
+const JOIN_TIMEOUT_MS = 12000; // guest wait budget (covers free-tier cold starts)
 
 function generateCode() {
   let code = '';
@@ -65,12 +65,16 @@ class BroadcastChannelTransport {
     this.available = typeof BroadcastChannel !== 'undefined';
   }
 
-  connect(code, onMessage) {
+  connect(code, onMessage, hooks = {}) {
     this.onMessage = onMessage;
     if (!this.available) return;
     this.channel = new BroadcastChannel(`brawl-room-${code}`);
     this.channel.onmessage = (e) => this.onMessage?.(e.data);
+    // Same-device channel is ready immediately.
+    Promise.resolve().then(() => hooks.onOpen?.());
   }
+
+  warmup() { /* nothing to wake for a local channel */ }
 
   send(msg) {
     this.channel?.postMessage(msg);
@@ -127,6 +131,11 @@ export class MultiplayerService extends Emitter {
     return !!this.room;
   }
 
+  /** Wake a sleeping relay ahead of create/join (no-op for local transport). */
+  warmup() {
+    this.transport.warmup?.();
+  }
+
   get expiresInMs() {
     if (!this.room) return 0;
     return Math.max(0, this.room.expiresAt - Date.now());
@@ -177,28 +186,35 @@ export class MultiplayerService extends Emitter {
       isHost: false,
     };
     this.players = [];
-    this._attach(clean);
     this._armExpiry();
 
     return new Promise((resolve, reject) => {
       let settled = false;
-      const timer = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        this._joinResolve = null;
-        this.leave(); // discard the optimistic room — no host was found
-        reject(new Error('Room not found — check the code or ask for a new one'));
-      }, JOIN_TIMEOUT_MS);
-      // Resolved from _onMessage when the host's roster (our ack) arrives.
-      this._joinResolve = () => {
+      const finish = (fn) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
         this._joinResolve = null;
-        resolve(clean);
+        fn();
       };
-      // Announce ourselves; a live host replies with the authoritative roster.
-      this._broadcast({ type: 'join', player: this.self });
+      const timer = setTimeout(() => {
+        finish(() => {
+          this.leave(); // discard the optimistic room — no host answered
+          reject(new Error('Room not found — check the code or ask for a new one'));
+        });
+      }, JOIN_TIMEOUT_MS);
+      // Resolved from _onMessage when the host's roster (our ack) arrives.
+      this._joinResolve = () => finish(() => resolve(clean));
+      // Connect with lifecycle hooks: announce ourselves once the socket is
+      // open (covers a cold relay), and fail fast if the connection drops.
+      this._attach(clean, {
+        onOpen: () => this._broadcast({ type: 'join', player: this.self }),
+        onError: () => {},
+        onClose: () => finish(() => {
+          this.leave();
+          reject(new Error('Could not reach the server — check your connection and try again'));
+        }),
+      });
     });
   }
 
@@ -244,8 +260,8 @@ export class MultiplayerService extends Emitter {
 
   // --- internals -----------------------------------------------------------
 
-  _attach(code) {
-    this.transport.connect(code, (msg) => this._onMessage(msg));
+  _attach(code, hooks = {}) {
+    this.transport.connect(code, (msg) => this._onMessage(msg), hooks);
     this._detach = () => {
       this.transport.onMessage = null;
     };
@@ -362,12 +378,13 @@ export class WebSocketTransport {
     this.queue = [];
   }
 
-  connect(code, onMessage) {
+  connect(code, onMessage, hooks = {}) {
     this.onMessage = onMessage;
     this.ws = new WebSocket(`${this.url}?room=${code}`);
     this.ws.onopen = () => {
       this.queue.forEach((m) => this.ws.send(JSON.stringify(m)));
       this.queue = [];
+      hooks.onOpen?.();
     };
     this.ws.onmessage = (e) => {
       try {
@@ -376,6 +393,28 @@ export class WebSocketTransport {
         /* ignore malformed */
       }
     };
+    this.ws.onerror = () => hooks.onError?.();
+    this.ws.onclose = () => hooks.onClose?.();
+  }
+
+  /** Derive the http(s) origin so we can wake a sleeping free-tier dyno. */
+  _httpUrl() {
+    try {
+      return this.url.replace(/^ws/, 'http').split('?')[0];
+    } catch {
+      return null;
+    }
+  }
+
+  /** Best-effort ping to spin up a sleeping relay before the user connects. */
+  warmup() {
+    const base = this._httpUrl();
+    if (!base || typeof fetch === 'undefined') return;
+    try {
+      fetch(`${base.replace(/\/$/, '')}/health`, { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+    } catch {
+      /* ignore */
+    }
   }
 
   send(msg) {

@@ -1618,6 +1618,10 @@ export class App {
   // ---------------------------------------------------------- multiplayer
   showMultiplayer() {
     this.showScreen('multiplayer');
+    // Wake a sleeping free-tier relay now, while the player reads/types, so
+    // create/join don't time out on a cold start.
+    this._ensureMp();
+    this.mp.warmup();
     this.renderMpLanding();
   }
 
