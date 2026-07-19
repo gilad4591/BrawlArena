@@ -38,6 +38,7 @@ const forest = {
   id: 'forest',
   name: 'Forest',
   swatch: '#4a8c3f',
+  bg: 'arenas/forest.png',
   draw(ctx, info) {
     const { w, h, floorTopY, time } = info;
 
@@ -133,6 +134,7 @@ const dojo = {
   id: 'dojo',
   name: 'Dojo',
   swatch: '#c98a4b',
+  bg: 'arenas/dojo.png',
   draw(ctx, info) {
     const { w, h, floorTopY } = info;
     const wall = ctx.createLinearGradient(0, 0, 0, floorTopY);
@@ -195,6 +197,7 @@ const volcano = {
   id: 'volcano',
   name: 'Volcano',
   swatch: '#e0532a',
+  bg: 'arenas/volcano.png',
   draw(ctx, info) {
     const { w, h, floorTopY, time } = info;
     const sky = ctx.createLinearGradient(0, 0, 0, floorTopY);
@@ -254,6 +257,7 @@ const frozen = {
   id: 'frozen',
   name: 'Frozen Peak',
   swatch: '#7fd4ff',
+  bg: 'arenas/frozen.png',
   draw(ctx, info) {
     const { w, h, floorTopY, time } = info;
     const sky = ctx.createLinearGradient(0, 0, 0, floorTopY);
