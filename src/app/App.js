@@ -1189,7 +1189,7 @@ export class App {
     const compact = fighters.length > 4;
     hud.classList.toggle('compact', compact);
     const base = import.meta.env.BASE_URL || '/';
-    hud.style.setProperty('--ring-url', `url("${base}ui/hud/ui_portraitring.png?v=2")`);
+    hud.style.setProperty('--ring-url', `url("${base}ui/hud/ui_portraitring.png?v=3")`);
     this._hudChars = {};
     hud.innerHTML = fighters
       .map((f) => {
@@ -1225,7 +1225,7 @@ export class App {
     const bannerKey = { 'FIGHT!': 'fight', 'K.O.!': 'ko', PERFECT: 'perfect', COMBO: 'combo' }[text];
     if (bannerKey) {
       const base = import.meta.env.BASE_URL || '/';
-      el.innerHTML = `<img class="announce-img" src="${base}ui/banners/banner_${bannerKey}.png?v=2" alt="${text}">`;
+      el.innerHTML = `<img class="announce-img" src="${base}ui/banners/banner_${bannerKey}.png?v=3" alt="${text}">`;
     } else {
       el.textContent = text;
     }
@@ -1428,7 +1428,7 @@ export class App {
     }
     const base = import.meta.env.BASE_URL || '/';
     const medalFile = { 1: 'trophy', 2: 'silver', 3: 'bronze' };
-    const medal = (p) => `<img class="pod-medal-img" src="${base}ui/rewards/reward_${medalFile[p]}.png?v=2" alt="#${p}">`;
+    const medal = (p) => `<img class="pod-medal-img" src="${base}ui/rewards/reward_${medalFile[p]}.png?v=3" alt="#${p}">`;
     const byPlace = (p) => ranking.find((r) => r.place === p);
     const isYou = (r) => r.containsHuman ?? r.isHuman;
     const portraits = (r, size) =>

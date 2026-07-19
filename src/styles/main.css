@@ -1381,9 +1381,15 @@ body,
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding-top: 6px;
+  padding: 6px 4px 5px;
+  gap: 2px;
   font-weight: 900;
   color: rgba(255, 255, 255, 0.75);
+}
+
+.pod-stand b {
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .pod-medal {
@@ -1392,27 +1398,27 @@ body,
 }
 
 .pod-medal-img {
-  width: 30px;
+  width: 26px;
   height: auto;
   display: block;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
 .pod-1 .pod-medal-img {
-  width: 40px;
+  width: 34px;
 }
 
 .pod-1 .pod-stand {
-  height: 74px;
+  min-height: 74px;
   background: linear-gradient(180deg, rgba(255, 210, 77, 0.5), rgba(255, 210, 77, 0.12));
 }
 
 .pod-2 .pod-stand {
-  height: 54px;
+  min-height: 56px;
 }
 
 .pod-3 .pod-stand {
-  height: 40px;
+  min-height: 44px;
 }
 
 .podium-rest {

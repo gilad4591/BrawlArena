@@ -25,12 +25,13 @@ const SHEETS = [
 const CUTOFF = 14, ATRIM = 26, PAD = 8;
 // Soft magenta key: score high when R&B >> G (magenta/pink), alpha = 1 - score.
 // This feathers anti-aliased edges and removes pink fringe automatically.
-const MAG_T0 = 26, MAG_T1 = 90;
+const MAG_T0 = 6, MAG_T1 = 40;
 function magentaAlpha(r, g, b) {
   const score = (Math.min(r, b) - g - MAG_T0) / (MAG_T1 - MAG_T0);
   if (score >= 1) return 0;
   if (score <= 0) return 255;
-  return Math.round(255 * (1 - score));
+  const a = Math.round(255 * (1 - score));
+  return a < 45 ? 0 : a; // snap faint edge fringe to fully transparent
 }
 // Pull residual pink spill toward neutral on kept pixels.
 function despill(r, g, b) {
