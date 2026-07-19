@@ -34,17 +34,18 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- AdMob Application ID (currently Google's TEST app id). Replace with
-             your own from https://admob.google.com before publishing. Must match
+        <!-- AdMob Application ID for "Brawl Arena". Must match
              ADS.android.appId in src/services/adsConfig.js. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-9834744561471352~7947465285" />
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Advertising ID: required by AdMob on Android 13+ (API 33) to serve ads. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
     <!-- Google Play Billing (in-app purchases). Also merged in by the billing
          library, declared here explicitly for clarity. -->
     <uses-permission android:name="com.android.vending.BILLING" />

@@ -21,17 +21,17 @@
  */
 export const ADS = {
   // Global switch: while true, all placements use Google's test units.
-  useTestAds: true,
+  useTestAds: false,
 
   // Show an interstitial after every N finished matches.
   interstitialEveryMatches: 2,
 
   android: {
-    // Test App ID (also referenced in AndroidManifest for local testing):
-    appId: 'ca-app-pub-3940256099942544~3347511713',
-    banner: 'ca-app-pub-3940256099942544/6300978111',
-    interstitial: 'ca-app-pub-3940256099942544/1033173712',
-    rewarded: 'ca-app-pub-3940256099942544/5224354917',
+    // Production AdMob IDs for "Brawl Arena" (must match AndroidManifest).
+    appId: 'ca-app-pub-9834744561471352~7947465285',
+    banner: 'ca-app-pub-3940256099942544/6300978111', // unused (test)
+    interstitial: 'ca-app-pub-9834744561471352/8169986248',
+    rewarded: 'ca-app-pub-3940256099942544/5224354917', // unused (test)
   },
 
   ios: {
