@@ -342,6 +342,11 @@ export class App {
     };
     name?.addEventListener('change', commitName);
     name?.addEventListener('blur', commitName);
+    // When any text field is focused, wait for the keyboard to slide in, then
+    // scroll it into the visible area so it isn't hidden behind the keyboard.
+    name?.addEventListener('focus', () => {
+      setTimeout(() => name.scrollIntoView({ block: 'center', behavior: 'smooth' }), 320);
+    });
 
     this.root.querySelector('#reset-progress')?.addEventListener('click', () => this.confirmReset());
   }

@@ -1883,8 +1883,11 @@ body,
    landscape, so front-end screens must scroll and shrink instead of clipping,
    and the in-game HUD + touch controls need to slim down. */
 @media (max-height: 480px) {
-  /* Every scrollable front-end screen: tighter padding, always scrollable. */
+  /* Every scrollable front-end screen: tighter padding, always scrollable.
+     Top-align (not center) so tall content never clips off-screen where it
+     can't be scrolled to — `safe center` isn't reliable on all WebViews. */
   .screen {
+    justify-content: flex-start;
     padding: max(8px, env(safe-area-inset-top)) 14px max(8px, env(safe-area-inset-bottom));
     gap: 8px;
   }

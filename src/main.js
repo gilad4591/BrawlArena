@@ -21,6 +21,17 @@ async function initNativeShell() {
     await ScreenOrientation.lock({ orientation: 'landscape' });
     await SplashScreen.hide();
 
+    // Shrink the WebView when the soft keyboard opens so focused inputs (e.g.
+    // the fighter-name field in Settings) stay reachable and scrollable instead
+    // of being buried under the keyboard — critical in landscape.
+    try {
+      const { Keyboard, KeyboardResize } = await import('@capacitor/keyboard');
+      await Keyboard.setResizeMode({ mode: KeyboardResize.Native });
+      await Keyboard.setScroll({ isDisabled: true });
+    } catch (e) {
+      /* keyboard plugin optional */
+    }
+
     CapApp.addListener('backButton', () => {
       window.dispatchEvent(new CustomEvent('brawl-back'));
     });
