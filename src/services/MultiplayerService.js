@@ -16,6 +16,7 @@
 
 const CODE_LENGTH = 6;
 const DEFAULT_EXPIRY_MS = 90 * 1000; // fast-expiring invite
+const JOIN_TIMEOUT_MS = 4000; // how long a guest waits for the host to answer
 
 function generateCode() {
   let code = '';
@@ -119,6 +120,7 @@ export class MultiplayerService extends Emitter {
     this.self = null;
     this._expiryTimer = null;
     this._detach = null;
+    this._joinResolve = null; // set while a guest waits for the host's ack
   }
 
   get connected() {
@@ -152,13 +154,18 @@ export class MultiplayerService extends Emitter {
     return code;
   }
 
-  /** Guest joins an existing room by code. */
+  /**
+   * Guest joins an existing room by code. Resolves only once the HOST answers
+   * with a roster; if nobody answers within JOIN_TIMEOUT_MS the room is torn
+   * down and the promise REJECTS. This is what makes a wrong/expired code fail
+   * with an error instead of silently spinning up a phantom lobby.
+   */
   joinRoom(code, { name = 'Guest', character = 'frost' } = {}) {
-    this.leave();
     const clean = String(code).trim();
     if (!/^\d{6}$/.test(clean)) {
-      throw new Error('Invite code must be 6 digits');
+      return Promise.reject(new Error('Invite code must be 6 digits'));
     }
+    this.leave();
     this.isHost = false;
     this.room = { code: clean, expiresAt: Date.now() + DEFAULT_EXPIRY_MS };
     this.self = {
@@ -171,11 +178,28 @@ export class MultiplayerService extends Emitter {
     };
     this.players = [];
     this._attach(clean);
-    // Announce ourselves; host replies with the authoritative roster.
-    this._broadcast({ type: 'join', player: this.self });
-    // If nobody answers before expiry the lobby will time out.
     this._armExpiry();
-    return clean;
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        this._joinResolve = null;
+        this.leave(); // discard the optimistic room — no host was found
+        reject(new Error('Room not found — check the code or ask for a new one'));
+      }, JOIN_TIMEOUT_MS);
+      // Resolved from _onMessage when the host's roster (our ack) arrives.
+      this._joinResolve = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this._joinResolve = null;
+        resolve(clean);
+      };
+      // Announce ourselves; a live host replies with the authoritative roster.
+      this._broadcast({ type: 'join', player: this.self });
+    });
   }
 
   toggleReady() {
@@ -276,10 +300,12 @@ export class MultiplayerService extends Emitter {
         break;
       }
       case 'roster': {
-        // Authoritative roster from host.
+        // Authoritative roster from host — also the ack that confirms our join.
         this.players = msg.players.map((p) => ({ ...p }));
         const mine = this.players.find((p) => p.id === this.playerId);
         if (mine) this.self = mine;
+        // Only count it as a valid join if the host actually enrolled us.
+        if (mine) this._joinResolve?.();
         this.emit('players', this.players.slice());
         break;
       }

@@ -1701,21 +1701,35 @@ export class App {
       </div>`;
     const input = body.querySelector('#join-code');
     input.focus();
-    body.querySelector('#join-go').addEventListener('click', () => {
+    input.addEventListener('focus', () => {
+      setTimeout(() => input.scrollIntoView({ block: 'center', behavior: 'smooth' }), 320);
+    });
+    const goBtn = body.querySelector('#join-go');
+    goBtn.addEventListener('click', async () => {
       const code = input.value.trim();
       if (!/^\d{6}$/.test(code)) {
         this.toast('Code must be 6 digits');
         return;
       }
       this._ensureMp();
+      // Wait for the host to acknowledge; only then show the lobby. A wrong or
+      // expired code rejects with an error instead of creating a phantom room.
+      goBtn.disabled = true;
+      const label = goBtn.textContent;
+      goBtn.textContent = 'Joining…';
       try {
-        this.mp.joinRoom(code, {
+        await this.mp.joinRoom(code, {
           name: this.profile.name || 'Guest',
           character: null, // must be picked in the lobby
         });
         this.renderLobby(code);
       } catch (err) {
         this.toast(err.message);
+        // Stay on the join screen so the player can retry.
+        if (body.contains(goBtn)) {
+          goBtn.disabled = false;
+          goBtn.textContent = label;
+        }
       }
     });
     body.querySelector('#join-back').addEventListener('click', () => this.renderMpLanding());
