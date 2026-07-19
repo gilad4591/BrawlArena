@@ -57,7 +57,10 @@ export class AdService {
     try {
       const mod = await import('@capacitor-community/admob');
       this.AdMob = mod.AdMob;
-      await this.AdMob.initialize({ initializeForTesting: ADS.useTestAds });
+      await this.AdMob.initialize({
+        initializeForTesting: ADS.useTestAds,
+        testingDevices: ADS.testDeviceIds || [],
+      });
       this.ready = true;
       this._prepareInterstitial();
     } catch (err) {

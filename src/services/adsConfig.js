@@ -23,6 +23,11 @@ export const ADS = {
   // Global switch: while true, all placements use Google's test units.
   useTestAds: false,
 
+  // Devices that should ALWAYS get test ads even in production, so we can tap
+  // our own ads safely without risking an AdMob policy strike. Grab the id from
+  // logcat: "setTestDeviceIds(Arrays.asList("XXXX")) to get test ads..."
+  testDeviceIds: [],
+
   // Show an interstitial after every N finished matches.
   interstitialEveryMatches: 2,
 
