@@ -9,5 +9,5 @@
          -> Configuration. Must be a STRING (keep the quotes/type) or the Games
          SDK mangles it. A present placeholder keeps the app from crashing at
          launch; sign-in simply stays inactive until the real id is set. -->
-    <string name="game_services_project_id">000000000000</string>
+    <string name="game_services_project_id">527825615601</string>
 </resources>

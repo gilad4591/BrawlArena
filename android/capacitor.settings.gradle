@@ -25,3 +25,6 @@ project(':capacitor-status-bar').projectDir = new File('../node_modules/@capacit
 
 include ':capgo-native-purchases'
 project(':capgo-native-purchases').projectDir = new File('../node_modules/@capgo/native-purchases/android')
+
+include ':capacitor-game-connect-8'
+project(':capacitor-game-connect-8').projectDir = new File('../node_modules/capacitor-game-connect-8/android')

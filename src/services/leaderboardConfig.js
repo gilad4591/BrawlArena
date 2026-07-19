@@ -16,5 +16,5 @@
  * Leave id empty to keep the whole feature dormant (button hidden, no calls).
  */
 export const LEADERBOARD = {
-  id: '', // e.g. 'CgkIxxxxxxxxxxEAAQAQ'
+  id: 'CgkI8fXupq4PEAIQAQ', // "Top Brawlers"
 };

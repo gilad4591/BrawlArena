@@ -17,6 +17,7 @@ dependencies {
     implementation project(':capacitor-splash-screen')
     implementation project(':capacitor-status-bar')
     implementation project(':capgo-native-purchases')
+    implementation project(':capacitor-game-connect-8')
 
 }
 
