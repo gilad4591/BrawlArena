@@ -1225,7 +1225,7 @@ export class App {
     const bannerKey = { 'FIGHT!': 'fight', 'K.O.!': 'ko', PERFECT: 'perfect', COMBO: 'combo' }[text];
     if (bannerKey) {
       const base = import.meta.env.BASE_URL || '/';
-      el.innerHTML = `<img class="announce-img" src="${base}ui/banners/banner_${bannerKey}.png?v=3" alt="${text}">`;
+      el.innerHTML = `<img class="announce-img" src="${base}ui/banners/banner_${bannerKey}.png?v=4" alt="${text}">`;
     } else {
       el.textContent = text;
     }
