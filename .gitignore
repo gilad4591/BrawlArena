@@ -42,3 +42,6 @@ scripts/raw/_commitmsg.txt
 
 # responsive/layout screenshot captures (throwaway)
 scripts/raw/shots/
+
+# Throwaway mobile-render check screenshot
+scripts/social/mobcheck.png
