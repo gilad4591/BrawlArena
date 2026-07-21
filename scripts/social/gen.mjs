@@ -190,29 +190,29 @@ function heroHtml({ w, h }) {
   const badges = FEATURES.map((f) => `<span class="badge">${f}</span>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8">${FONTS}<style>
     html,body{width:${w}px;height:${h}px;} ${baseCss('#ff7a2f', '#ff4d2a')}
-    .ribbon{ top:${story ? 66 : 48}px; right:${story ? -74 : -66}px; width:${story ? 300 : 260}px;
-      font-size:${story ? 40 : 34}px; letter-spacing:3px; padding:${story ? '14px 0' : '11px 0'}; }
-    .logo{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 320 : 150}px;
-      width:${story ? 300 : 250}px; height:${story ? 300 : 250}px;
+    .ribbon{ top:${story ? 56 : 40}px; right:${story ? -68 : -60}px; width:${story ? 268 : 232}px;
+      font-size:${story ? 30 : 24}px; letter-spacing:2px; padding:${story ? '10px 0' : '8px 0'}; }
+    .logo{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 320 : 96}px;
+      width:${story ? 300 : 210}px; height:${story ? 300 : 210}px;
       filter:drop-shadow(0 18px 50px rgba(0,0,0,.7)); }
-    .title{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 650 : 430}px;
+    .title{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 650 : 320}px;
       font-family:'Bebas Neue','Arial Black',sans-serif; line-height:.86; text-align:center;
-      font-size:${story ? 230 : 190}px; letter-spacing:4px; filter:drop-shadow(0 8px 20px rgba(0,0,0,.85)); }
+      font-size:${story ? 230 : 170}px; letter-spacing:4px; filter:drop-shadow(0 8px 20px rgba(0,0,0,.85)); }
     .title b{color:#fff;} .title i{color:var(--a); font-style:normal;}
-    .sub{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 950 : 650}px;
+    .sub{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 950 : 512}px;
       font-family:'Oswald',sans-serif; font-weight:500; text-transform:uppercase; letter-spacing:${story ? 12 : 9}px;
-      font-size:${story ? 46 : 40}px; color:#e9eef7; text-shadow:0 3px 10px rgba(0,0,0,.85); white-space:nowrap; }
-    .badges{ position:absolute; left:0; right:0; top:${story ? 1030 : 720}px; display:flex; justify-content:center;
+      font-size:${story ? 46 : 38}px; color:#e9eef7; text-shadow:0 3px 10px rgba(0,0,0,.85); white-space:nowrap; }
+    .badges{ position:absolute; left:0; right:0; top:${story ? 1030 : 588}px; display:flex; justify-content:center;
       gap:${story ? 16 : 14}px; z-index:5; }
     .badge{ font-family:'Oswald',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:1px;
       font-size:${story ? 30 : 26}px; color:#fff; padding:${story ? '9px 20px' : '8px 16px'}; border-radius:999px;
       background:rgba(255,255,255,.08); border:2px solid color-mix(in srgb, var(--a) 60%, transparent);
       backdrop-filter:blur(4px); white-space:nowrap; }
-    .strip{ position:absolute; left:0; right:0; bottom:${story ? 320 : 210}px; display:flex; justify-content:center; gap:${story ? 22 : 26}px; }
-    .mini{ width:150px; height:150px; border-radius:20px; overflow:hidden;
+    .strip{ position:absolute; left:0; right:0; bottom:${story ? 320 : 252}px; display:flex; justify-content:center; gap:${story ? 22 : 26}px; }
+    .mini{ width:${story ? 150 : 140}px; height:${story ? 150 : 140}px; border-radius:20px; overflow:hidden;
       border:4px solid var(--a); box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 26px color-mix(in srgb, var(--a) 40%, transparent); }
     .mini img{ width:100%; height:100%; object-fit:cover; }
-    .cta{ bottom:${story ? 110 : 54}px; }
+    .cta{ bottom:${story ? 110 : 44}px; }
     .pill{ font-size:${story ? 46 : 38}px; padding:${story ? '18px 44px' : '15px 34px'}; }
     .link{ font-size:${story ? 40 : 32}px; }
     .handle{ font-size:${story ? 36 : 28}px; }
@@ -252,8 +252,8 @@ function rosterHtml({ w, h }) {
     .brand{ top:${story ? 56 : 44}px; left:${story ? 56 : 44}px; }
     .brand img{ width:${story ? 74 : 60}px; height:${story ? 74 : 60}px; }
     .brand .wm{ font-size:${story ? 46 : 38}px; }
-    .ribbon{ top:${story ? 66 : 48}px; right:${story ? -74 : -66}px; width:${story ? 300 : 260}px;
-      font-size:${story ? 40 : 34}px; letter-spacing:3px; padding:${story ? '14px 0' : '11px 0'}; }
+    .ribbon{ top:${story ? 56 : 40}px; right:${story ? -68 : -60}px; width:${story ? 268 : 232}px;
+      font-size:${story ? 30 : 24}px; letter-spacing:2px; padding:${story ? '10px 0' : '8px 0'}; }
     .heading{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 150 : 128}px; text-align:center;
       font-family:'Bebas Neue','Arial Black',sans-serif; font-size:${story ? 150 : 120}px; letter-spacing:3px;
       line-height:.9; filter:drop-shadow(0 6px 16px rgba(0,0,0,.85)); }
