@@ -202,9 +202,8 @@ export class AdService {
         <div class="adi-label">Advertisement</div>
         <div class="adi-slot" id="adi-slot">${
           adClient && adSlot
-            ? `<ins class="adsbygoogle" style="display:block;width:100%;height:100%"
-                 data-ad-client="${adClient}" data-ad-slot="${adSlot}"
-                 data-ad-format="rectangle" data-full-width-responsive="true"></ins>`
+            ? `<ins class="adsbygoogle" style="display:inline-block;width:300px;height:250px"
+                 data-ad-client="${adClient}" data-ad-slot="${adSlot}"></ins>`
             : '<span class="adi-placeholder">Your ad could be here</span>'
         }</div>
         <button class="adi-close" id="adi-close" disabled>Skip in <b>5</b></button>
