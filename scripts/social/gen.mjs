@@ -9,7 +9,7 @@ import path from 'node:path';
 const CHROME = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const ROOT = process.cwd();
 const PUB = path.join(ROOT, 'public');
-const OUT = path.join(ROOT, 'social-kit');
+const OUT = path.join(ROOT, process.env.OUT_DIR || 'social-kit');
 fs.mkdirSync(OUT, { recursive: true });
 
 const dataUri = (p) => {
@@ -23,9 +23,10 @@ const LOGO = dataUri(path.join(PUB, 'icons', 'icon-512.png'));
 // Launch-day copy. Override any of these via env for a pre-launch teaser run
 // (e.g. CTA_TEXT="⏳ Coming Soon" RIBBON_TEXT="Soon").
 const CTA = process.env.CTA_TEXT || '▶ PLAY FREE';
-// Clean branded domain reads far better than a raw shortener. Set LINK_TEXT=''
-// to drop the link line entirely (rely on "link in bio").
-const LINK = process.env.LINK_TEXT ?? 'brawl-arena.com';
+// Clean branded domain reads far better than a raw shortener. Set LINK_TEXT=none
+// to drop the link line entirely (e.g. the Play Store set relies on "link in bio").
+const LINK_RAW = process.env.LINK_TEXT ?? 'brawl-arena.com';
+const LINK = LINK_RAW === 'none' ? '' : LINK_RAW;
 const HANDLE = process.env.HANDLE_TEXT || '@brawlarenagame';
 const RIBBON = process.env.RIBBON_TEXT || 'OUT NOW';
 const LINK_SPAN = LINK ? `<span class="link">${LINK}</span>` : '';
