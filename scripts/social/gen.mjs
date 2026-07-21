@@ -136,25 +136,25 @@ const baseCss = (accent, color) => `
 
 function characterHtml({ id, name, tagline, color, accent, arenaId, w, h }) {
   const story = h > w;
-  const cardW = story ? 780 : 560;
-  const cardH = story ? 780 : 560;
-  const cardTop = story ? 360 : 138;
-  const nameSize = story ? 210 : 130;
-  const nameTop = story ? 1200 : 700;
+  const cardW = story ? 780 : 520;
+  const cardH = story ? 780 : 520;
+  const cardTop = story ? 360 : 118;
+  const nameSize = story ? 210 : 118;
+  const nameTop = story ? 1200 : 648;
   const barTop = Math.round(nameTop + nameSize * 0.9);
-  const tagTop = barTop + (story ? 26 : 20);
+  const tagTop = barTop + (story ? 26 : 18);
   return `<!doctype html><html><head><meta charset="utf-8">${FONTS}<style>
     html,body{width:${w}px;height:${h}px;} ${baseCss(accent, color)}
     .brand{ top:${story ? 56 : 44}px; left:${story ? 56 : 44}px; }
     .brand img{ width:${story ? 74 : 60}px; height:${story ? 74 : 60}px; }
     .brand .wm{ font-size:${story ? 46 : 38}px; }
-    .ribbon{ top:${story ? 66 : 48}px; right:${story ? -74 : -66}px; width:${story ? 300 : 260}px;
-      font-size:${story ? 40 : 34}px; letter-spacing:3px; padding:${story ? '14px 0' : '11px 0'}; }
+    .ribbon{ top:${story ? 56 : 40}px; right:${story ? -68 : -60}px; width:${story ? 268 : 232}px;
+      font-size:${story ? 30 : 24}px; letter-spacing:2px; padding:${story ? '10px 0' : '8px 0'}; }
     .card{ top:${cardTop}px; width:${cardW}px; height:${cardH}px; }
     .name{ top:${nameTop}px; font-size:${nameSize}px; letter-spacing:3px; }
-    .accentbar{ top:${barTop}px; width:${story ? 360 : 240}px; }
-    .tag{ top:${tagTop}px; font-size:${story ? 44 : 34}px; letter-spacing:${story ? 8 : 6}px; }
-    .cta{ bottom:${story ? 118 : 52}px; }
+    .accentbar{ top:${barTop}px; width:${story ? 360 : 220}px; }
+    .tag{ top:${tagTop}px; font-size:${story ? 44 : 30}px; letter-spacing:${story ? 8 : 5}px; max-width:${story ? 900 : 720}px; }
+    .cta{ bottom:${story ? 118 : 46}px; }
     .pill{ font-size:${story ? 44 : 34}px; padding:${story ? '17px 40px' : '13px 30px'}; }
     .link{ font-size:${story ? 38 : 30}px; }
     .handle{ font-size:${story ? 34 : 26}px; }
