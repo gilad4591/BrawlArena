@@ -218,6 +218,19 @@ export class AdService {
       } catch {
         /* ignore */
       }
+      // AdSense on a fresh account (and inside an auto-popup) very often returns
+      // "unfilled" → a blank box. Watch for that and swap in a branded house
+      // promo so the player never stares at an empty "Advertisement" card.
+      const ins = overlay.querySelector('ins.adsbygoogle');
+      const checkFill = () => {
+        if (this._overlay !== overlay) return;
+        const unfilled = ins?.getAttribute('data-ad-status') === 'unfilled';
+        const empty = !ins || ins.offsetHeight < 40 || ins.childElementCount === 0;
+        if (unfilled || empty) this._renderHouseAd(overlay);
+      };
+      setTimeout(checkFill, 1600);
+    } else {
+      this._renderHouseAd(overlay);
     }
 
     const btn = overlay.querySelector('#adi-close');
@@ -239,6 +252,26 @@ export class AdService {
     btn.addEventListener('click', () => { if (!btn.disabled) close(); });
     // Fallback auto-dismiss so the overlay can never trap the player.
     setTimeout(() => { if (this._overlay === overlay) { btn.disabled = false; close(); } }, 15000);
+  }
+
+  /**
+   * Swap the interstitial slot for a branded house promo. Used when no real ad
+   * fills (blocked, no fill, or no slot configured) so the popup always looks
+   * intentional instead of an empty "Advertisement" box.
+   */
+  _renderHouseAd(overlay) {
+    if (!overlay || this._overlay !== overlay) return;
+    const slot = overlay.querySelector('#adi-slot');
+    if (!slot || slot.dataset.house === '1') return;
+    slot.dataset.house = '1';
+    const label = overlay.querySelector('.adi-label');
+    if (label) label.style.display = 'none';
+    slot.innerHTML = `
+      <div class="adi-house">
+        <img src="/icons/icon-192.png?v=3" alt="" width="72" height="72" />
+        <div class="adi-house-title">BRAWL <span>ARENA</span></div>
+        <div class="adi-house-sub">More fighters &amp; arenas coming soon</div>
+      </div>`;
   }
 
   _closeWebInterstitial() {

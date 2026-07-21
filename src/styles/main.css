@@ -1658,6 +1658,36 @@ body,
   text-transform: uppercase;
 }
 
+.adi-house {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 14px;
+}
+.adi-house img {
+  border-radius: 16px;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
+}
+.adi-house-title {
+  font: 900 1.7rem/0.95 system-ui, sans-serif;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #ff5d3b, #ffb03b);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.adi-house-title span {
+  -webkit-text-fill-color: #eef1ff;
+  color: #eef1ff;
+}
+.adi-house-sub {
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
 .adi-close {
   align-self: center;
   border: none;

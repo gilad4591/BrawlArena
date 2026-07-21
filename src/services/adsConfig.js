@@ -29,7 +29,7 @@ export const ADS = {
   testDeviceIds: [],
 
   // Show an interstitial after every N finished matches.
-  interstitialEveryMatches: 2,
+  interstitialEveryMatches: 4,
 
   android: {
     // Production AdMob IDs for "Brawl Arena" (must match AndroidManifest).
