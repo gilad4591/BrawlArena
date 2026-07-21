@@ -639,7 +639,10 @@ export class App {
   }
 
   _onBackground() {
-    if (this.state === 'game') this.pauseGame();
+    // Never auto-pause an online match: the host keeps simulating and other
+    // players keep fighting, so freezing our side would only desync us. We just
+    // silence audio; on return the guest re-syncs from the host's snapshots.
+    if (this.state === 'game' && this._mode !== 'multiplayer') this.pauseGame();
     this.audio.suspend();
   }
 
@@ -1076,6 +1079,11 @@ export class App {
 
   _afterStart() {
     this.buildHud(this.engine.fighters);
+    // Online matches share one authoritative simulation, so a single player
+    // can't pause it — hide the pause button there (background/back are also
+    // gated below). Local modes keep it.
+    const pauseBtn = this.root.querySelector('.pause-btn');
+    if (pauseBtn) pauseBtn.classList.toggle('hidden', this._mode === 'multiplayer');
     this.unbindControls?.();
     this.unbindControls = bindHumanControls(this.engine.humanController, this.root, {
       haptics: this.haptics,
@@ -1258,6 +1266,7 @@ export class App {
   }
 
   pauseGame() {
+    if (this._mode === 'multiplayer') return; // can't freeze a shared online match
     if (!this.engine?.running || this.engine.roundOver) return;
     this.engine.pause();
     this.root.querySelector('#pause-overlay')?.classList.remove('hidden');
