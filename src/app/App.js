@@ -602,6 +602,7 @@ export class App {
   }
 
   goMenu() {
+    this._stopMpWatchdog();
     if (this.mp) {
       this.mp.leave();
       this.mp = null;
@@ -1292,6 +1293,7 @@ export class App {
   }
 
   async handleRoundOver(result) {
+    this._stopMpWatchdog(); // match's over — stop expecting host snapshots
     if (result.campaign) {
       await this.handleCampaignOver(result);
       return;
@@ -1706,8 +1708,16 @@ export class App {
         this.toast('Invite expired');
       });
       this.mp.on('start', (config) => this.startFromLobby(config));
-      // In-match traffic (snapshots from host / input from guests).
-      this.mp.on('state', (s) => this.engine?.ingestNet(s));
+      // In-match traffic (snapshots from host / input from guests). Each host
+      // snapshot resets the guest watchdog and clears any "waiting" overlay.
+      this.mp.on('state', (s) => {
+        this._lastSnapshotAt = performance.now();
+        if (this._mpWaiting) this._showMpWait(false);
+        this.engine?.ingestNet(s);
+      });
+      this.mp.on('peerLeft', () => {
+        if (this._mode === 'multiplayer' && this.state === 'game') this.toast(t('A player left the match'));
+      });
     }
   }
 
@@ -1998,6 +2008,56 @@ export class App {
       reduceMotion: this.settings.reduceMotion,
     });
     this._afterStart();
+    // Guests depend on the host's snapshots; watch for them going silent.
+    if (role === 'guest') this._startMpWatchdog();
+  }
+
+  // ------------------------------------------------ multiplayer host watchdog
+  _ensureMpWaitOverlay() {
+    let el = this.root.querySelector('#mp-wait');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'mp-wait';
+      el.className = 'mp-wait hidden';
+      el.innerHTML = `<div class="mp-wait-card"><div class="mp-spinner"></div>
+        <div class="mp-wait-title">${t('Waiting for host…')}</div>
+        <div class="mp-wait-sub">${t('Trying to reconnect')}</div></div>`;
+      this.root.appendChild(el);
+    }
+    return el;
+  }
+
+  _showMpWait(show) {
+    this._mpWaiting = show;
+    this._ensureMpWaitOverlay().classList.toggle('hidden', !show);
+  }
+
+  /**
+   * Guest-side safety net: if host snapshots stall we show "Waiting for host…",
+   * and if they never resume we end the match instead of freezing forever.
+   */
+  _startMpWatchdog() {
+    this._stopMpWatchdog();
+    this._lastSnapshotAt = performance.now();
+    this._mpWatchdog = setInterval(() => {
+      if (this._mode !== 'multiplayer' || this.state !== 'game') return;
+      const gap = performance.now() - this._lastSnapshotAt;
+      if (gap > 15000) {
+        this._stopMpWatchdog();
+        this.toast(t('Host disconnected'));
+        this.quitGame();
+      } else if (gap > 2500 && !this._mpWaiting) {
+        this._showMpWait(true);
+      }
+    }, 500);
+  }
+
+  _stopMpWatchdog() {
+    if (this._mpWatchdog) {
+      clearInterval(this._mpWatchdog);
+      this._mpWatchdog = null;
+    }
+    this._showMpWait(false);
   }
 
   toast(msg) {
