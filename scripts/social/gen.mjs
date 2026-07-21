@@ -23,9 +23,12 @@ const LOGO = dataUri(path.join(PUB, 'icons', 'icon-512.png'));
 // Launch-day copy. Override any of these via env for a pre-launch teaser run
 // (e.g. CTA_TEXT="⏳ Coming Soon" RIBBON_TEXT="Soon").
 const CTA = process.env.CTA_TEXT || '▶ PLAY FREE';
-const LINK = process.env.LINK_TEXT || 'tinyurl.com/brawlarenagame';
+// Clean branded domain reads far better than a raw shortener. Set LINK_TEXT=''
+// to drop the link line entirely (rely on "link in bio").
+const LINK = process.env.LINK_TEXT ?? 'brawl-arena.com';
 const HANDLE = process.env.HANDLE_TEXT || '@brawlarenagame';
 const RIBBON = process.env.RIBBON_TEXT || 'OUT NOW';
+const LINK_SPAN = LINK ? `<span class="link">${LINK}</span>` : '';
 
 // id, display name, tagline, base color, accent, paired arena
 const ROSTER = [
@@ -171,7 +174,7 @@ function characterHtml({ id, name, tagline, color, accent, arenaId, w, h }) {
       <div class="tag">${tagline}</div>
       <div class="cta">
         <span class="pill">${CTA}</span>
-        <span class="link">${LINK}</span>
+        ${LINK_SPAN}
         <span class="handle">${HANDLE}</span>
       </div>
     </div>
@@ -225,7 +228,7 @@ function heroHtml({ w, h }) {
       <div class="strip">${strip}</div>
       <div class="cta">
         <span class="pill">${CTA}</span>
-        <span class="link">${LINK}</span>
+        ${LINK_SPAN}
         <span class="handle">${HANDLE}</span>
       </div>
     </div>
@@ -277,7 +280,7 @@ function rosterHtml({ w, h }) {
       <div class="grid">${tiles}</div>
       <div class="cta">
         <span class="pill">${CTA}</span>
-        <span class="link">${LINK}</span>
+        ${LINK_SPAN}
         <span class="handle">${HANDLE}</span>
       </div>
     </div>
