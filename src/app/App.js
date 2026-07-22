@@ -1786,7 +1786,7 @@ export class App {
 
   _auraUrl(theme) {
     const base = import.meta.env.BASE_URL || '/';
-    return `${base}vfx/aura_${theme}.png?v=1`;
+    return `${base}ui/vfx/aura_${theme}.png?v=1`;
   }
 
   /** Repaint every coin counter in the DOM. */
@@ -2209,7 +2209,7 @@ export class App {
     // FRAME lives on the character-select portrait, so preview a bust. AURA/SP
     // are in-world, so preview the actual 2D fighter with just that effect.
     const inner = tab === 'frame'
-      ? `<span class="cos-portrait" data-portrait="${this._cosPreviewChar}"></span>${p.frame ? `<img class="cos-frame-img" src="${this._frameUrl(p.frame)}" alt="">` : ''}`
+      ? `<span class="cos-portrait" data-portrait="${this._cosPreviewChar}">${p.frame ? `<img class="cos-frame-img" src="${this._frameUrl(p.frame)}" alt="">` : ''}</span>`
       : `<canvas class="cos-canvas" id="cos-canvas" width="260" height="260"></canvas>`;
     stage.innerHTML = `
       <button class="cos-navbtn" data-cos-nav="-1" aria-label="prev">‹</button>
@@ -2229,7 +2229,7 @@ export class App {
     }
     if (tab === 'frame') {
       const holder = stage.querySelector('[data-portrait]');
-      if (holder) holder.appendChild(this.portraitCanvas(getCharacter(this._cosPreviewChar), 200));
+      if (holder) holder.appendChild(this.portraitCanvas(getCharacter(this._cosPreviewChar), 168));
     } else {
       this._startCosPreviewLoop();
     }
@@ -2268,9 +2268,9 @@ export class App {
       const tab = this._cosTab;
       ctx.clearRect(0, 0, W, H);
 
-      // On the AURA tab: aura glow behind + body tinted to the theme.
+      // On the AURA tab: aura energy field wrapping the fighter (kept on-canvas).
       const bodyH = H * 0.82;
-      if (tab === 'aura' && p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.6, time, { alpha: 0.95 });
+      if (tab === 'aura' && p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.22, time, { alpha: 1 });
 
       // the fighter's idle sprite (tinted only on the aura tab)
       const char = getCharacter(this._cosPreviewChar);
