@@ -374,14 +374,14 @@ export class App {
       case 'pause': this.pauseGame(); break;
       case 'resume': this.resumeGame(); break;
       case 'rematch':
-        this._maybeInterstitial();
-        if (this._mode === 'campaign') this.startCampaign(this.campaignStartStage || 0);
-        else if (this._mode === 'multiplayer') this.quitGame(); // no local rematch online
-        else this.startGame();
+        this._runAfterAd(() => {
+          if (this._mode === 'campaign') this.startCampaign(this.campaignStartStage || 0);
+          else if (this._mode === 'multiplayer') this.quitGame(); // no local rematch online
+          else this.startGame();
+        });
         break;
       case 'quit':
-        this._maybeInterstitial();
-        this.quitGame();
+        this._runAfterAd(() => this.quitGame());
         break;
       default: break;
     }
@@ -1285,11 +1285,35 @@ export class App {
     this.goMenu();
   }
 
-  /** Fire an interstitial once per finished match (frequency-gated in AdService). */
+  /**
+   * Fire an interstitial once per finished match (frequency-gated in AdService).
+   * Returns a promise that resolves when the ad is fully done (or immediately if
+   * none is shown), so callers can wait before starting the next match.
+   */
   _maybeInterstitial() {
-    if (!this._matchResulted) return;
+    if (!this._matchResulted) return Promise.resolve();
     this._matchResulted = false;
-    this.ads.onMatchFinished();
+    return this.ads.onMatchFinished() || Promise.resolve();
+  }
+
+  /**
+   * Run `fn` only after any post-match interstitial has finished, and disable
+   * the result buttons meanwhile. Prevents the ad from popping up on top of a
+   * rematch the player already started while it was still loading.
+   */
+  _runAfterAd(fn) {
+    this._setResultButtonsBusy(true);
+    this._maybeInterstitial().finally(() => {
+      this._setResultButtonsBusy(false);
+      fn();
+    });
+  }
+
+  _setResultButtonsBusy(busy) {
+    const overlay = this.root.querySelector('#result-overlay');
+    if (!overlay) return;
+    overlay.classList.toggle('ad-busy', busy);
+    overlay.querySelectorAll('button').forEach((b) => { b.disabled = busy; });
   }
 
   async handleRoundOver(result) {

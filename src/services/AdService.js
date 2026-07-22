@@ -122,7 +122,7 @@ export class AdService {
     if (this.native) {
       await this._showNativeInterstitial();
     } else {
-      this._showWebInterstitial();
+      await this._showWebInterstitial();
     }
   }
 
@@ -149,51 +149,61 @@ export class AdService {
    * just see nothing. We detect "no ad shown" via the adBreakDone status and a
    * short watchdog timer (adBreakDone never fires when the SDK is blocked).
    */
+  /**
+   * Resolves only once the interstitial is fully done (ad viewed/dismissed, or
+   * the fallback overlay closed, or immediately if nothing can be shown). The
+   * caller (game) awaits this before starting a rematch, so an ad can never
+   * pop up on top of the next match.
+   */
   _showWebInterstitial() {
-    if (this._overlay) return; // manual overlay already open
+    if (this._overlay) return Promise.resolve(); // manual overlay already open
 
-    if (typeof window.adBreak === 'function') {
-      let adShown = false;
-      let settled = false;
-      const finish = (showFallback) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(watchdog);
-        this._muteForAd?.(false);
-        if (showFallback && !adShown) this._showOverlayInterstitial();
-      };
-      // If the SDK is blocked/not loaded, adBreakDone never fires — so after a
-      // beat with nothing shown we surface our own overlay instead.
-      const watchdog = setTimeout(() => finish(true), 1800);
-      try {
-        window.adBreak({
-          type: 'next', // an ad "between levels" — here, between matches
-          name: 'match_end',
-          beforeAd: () => {
-            adShown = true;
-            clearTimeout(watchdog);
-            this._muteForAd?.(true);
-          },
-          afterAd: () => this._muteForAd?.(false),
-          adBreakDone: (info) => {
-            const st = info && info.breakStatus;
-            // 'viewed'/'dismissed' => a real ad played; anything else (noAd*,
-            // frequencyCapped, error, notReady…) => show our fallback overlay.
-            finish(st !== 'viewed' && st !== 'dismissed');
-          },
-        });
-        return;
-      } catch {
-        clearTimeout(watchdog);
-        /* fall through to the manual overlay */
+    return new Promise((resolve) => {
+      if (typeof window.adBreak === 'function') {
+        let adShown = false;
+        let settled = false;
+        const finish = (showFallback) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(watchdog);
+          this._muteForAd?.(false);
+          if (showFallback && !adShown) this._showOverlayInterstitial(resolve);
+          else resolve();
+        };
+        // If the SDK is blocked/not loaded, adBreakDone never fires — so after a
+        // beat with nothing shown we surface our own overlay instead.
+        const watchdog = setTimeout(() => finish(true), 1800);
+        try {
+          window.adBreak({
+            type: 'next', // an ad "between levels" — here, between matches
+            name: 'match_end',
+            beforeAd: () => {
+              adShown = true;
+              clearTimeout(watchdog);
+              this._muteForAd?.(true);
+            },
+            afterAd: () => this._muteForAd?.(false),
+            adBreakDone: (info) => {
+              const st = info && info.breakStatus;
+              // 'viewed'/'dismissed' => a real ad played; anything else (noAd*,
+              // frequencyCapped, error, notReady…) => show our fallback overlay.
+              finish(st !== 'viewed' && st !== 'dismissed');
+            },
+          });
+          return;
+        } catch {
+          clearTimeout(watchdog);
+          /* fall through to the manual overlay */
+        }
       }
-    }
-    this._showOverlayInterstitial();
+      this._showOverlayInterstitial(resolve);
+    });
   }
 
   // ---- fallback web interstitial: a dismissible full-screen modal ----
-  _showOverlayInterstitial() {
-    if (this._overlay) return; // already open
+  _showOverlayInterstitial(onDone) {
+    if (this._overlay) { onDone?.(); return; } // already open
+    this._onOverlayDone = onDone || null;
     const { adClient, adSlot } = ADS.web;
     const overlay = document.createElement('div');
     overlay.className = 'ad-interstitial';
@@ -281,5 +291,8 @@ export class AdService {
       this._overlay = null;
       setTimeout(() => el.remove(), 220);
     }
+    const done = this._onOverlayDone;
+    this._onOverlayDone = null;
+    done?.();
   }
 }

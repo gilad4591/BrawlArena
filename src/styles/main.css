@@ -1335,6 +1335,14 @@ body,
   display: none;
 }
 
+/* While a post-match ad is loading, dim + lock the result buttons so a tap
+   can't start the next match under the incoming interstitial. */
+.overlay.ad-busy .btn-row {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: wait;
+}
+
 .overlay-title {
   font-size: clamp(1.7rem, 6vh, 2.6rem);
   font-weight: 900;
