@@ -2265,8 +2265,8 @@ export class App {
     const feetY = H - 16;
     const start = performance.now();
     let orbs = [];
-    let lastCast = -1;
-    const CYCLE = 1.8; // seconds between special-attack casts
+    let lastSpawn = -999;
+    const FIRE_GAP = 0.9; // seconds between projectiles
     const loop = (ts) => {
       if (this.state !== 'cosmetics') return;
       const time = (ts - start) / 1000;
@@ -2277,22 +2277,29 @@ export class App {
       const set = getSpriteSet(char.spriteBase || char.id);
       ctx.clearRect(0, 0, W, H);
 
-      // ---- Special-FX cast cycle (the fighter throws a projectile) ----
       const isSp = tab === 'sp' && !!p.sp;
-      const phase = time % CYCLE;      // 0..CYCLE
-      const castId = Math.floor(time / CYCLE);
-      const casting = isSp && phase < 0.55;
+      const oy = feetY - bodyH * 0.54;
+      const handX = cx + bodyH * 0.16;
 
-      // AURA sits right behind the fighter and matches its height, so the body
-      // covers the silhouette and only the glowing field spills around the edges.
-      if (tab === 'aura' && p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.06, time, { alpha: 0.85 });
+      // Fire a projectile on a steady cadence so there's always motion to see.
+      if (isSp) {
+        if (time - lastSpawn >= FIRE_GAP) { lastSpawn = time; orbs.push({ x: handX }); }
+      } else {
+        orbs = [];
+        lastSpawn = -999;
+      }
+      const sinceFire = time - lastSpawn;
+      const casting = isSp && sinceFire < 0.34; // wind-up/release pose window
+
+      // AURA: same scale/alpha as the real in-game renderer so it reads identically.
+      if (tab === 'aura' && p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.72, time, { alpha: 0.9 });
 
       // ---- the fighter sprite (special pose while casting, else idle) ----
       const flip = set && set.def.faceRight ? false : true; // fighters normalise to face RIGHT
       if (set) {
         const k = bodyH / set.refH;
         const state = casting ? 'special' : 'idle';
-        const stateTime = casting ? phase : time;
+        const stateTime = casting ? sinceFire : time;
         const idx = frameForState(set, state, stateTime, time);
         const tint = tab === 'aura' ? (THEME_MAP[p.aura]?.tint || 0) : 0;
         ctx.save();
@@ -2305,8 +2312,6 @@ export class App {
       if (isSp) {
         const sp = SP_THEME[p.sp];
         const img = ORB_IMAGES[sp.orb];
-        const oy = feetY - bodyH * 0.54;
-        const handX = cx + bodyH * 0.16;
         const drawOrb = (x, y, h, alpha) => {
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
@@ -2317,31 +2322,22 @@ export class App {
           } else {
             ctx.fillStyle = sp.color;
             ctx.beginPath();
-            ctx.arc(x, y, h * 0.3, 0, Math.PI * 2);
+            ctx.arc(x, y, h * 0.32, 0, Math.PI * 2);
             ctx.fill();
           }
           ctx.restore();
         };
-        // Fire one orb per cycle, at the moment the cast pose releases.
-        if (castId !== lastCast && phase >= 0.3) {
-          lastCast = castId;
-          orbs.push({ x: handX, born: time });
-        }
-        // Muzzle flash bloom at the hand during the release.
-        if (casting && phase >= 0.3) {
-          const fa = 1 - (phase - 0.3) / 0.25;
-          drawOrb(handX, oy, 70 * fa, fa * 0.8);
+        // Muzzle flash bloom at the hand right after firing.
+        if (sinceFire < 0.22) {
+          const fa = 1 - sinceFire / 0.22;
+          drawOrb(handX, oy, 78 * fa, fa * 0.85);
         }
         orbs = orbs.filter((o) => o.x < W + 70);
         for (const o of orbs) {
-          o.x += 4.4;
-          // comet trail: fading copies behind the head
-          for (let tr = 5; tr >= 1; tr--) drawOrb(o.x - tr * 11, oy, 50 - tr * 4, (1 - tr / 6) * 0.75);
-          drawOrb(o.x, oy, 52, 1);
+          o.x += 4.6;
+          for (let tr = 5; tr >= 1; tr--) drawOrb(o.x - tr * 11, oy, 52 - tr * 4, (1 - tr / 6) * 0.8);
+          drawOrb(o.x, oy, 56, 1);
         }
-      } else {
-        orbs = [];
-        lastCast = -1;
       }
       this._cosRAF = requestAnimationFrame(loop);
     };
