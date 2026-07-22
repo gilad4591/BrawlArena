@@ -2672,13 +2672,18 @@ body,
 }
 
 /* ---- cosmetics / skins ---- */
+/* A failed <img> keeps its box but hides the broken-image glyph/alt text. */
+.img-broken {
+  visibility: hidden;
+}
+
 .char-grid.sm {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
   gap: 8px;
   width: min(620px, 94vw);
-  max-height: 34vh;
-  overflow-y: auto;
+  /* No inner scroll box: the whole screen scrolls instead, so on short/mobile
+     screens the roster stays reachable rather than trapping in a tiny pane. */
 }
 .char-card.sm {
   padding: 6px;
@@ -2808,5 +2813,24 @@ body,
   .mode-card .mode-ico {
     width: 34px;
     height: 34px;
+  }
+  /* Skins: pack the roster + variants tighter so both fit a short phone. */
+  .char-grid.sm {
+    grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
+    gap: 5px;
+    width: min(680px, 96vw);
+  }
+  .cos-skins {
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 6px;
+    width: min(680px, 96vw);
+  }
+  .skin-swatch {
+    width: 48px;
+    height: 48px;
+  }
+  .skin-card {
+    padding: 7px 5px;
+    gap: 4px;
   }
 }

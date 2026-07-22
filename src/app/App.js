@@ -126,6 +126,16 @@ export class App {
     setTimeout(() => this._maybeShowDaily(), 500);
 
     window.addEventListener('brawl-back', () => this.handleBack());
+    // Safety net: if any UI icon fails to load (bad deploy, cache, offline),
+    // hide the broken-image glyph and leave a clean empty box in its place.
+    this.root.addEventListener(
+      'error',
+      (e) => {
+        const el = e.target;
+        if (el && el.tagName === 'IMG') el.classList.add('img-broken');
+      },
+      true,
+    );
     this._bindLifecycle();
     window.addEventListener('resize', () => {
       if (this.state === 'game') this.engine?.resize();
