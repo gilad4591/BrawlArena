@@ -2265,25 +2265,35 @@ export class App {
     const feetY = H - 16;
     const start = performance.now();
     let orbs = [];
-    let nextOrb = 0;
+    let lastCast = -1;
+    const CYCLE = 1.8; // seconds between special-attack casts
     const loop = (ts) => {
       if (this.state !== 'cosmetics') return;
       const time = (ts - start) / 1000;
       const p = this._cosPreview;
       const tab = this._cosTab;
-      ctx.clearRect(0, 0, W, H);
-
-      // On the AURA tab: aura energy field wrapping the fighter (kept on-canvas).
       const bodyH = H * 0.82;
-      if (tab === 'aura' && p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.22, time, { alpha: 1 });
-
-      // the fighter's idle sprite (tinted only on the aura tab)
       const char = getCharacter(this._cosPreviewChar);
       const set = getSpriteSet(char.spriteBase || char.id);
+      ctx.clearRect(0, 0, W, H);
+
+      // ---- Special-FX cast cycle (the fighter throws a projectile) ----
+      const isSp = tab === 'sp' && !!p.sp;
+      const phase = time % CYCLE;      // 0..CYCLE
+      const castId = Math.floor(time / CYCLE);
+      const casting = isSp && phase < 0.55;
+
+      // AURA sits right behind the fighter and matches its height, so the body
+      // covers the silhouette and only the glowing field spills around the edges.
+      if (tab === 'aura' && p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.06, time, { alpha: 0.85 });
+
+      // ---- the fighter sprite (special pose while casting, else idle) ----
+      const flip = set && set.def.faceRight ? false : true; // fighters normalise to face RIGHT
       if (set) {
         const k = bodyH / set.refH;
-        const idx = frameForState(set, 'idle', time, time);
-        const flip = set.def.faceRight ? false : true;
+        const state = casting ? 'special' : 'idle';
+        const stateTime = casting ? phase : time;
+        const idx = frameForState(set, state, stateTime, time);
         const tint = tab === 'aura' ? (THEME_MAP[p.aura]?.tint || 0) : 0;
         ctx.save();
         if (tint) ctx.filter = `hue-rotate(${tint}deg) saturate(1.25)`;
@@ -2291,35 +2301,47 @@ export class App {
         ctx.restore();
       }
 
-      // On the SP tab: demo a special-attack projectile firing across.
-      if (tab === 'sp' && p.sp) {
-        if (ts > nextOrb) { orbs.push({ x: cx - 30, t: 0 }); nextOrb = ts + 1400; }
-        const img = ORB_IMAGES[SP_THEME[p.sp].orb];
-        orbs = orbs.filter((o) => o.x < W + 40);
-        for (const o of orbs) {
-          o.t += 1 / 60;
-          o.x += 3.2;
-          const oy = feetY - bodyH * 0.52;
+      // ---- projectile + trail + muzzle flash on the SP tab ----
+      if (isSp) {
+        const sp = SP_THEME[p.sp];
+        const img = ORB_IMAGES[sp.orb];
+        const oy = feetY - bodyH * 0.54;
+        const handX = cx + bodyH * 0.16;
+        const drawOrb = (x, y, h, alpha) => {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
           if (img && img.complete && img.naturalWidth) {
-            const h = 54;
             const w = h * (img.naturalWidth / img.naturalHeight);
-            ctx.save();
-            ctx.globalCompositeOperation = 'lighter';
-            ctx.translate(o.x, oy);
-            ctx.drawImage(img, -w / 2, -h / 2, w, h);
-            ctx.restore();
+            ctx.drawImage(img, x - w / 2, y - h / 2, w, h);
           } else {
-            ctx.save();
-            ctx.globalCompositeOperation = 'lighter';
-            ctx.fillStyle = SP_THEME[p.sp].color;
+            ctx.fillStyle = sp.color;
             ctx.beginPath();
-            ctx.arc(o.x, oy, 14, 0, Math.PI * 2);
+            ctx.arc(x, y, h * 0.3, 0, Math.PI * 2);
             ctx.fill();
-            ctx.restore();
           }
+          ctx.restore();
+        };
+        // Fire one orb per cycle, at the moment the cast pose releases.
+        if (castId !== lastCast && phase >= 0.3) {
+          lastCast = castId;
+          orbs.push({ x: handX, born: time });
+        }
+        // Muzzle flash bloom at the hand during the release.
+        if (casting && phase >= 0.3) {
+          const fa = 1 - (phase - 0.3) / 0.25;
+          drawOrb(handX, oy, 70 * fa, fa * 0.8);
+        }
+        orbs = orbs.filter((o) => o.x < W + 70);
+        for (const o of orbs) {
+          o.x += 4.4;
+          // comet trail: fading copies behind the head
+          for (let tr = 5; tr >= 1; tr--) drawOrb(o.x - tr * 11, oy, 50 - tr * 4, (1 - tr / 6) * 0.75);
+          drawOrb(o.x, oy, 52, 1);
         }
       } else {
         orbs = [];
+        lastCast = -1;
       }
       this._cosRAF = requestAnimationFrame(loop);
     };
