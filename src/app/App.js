@@ -13,12 +13,13 @@ import { STAGES } from '../game/enemies.js';
 import { MODES, DIFFICULTY, TEAM_COLORS } from '../game/constants.js';
 import { ARENAS, ARENA_MAP, loadArenaImages, isPremiumArena } from '../game/arenas.js';
 import { loadItemImages } from '../game/items.js';
-import { loadVfxImages } from '../game/vfx.js';
+import { loadVfxImages, drawAura, ORB_IMAGES } from '../game/vfx.js';
 import { makePortraitCanvas } from '../game/portraits.js';
 import {
   loadAllSprites,
   loadPortraits,
   getSpriteSet,
+  frameForState,
   drawSpritePortrait,
   drawPaintedPortrait,
   getPortraitImage,
@@ -568,6 +569,7 @@ export class App {
 
   showScreen(name) {
     this.state = name;
+    if (name !== 'cosmetics') cancelAnimationFrame(this._cosRAF);
     this.root.querySelectorAll('.screen').forEach((el) => el.classList.add('hidden'));
     this.root.querySelector(`#screen-${name}`)?.classList.remove('hidden');
     if (name === 'menu') requestAnimationFrame(() => this.drawMenuScene());
@@ -2167,6 +2169,7 @@ export class App {
     // Preview mirrors what's equipped; "trying" a theme only changes preview.
     const eq = this._cosEquipped();
     this._cosPreview = { frame: eq.frame, aura: eq.aura, sp: eq.sp };
+    this._cosPreviewChar = this._cosPreviewChar || this.selection.character;
     this.showScreen('cosmetics');
     this.buildCosmetics();
   }
@@ -2201,21 +2204,114 @@ export class App {
     const stage = this.root.querySelector('#cos-preview');
     if (!stage) return;
     const p = this._cosPreview;
-    const tint = THEME_MAP[p.aura]?.tint || 0;
-    const glow = THEME_MAP[p.aura]?.color;
     stage.innerHTML = `
+      <button class="cos-navbtn" data-cos-nav="-1" aria-label="prev">‹</button>
       <div class="cos-manne">
-        ${p.aura ? `<span class="cos-aura-glow" style="--g:${glow}"></span>` : ''}
-        <span class="cos-portrait" data-portrait="${this.selection.character}" style="filter:${tint ? `hue-rotate(${tint}deg) saturate(1.25)` : 'none'}"></span>
+        <canvas class="cos-canvas" id="cos-canvas" width="260" height="260"></canvas>
         ${p.frame ? `<img class="cos-frame-img" src="${this._frameUrl(p.frame)}" alt="">` : ''}
       </div>
-      <div class="cos-sp-demo">
-        ${p.sp ? `<img class="cos-sp-orb" src="${this._orbUrl(SP_THEME[p.sp].orb)}" alt=""><span>SP: ${THEME_MAP[p.sp].name}</span>` : `<span class="cos-sp-none">No Special FX</span>`}
-      </div>`;
-    const holder = stage.querySelector('[data-portrait]');
-    if (holder) holder.appendChild(this.portraitCanvas(getCharacter(holder.dataset.portrait), 150));
+      <button class="cos-navbtn" data-cos-nav="1" aria-label="next">›</button>`;
+    stage.querySelectorAll('[data-cos-nav]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this._cyclePreviewChar(Number(btn.dataset.cosNav));
+      });
+    });
+    // Caption describes exactly what the CURRENT tab changes (SP vs Aura etc).
+    const caption = {
+      frame: t('Frame — a portrait border shown in menus'),
+      aura: t('Aura — a glowing energy field around your fighter'),
+      sp: t('Special FX — recolours your special-attack projectiles'),
+    }[this._cosTab];
     const hint = this.root.querySelector('#cos-hint');
-    if (hint) hint.textContent = t('Tap to preview · applies to every fighter');
+    if (hint) {
+      hint.innerHTML = `<b>${getCharacter(this._cosPreviewChar).name}</b> · ${caption}<br><span class="cos-subhint">${t('Tap a card to preview · applies to every fighter')}</span>`;
+    }
+    this._startCosPreviewLoop();
+  }
+
+  /** Switch which fighter the preview mannequin shows (wraps around). */
+  _cyclePreviewChar(dir) {
+    const roster = this._pickableRoster();
+    if (!roster.length) return;
+    let i = roster.findIndex((c) => c.id === this._cosPreviewChar);
+    if (i < 0) i = 0;
+    i = (i + dir + roster.length) % roster.length;
+    this._cosPreviewChar = roster[i].id;
+    this.audio.select?.();
+    this.haptics.tap();
+    this._renderCosPreview();
+  }
+
+  /** Live animated preview: real fighter sprite + aura + a demo SP projectile. */
+  _startCosPreviewLoop() {
+    cancelAnimationFrame(this._cosRAF);
+    const canvas = this.root.querySelector('#cos-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const cx = W / 2;
+    const feetY = H - 16;
+    const start = performance.now();
+    let orbs = [];
+    let nextOrb = 0;
+    const loop = (ts) => {
+      if (this.state !== 'cosmetics') return;
+      const time = (ts - start) / 1000;
+      const p = this._cosPreview;
+      ctx.clearRect(0, 0, W, H);
+
+      // aura behind the fighter (real in-game renderer)
+      const bodyH = H * 0.82;
+      if (p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.6, time, { alpha: 0.95 });
+
+      // the fighter's idle sprite, tinted to the aura theme
+      const char = getCharacter(this._cosPreviewChar);
+      const set = getSpriteSet(char.spriteBase || char.id);
+      if (set) {
+        const k = bodyH / set.refH;
+        const idx = frameForState(set, 'idle', time, time);
+        const flip = set.def.faceRight ? false : true;
+        const tint = THEME_MAP[p.aura]?.tint || 0;
+        ctx.save();
+        if (tint) ctx.filter = `hue-rotate(${tint}deg) saturate(1.25)`;
+        set.drawScaled(ctx, idx, cx, feetY, k, flip, 0);
+        ctx.restore();
+      }
+
+      // demo special-attack projectile so SP reads differently from the aura
+      if (p.sp) {
+        if (ts > nextOrb) { orbs.push({ x: cx - 30, t: 0 }); nextOrb = ts + 1400; }
+        const img = ORB_IMAGES[SP_THEME[p.sp].orb];
+        orbs = orbs.filter((o) => o.x < W + 40);
+        for (const o of orbs) {
+          o.t += 1 / 60;
+          o.x += 3.2;
+          const oy = feetY - bodyH * 0.52;
+          if (img && img.complete && img.naturalWidth) {
+            const h = 54;
+            const w = h * (img.naturalWidth / img.naturalHeight);
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.translate(o.x, oy);
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            ctx.restore();
+          } else {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = SP_THEME[p.sp].color;
+            ctx.beginPath();
+            ctx.arc(o.x, oy, 14, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      } else {
+        orbs = [];
+      }
+      this._cosRAF = requestAnimationFrame(loop);
+    };
+    this._cosRAF = requestAnimationFrame(loop);
   }
 
   _renderCosItems() {
@@ -2228,7 +2324,14 @@ export class App {
     wrap.classList.remove('cos-fade');
     void wrap.offsetWidth;
     wrap.classList.add('cos-fade');
-    wrap.innerHTML = COSMETIC_THEMES.map((th) => {
+    // "None" removes this slot's cosmetic (always free/owned).
+    const noneEq = !equippedKey;
+    const noneCard = `<div class="cos-card ${noneEq ? 'equipped' : ''} ${!previewKey ? 'previewing' : ''}" data-cos-try="">
+      <span class="cos-thumb cos-thumb-none">∅</span>
+      <span class="cos-cardname">${t('None')}</span>
+      ${noneEq ? `<span class="skin-eq">✓ ${t('Equipped')}</span>` : `<button class="btn btn-ghost btn-xs" data-cos-equip="">${t('Remove')}</button>`}
+    </div>`;
+    wrap.innerHTML = noneCard + COSMETIC_THEMES.map((th) => {
       const has = ownsCosmetic(slot, th.key, owned);
       const isEq = th.key === equippedKey;
       const price = cosmeticPrice(slot, th.key);
@@ -2265,12 +2368,13 @@ export class App {
   }
 
   async _equipCosmetic(slot, theme) {
-    const equipped = { ...this._cosEquipped(), [slot]: theme };
+    const val = theme || null; // '' (None) clears the slot
+    const equipped = { ...this._cosEquipped(), [slot]: val };
     this.profile = await StorageService.saveProfile({ cosmeticsEquipped: equipped });
-    this._cosPreview[slot] = theme;
+    this._cosPreview[slot] = val;
     this.audio.select?.();
     this.haptics.tap();
-    this.toast(tpl('{name} equipped', { name: THEME_MAP[theme].name }));
+    this.toast(val ? tpl('{name} equipped', { name: THEME_MAP[val].name }) : t('Removed'));
     this.buildCosmetics();
   }
 
