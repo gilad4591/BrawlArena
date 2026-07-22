@@ -2366,9 +2366,16 @@ export class App {
       const isEq = th.key === equippedKey;
       const price = cosmeticPrice(slot, th.key);
       let thumb = '';
-      if (slot === 'frame') thumb = `<img class="cos-thumb-img" src="${this._frameUrl(th.key)}" alt="">`;
-      else if (slot === 'sp') thumb = `<img class="cos-thumb-img orb" src="${this._orbUrl(SP_THEME[th.key].orb)}" alt="">`;
-      else thumb = `<span class="cos-thumb-glow" style="--g:${th.color}"></span>`;
+      if (slot === 'frame') {
+        thumb = `<img class="cos-thumb-img" src="${this._frameUrl(th.key)}" alt="">`;
+      } else if (slot === 'sp') {
+        const orb = SP_THEME[th.key]?.orb;
+        thumb = orb
+          ? `<img class="cos-thumb-img orb" src="${this._orbUrl(orb)}" alt="">`
+          : `<span class="cos-thumb-glow" style="--g:${th.color}"></span>`;
+      } else {
+        thumb = `<span class="cos-thumb-glow" style="--g:${th.color}"></span>`;
+      }
       const cta = isEq
         ? `<span class="skin-eq">✓ ${t('Equipped')}</span>`
         : has
