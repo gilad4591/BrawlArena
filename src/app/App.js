@@ -85,13 +85,18 @@ export class App {
     await loadVfxImages();
     // XP / unlocked roster (merge starters + purchased premium fighters).
     this.xp = this.profile.xp || 0;
-    this.coins = this.profile.coins || 0;
+    // Dev/test convenience: on localhost give unlimited coins so every cosmetic
+    // and premium unlock can be exercised without grinding.
+    this._dev = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(location.hostname);
+    this.coins = this._dev ? 999999 : (this.profile.coins || 0);
     this.quests = new QuestService();
     await this.quests.ensureDaily();
     this.unlocked = new Set([
       ...(this.profile.unlocked || []),
       ...STARTER_IDS,
       ...this.purchases.ownedCharacterIds(),
+      // Dev/test: unlock every fighter on localhost.
+      ...(this._dev ? CHARACTERS.map((c) => c.id) : []),
     ]);
     // Re-sync unlocks + refresh the storefront whenever an entitlement changes
     // (e.g. a restore resolves after launch).
@@ -2668,7 +2673,7 @@ export class App {
 
   // Premium content is only offered where it can actually be bought.
   _premiumEnabled() {
-    return this._isNative() && this._storeEnabled();
+    return this._dev || (this._isNative() && this._storeEnabled());
   }
 
   showHowto() {
