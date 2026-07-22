@@ -1,80 +1,68 @@
 /**
- * Cosmetics = three INDEPENDENT, account-wide slots the player can "wear"
- * together and swap freely:
- *   - frame : an ornate portrait border (UI only)
- *   - aura  : an animated elemental aura around the fighter in-world
- *   - sp    : recolours/re-themes the fighter's special-attack projectiles
+ * Cosmetics are ELEMENT-LOCKED and bought PER CHARACTER.
  *
- * Each slot offers the same 6 elemental THEMES. Items are bought once with Coins
- * (account-wide, not per character) and are intentionally pricey. An equipped
- * theme also gives the body a matching hue-rotate tint (via the aura slot).
+ * Every fighter has a fixed signature element (characters.js `element`), and can
+ * own+equip up to three cosmetics, each shown in that element's colour:
+ *   - frame : ornate portrait border (character-select + HUD)
+ *   - aura  : animated elemental energy ring around the fighter in battle
+ *   - sp    : upgraded special-attack projectile look (glow + comet trail)
+ *
+ * There is no free theme choice — the element is decided by the character, so
+ * you never get "fire on an ice fighter". Items are bought once per character
+ * per slot with Coins.
  *
  * Storage:
- *   profile.cosmeticsOwned    = ['aura:void', 'frame:divine', ...]
- *   profile.cosmeticsEquipped = { frame:'divine'|null, aura:'void'|null, sp:null }
+ *   profile.cosmeticsOwned    = ['blaze:aura', 'frost:frame', ...]  ("charId:slot")
+ *   profile.cosmeticsEquipped = { blaze: { aura:true }, frost:{ frame:true } }
  */
-export const COSMETIC_THEMES = [
-  { key: 'inferno', name: 'Inferno', tint: 8, color: '#ff6a2b', tier: 1 },
-  { key: 'frost', name: 'Frost', tint: 195, color: '#8fdcff', tier: 1 },
-  { key: 'storm', name: 'Storm', tint: 215, color: '#8ab6ff', tier: 2 },
-  { key: 'toxic', name: 'Toxic', tint: 110, color: '#9dff45', tier: 2 },
-  { key: 'divine', name: 'Divine', tint: 45, color: '#ffd76a', tier: 3 },
-  { key: 'void', name: 'Void', tint: 285, color: '#c06bff', tier: 4 },
-];
 
-export const COSMETIC_SLOTS = [
-  { key: 'frame', name: 'Frame', base: 350 },
-  { key: 'aura', name: 'Aura', base: 550 },
-  { key: 'sp', name: 'Special FX', base: 800 },
-];
-
-const TIER_MULT = { 1: 1, 2: 1.4, 3: 1.9, 4: 2.5 };
-
-export const THEME_MAP = Object.fromEntries(COSMETIC_THEMES.map((t) => [t.key, t]));
-export const SLOT_MAP = Object.fromEntries(COSMETIC_SLOTS.map((s) => [s.key, s]));
-
-// Special-attack theme -> which painted orb sprite + trail colour to use.
-export const SP_THEME = {
-  inferno: { orb: 'fire', color: '#ff7a2b' },
-  frost: { orb: 'ice', color: '#8fdcff' },
-  storm: { orb: 'lightning', color: '#a9c8ff' },
-  toxic: { orb: 'toxic', color: '#9dff45' },
-  divine: { orb: 'holy', color: '#ffe08a' },
-  void: { orb: 'void', color: '#c06bff' },
+// The six elements (matches aura_/frame_ sheets + orb sprites).
+export const ELEMENTS = {
+  inferno: { name: 'Inferno', color: '#ff7a2b', orb: 'fire' },
+  frost: { name: 'Frost', color: '#8fdcff', orb: 'ice' },
+  storm: { name: 'Storm', color: '#a9c8ff', orb: 'lightning' },
+  toxic: { name: 'Toxic', color: '#9dff45', orb: 'toxic' },
+  divine: { name: 'Divine', color: '#ffe08a', orb: 'holy' },
+  void: { name: 'Void', color: '#c06bff', orb: 'void' },
 };
 
-export function cosmeticId(slot, theme) {
-  return `${slot}:${theme}`;
+// Slots + flat per-character prices (frame cheapest, SP FX priciest).
+export const COSMETIC_SLOTS = [
+  { key: 'frame', name: 'Frame', price: 300 },
+  { key: 'aura', name: 'Aura', price: 500 },
+  { key: 'sp', name: 'Special FX', price: 700 },
+];
+
+export const SLOT_MAP = Object.fromEntries(COSMETIC_SLOTS.map((s) => [s.key, s]));
+
+// Special-attack theme -> painted orb + trail colour, keyed by element so the
+// Projectile renderer can recolour/re-orb a player's specials.
+export const SP_THEME = Object.fromEntries(
+  Object.entries(ELEMENTS).map(([k, v]) => [k, { orb: v.orb, color: v.color }]),
+);
+
+/** Signature element for a character (accepts the character object or an id). */
+export function charElement(char) {
+  if (!char) return 'inferno';
+  return (typeof char === 'string' ? null : char.element) || 'inferno';
 }
 
-export function cosmeticPrice(slot, theme) {
-  const s = SLOT_MAP[slot];
-  const t = THEME_MAP[theme];
-  if (!s || !t) return 0;
-  return Math.round((s.base * TIER_MULT[t.tier]) / 10) * 10;
+/** Storage id for a cosmetic (one per character per slot). */
+export function cosmeticId(charId, slot) {
+  return `${charId}:${slot}`;
 }
 
-export function ownsCosmetic(slot, theme, owned = []) {
-  return owned.includes(cosmeticId(slot, theme));
+/** Flat coin price for a slot. */
+export function cosmeticPrice(slot) {
+  return SLOT_MAP[slot]?.price || 0;
 }
 
-/** Theme key equipped in a slot (null if none). */
-export function equippedTheme(slot, equipped = {}) {
-  return equipped?.[slot] || null;
+/** Does the profile own this character's cosmetic for the slot? */
+export function ownsCosmetic(owned, charId, slot) {
+  return (owned || []).includes(cosmeticId(charId, slot));
 }
 
-/** Body hue-rotate for the player: follows the equipped AURA theme. */
-export function equippedTint(equipped = {}) {
-  const t = THEME_MAP[equipped?.aura];
-  return t ? t.tint : 0;
-}
-
-/** Equipped aura theme id (null if none). */
-export function equippedAura(equipped = {}) {
-  return equipped?.aura || null;
-}
-
-/** Equipped special-fx theme id (null if none). */
-export function equippedSp(equipped = {}) {
-  return equipped?.sp || null;
+/** Is this character's slot cosmetic currently equipped? */
+export function isEquipped(equipped, charId, slot) {
+  return !!equipped?.[charId]?.[slot];
 }

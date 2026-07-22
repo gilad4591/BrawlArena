@@ -171,7 +171,7 @@ export class GameEngine {
     if (this.human && config.playerTint) this.human.tint = config.playerTint;
     if (this.human) {
       this.human.skinAura = config.playerAura || null;
-      this.human.spTheme = config.playerSpTheme || null;
+      this.human.spFx = config.playerSpFx || null;
     }
 
     this.shake = 0;

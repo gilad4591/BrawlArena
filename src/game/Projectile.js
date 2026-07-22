@@ -15,12 +15,15 @@ export class Projectile {
     this.radius = spec.radius;
     this.damage = spec.damage;
     this.color = spec.color;
-    // Cosmetic SP theme (player only): recolour + re-orb the projectile.
     this.orbName = spec.orb;
-    const th = owner.spTheme && SP_THEME[owner.spTheme];
-    if (th) {
-      this.color = th.color;
-      this.orbName = th.orb;
+    // Cosmetic Special-FX upgrade (player only): element-matched, enhanced look
+    // (bigger orb, longer glowing comet trail, brighter core).
+    this.enhanced = false;
+    const fx = (owner.spFx && SP_THEME[owner.spFx]) || (owner.spTheme && SP_THEME[owner.spTheme]);
+    if (fx) {
+      this.color = fx.color;
+      this.orbName = fx.orb;
+      this.enhanced = !!owner.spFx;
     }
     this.knockback = spec.knockback ?? 1;
     this.freeze = spec.freeze ?? 0;
@@ -60,7 +63,7 @@ export class Projectile {
     this.z = Math.max(0, Math.min(ARENA_DEPTH, this.z));
 
     this.trail.unshift({ x: this.x, z: this.z, y: this.y });
-    if (this.trail.length > 6) this.trail.pop();
+    if (this.trail.length > (this.enhanced ? 12 : 6)) this.trail.pop();
   }
 
   render(ctx, view) {
@@ -68,16 +71,18 @@ export class Projectile {
     // additive blend makes energy orbs + trails glow against the arena
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    // trail
+    // trail (longer + fatter when the Special-FX upgrade is equipped)
+    const trailBoost = this.enhanced ? 0.75 : 0.4;
+    const trailW = this.enhanced ? 1.0 : 0.6;
     for (let i = this.trail.length - 1; i >= 0; i -= 1) {
       const t = this.trail[i];
       const sx = view.screenX(t.x);
       const sy = view.screenY(t.x, t.z, t.y);
-      const a = (1 - i / this.trail.length) * 0.4;
+      const a = (1 - i / this.trail.length) * trailBoost;
       ctx.globalAlpha = a;
       ctx.fillStyle = this.color;
       ctx.beginPath();
-      ctx.arc(sx, sy, this.radius * scale * (0.6 + a), 0, Math.PI * 2);
+      ctx.arc(sx, sy, this.radius * scale * (trailW + a), 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -86,10 +91,23 @@ export class Projectile {
     const sy = view.screenY(this.x, this.z, this.y);
     const r = this.radius * scale;
 
+    // Extra glow bloom behind the enhanced orb.
+    if (this.enhanced) {
+      const bloom = ctx.createRadialGradient(sx, sy, 1, sx, sy, r * 3.2);
+      bloom.addColorStop(0, this.color);
+      bloom.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = bloom;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r * 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
     // Painted orb sprite (glowing energy ball) if this spec has one.
     const img = this.orbName && ORB_IMAGES[this.orbName];
     if (img && img.complete && img.naturalWidth) {
-      const h = r * 3.6;
+      const h = r * (this.enhanced ? 4.8 : 3.6);
       const w = h * (img.naturalWidth / img.naturalHeight);
       ctx.translate(sx, sy);
       // sheet orbs point left; flip so the tail trails behind travel direction

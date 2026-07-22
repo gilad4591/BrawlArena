@@ -40,9 +40,9 @@ const DEFAULT_PROFILE = {
   survivalBest: 0,
   ownedSkins: [], // legacy per-character tint skins (kept for back-compat)
   equippedSkins: {}, // legacy: charId -> skinId
-  // account-wide cosmetics (frame / aura / sp slots x elemental themes)
-  cosmeticsOwned: [], // ['aura:void', 'frame:divine', ...]
-  cosmeticsEquipped: { frame: null, aura: null, sp: null },
+  // per-character, element-locked cosmetics (frame / aura / sp per fighter)
+  cosmeticsOwned: [], // ['blaze:aura', 'frost:frame', ...] ("charId:slot")
+  cosmeticsEquipped: {}, // { blaze: { aura: true }, frost: { frame: true } }
   adNudged: false, // one-time "remove ads?" prompt shown
 };
 

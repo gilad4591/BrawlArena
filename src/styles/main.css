@@ -1013,6 +1013,16 @@ body,
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
 }
 
+/* Human player's equipped element frame around their HUD avatar. */
+.hud-frame {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  pointer-events: none;
+  z-index: 2;
+}
+
 .hud-bars {
   flex: 1;
   min-width: 0;
@@ -2718,6 +2728,66 @@ body,
 }
 .cos-tab:active { transform: scale(0.96); }
 
+/* ---- step 1: fighter picker ---- */
+#screen-cosmetics.picking .cos-stage { display: none; }
+.cos-roster {
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)) !important;
+}
+.cos-charcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px 10px;
+  border-radius: 14px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  cursor: pointer;
+  transition: transform 0.08s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cos-charcard:hover { border-color: color-mix(in srgb, var(--g) 60%, transparent); }
+.cos-charcard:active { transform: scale(0.97); }
+.cos-charportrait { display: block; width: 84px; height: 84px; line-height: 0; }
+.cos-charportrait canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.cos-eqbadge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #0b0e1a;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cos-eqbadge.owned { background: #6b7299; color: #fff; }
+
+/* ---- step 2: detail header + slot cards ---- */
+.cos-detailhead {
+  align-items: center;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+}
+.cos-detailtitle { display: flex; flex-direction: column; line-height: 1.25; }
+.cos-detailtitle b { font-size: 1.05rem; }
+.cos-slots {
+  grid-template-columns: repeat(3, 1fr) !important;
+  max-width: 480px;
+}
+.cos-slotname { font-weight: 800; font-size: 0.86rem; color: #cfd6f2; }
+
 .cos-stage {
   display: flex;
   flex-direction: column;
@@ -2807,6 +2877,22 @@ body,
   border-radius: 50%;
   background: radial-gradient(circle, var(--g) 0%, transparent 70%);
   box-shadow: 0 0 16px var(--g);
+}
+/* Frame thumbnails: fighter bust with the element border overlaid on top. */
+.cos-thumb.is-frame { position: relative; }
+.cos-thumb-portrait { display: block; width: 74%; height: 74%; line-height: 0; }
+.cos-thumb-portrait canvas { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; }
+.cos-thumb-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.cos-elem {
+  font-weight: 800;
+  color: var(--g);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--g) 55%, transparent);
 }
 .cos-cardname { font-weight: 700; font-size: 0.82rem; }
 .skin-eq {

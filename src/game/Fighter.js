@@ -108,7 +108,8 @@ export class Fighter {
     this.spriteSet = getSpriteSet(character.spriteBase || character.id);
     this.tint = character.tint || 0;
     this.skinAura = null; // elemental aura theme from the player's equipped skin
-    this.spTheme = null; // special-attack fx theme from the player's equipped skin
+    this.spTheme = null; // legacy: special-attack fx theme
+    this.spFx = null; // element of the equipped Special-FX upgrade (enhanced projectiles)
   }
 
   /** True once the corpse has fully faded and should no longer be drawn. */

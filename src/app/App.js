@@ -32,9 +32,8 @@ import { dailyStatus, applyDailyClaim, DAILY_REWARDS } from '../services/DailyRe
 import { questDesc, isClaimable } from '../game/quests.js';
 import { ACHIEVEMENTS } from '../game/achievements.js';
 import {
-  COSMETIC_THEMES, COSMETIC_SLOTS, THEME_MAP, SLOT_MAP, SP_THEME,
-  cosmeticId, cosmeticPrice, ownsCosmetic, equippedTheme,
-  equippedTint, equippedAura, equippedSp,
+  ELEMENTS, COSMETIC_SLOTS, SLOT_MAP, SP_THEME,
+  cosmeticId, cosmeticPrice, ownsCosmetic, isEquipped, charElement,
 } from '../game/cosmetics.js';
 import { t, tpl, getLang, setLang, attachTranslator, retranslate } from '../i18n.js';
 
@@ -981,13 +980,12 @@ export class App {
       const detailPortrait = detail.querySelector('[data-portrait]');
       if (detailPortrait) {
         const cv = this.portraitCanvas(c, 112);
-        cv.style.filter = this._skinFilter(); // tint the body, not the frame
         detailPortrait.appendChild(cv);
-        const frameTheme = equippedTheme('frame', this._cosEquipped());
-        if (frameTheme) {
+        // Show this fighter's element frame when its frame cosmetic is equipped.
+        if (isEquipped(this._cosEquipped(), c.id, 'frame')) {
           const fr = document.createElement('img');
           fr.className = 'portrait-frame';
-          fr.src = this._frameUrl(frameTheme);
+          fr.src = this._frameUrl(this._charElement(c.id));
           detailPortrait.appendChild(fr);
         }
       }
@@ -1265,7 +1263,7 @@ export class App {
       playerName: this.profile.name,
       playerTint: this._playerTint(),
       playerAura: this._playerAura(),
-      playerSpTheme: this._playerSpTheme(),
+      playerSpFx: this._playerSpFx(),
       reduceMotion: this.settings.reduceMotion,
       excludePremium: !this._premiumEnabled(),
     });
@@ -1380,7 +1378,7 @@ export class App {
       playerName: this.profile.name,
       playerTint: this._playerTint(),
       playerAura: this._playerAura(),
-      playerSpTheme: this._playerSpTheme(),
+      playerSpFx: this._playerSpFx(),
       reduceMotion: this.settings.reduceMotion,
     });
     this._afterStart();
@@ -1434,6 +1432,16 @@ export class App {
       const holder = el.querySelector('[data-portrait]');
       const char = this._hudChars[el.dataset.id];
       if (holder && char) holder.appendChild(this.portraitCanvas(char, 30));
+      // The human player's equipped element frame decorates their HUD avatar.
+      if (holder && el.classList.contains('human')) {
+        const frameEl = this._playerFrame();
+        if (frameEl) {
+          const fr = document.createElement('img');
+          fr.className = 'hud-frame';
+          fr.src = this._frameUrl(frameEl);
+          holder.appendChild(fr);
+        }
+      }
       this.hudEls[el.dataset.id] = {
         root: el,
         hp: el.querySelector('[data-hp]'),
@@ -1759,9 +1767,14 @@ export class App {
   }
 
   // ------------------------------------------------- economy + engagement
-  /** Cosmetic hue-rotate for the currently-selected fighter's equipped skin. */
+  /** Per-character equipped cosmetics map: { charId: { frame, aura, sp } }. */
   _cosEquipped() {
-    return this.profile?.cosmeticsEquipped || { frame: null, aura: null, sp: null };
+    return this.profile?.cosmeticsEquipped || {};
+  }
+
+  /** The element a given character's cosmetics render in. */
+  _charElement(id) {
+    return charElement(getCharacter(id));
   }
 
   _playerTint() {
@@ -1769,17 +1782,25 @@ export class App {
     return 0;
   }
 
-  /** Elemental aura theme from the equipped aura cosmetic. */
+  /** Aura element for the SELECTED fighter, only if its aura is equipped. */
   _playerAura() {
-    return equippedAura(this._cosEquipped());
+    const id = this.selection.character;
+    return isEquipped(this._cosEquipped(), id, 'aura') ? this._charElement(id) : null;
   }
 
-  /** Special-fx theme from the equipped SP cosmetic. */
-  _playerSpTheme() {
-    return equippedSp(this._cosEquipped());
+  /** Special-FX element for the SELECTED fighter, only if its SP FX is equipped. */
+  _playerSpFx() {
+    const id = this.selection.character;
+    return isEquipped(this._cosEquipped(), id, 'sp') ? this._charElement(id) : null;
   }
 
-  /** Portraits are no longer recoloured by the equipped aura. */
+  /** Frame element for the SELECTED fighter, only if its frame is equipped. */
+  _playerFrame() {
+    const id = this.selection.character;
+    return isEquipped(this._cosEquipped(), id, 'frame') ? this._charElement(id) : null;
+  }
+
+  /** Portraits are no longer recoloured by cosmetics. */
   _skinFilter() {
     return '';
   }
@@ -2038,7 +2059,7 @@ export class App {
       playerName: this.profile.name,
       playerTint: this._playerTint(),
       playerAura: this._playerAura(),
-      playerSpTheme: this._playerSpTheme(),
+      playerSpFx: this._playerSpFx(),
       reduceMotion: this.settings.reduceMotion,
     });
     this._afterStart();
@@ -2170,11 +2191,11 @@ export class App {
 
   // ---- cosmetics: frame / aura / sp slots, try-before-buy, per-slot tabs ----
   showCosmetics() {
+    // Two-step flow: pick a fighter first, then customise it. Always start on
+    // the fighter picker so the screen isn't a wall of options at once.
+    this._cosStep = 'pick';
     this._cosTab = this._cosTab || 'frame';
-    // Preview mirrors what's equipped; "trying" a theme only changes preview.
-    const eq = this._cosEquipped();
-    this._cosPreview = { frame: eq.frame, aura: eq.aura, sp: eq.sp };
-    this._cosPreviewChar = this._cosPreviewChar || this.selection.character;
+    this._cosChar = this._cosChar || this.selection.character;
     this.showScreen('cosmetics');
     this.buildCosmetics();
   }
@@ -2186,19 +2207,77 @@ export class App {
 
   buildCosmetics() {
     this._updateCurrencyUi();
+    if (this._cosStep === 'detail') this._buildCosDetail();
+    else this._buildCosPick();
+  }
+
+  /** Step 1 — choose which fighter to customise. */
+  _buildCosPick() {
+    cancelAnimationFrame(this._cosRAF);
+    this.root.querySelector('#screen-cosmetics')?.classList.add('picking');
     const tabs = this.root.querySelector('#cos-tabs');
-    if (tabs) {
-      tabs.innerHTML = COSMETIC_SLOTS.map(
-        (s) => `<button class="cos-tab ${s.key === this._cosTab ? 'active' : ''}" data-cos-tab="${s.key}">${s.name}</button>`,
-      ).join('');
-      tabs.querySelectorAll('[data-cos-tab]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          if (this._cosTab === btn.dataset.cosTab) return;
-          this._cosTab = btn.dataset.cosTab;
-          this.audio.select?.();
-          this.haptics.tap();
-          this.buildCosmetics();
-        });
+    if (tabs) tabs.innerHTML = '';
+    const hint = this.root.querySelector('#cos-hint');
+    if (hint) hint.textContent = t('Choose a fighter to customise');
+    const wrap = this.root.querySelector('#cos-items');
+    if (!wrap) return;
+    const owned = this.profile.cosmeticsOwned || [];
+    const equipped = this._cosEquipped();
+    wrap.className = 'cos-items cos-roster cos-fade';
+    void wrap.offsetWidth;
+    wrap.innerHTML = this._pickableRoster().map((c) => {
+      const el = charElement(c);
+      const elem = ELEMENTS[el];
+      const eqCount = COSMETIC_SLOTS.filter((s) => isEquipped(equipped, c.id, s.key)).length;
+      const owCount = COSMETIC_SLOTS.filter((s) => ownsCosmetic(owned, c.id, s.key)).length;
+      const badge = eqCount
+        ? `<span class="cos-eqbadge" title="${t('Equipped')}">${eqCount}</span>`
+        : owCount
+          ? `<span class="cos-eqbadge owned">${owCount}</span>`
+          : '';
+      return `<button class="cos-charcard" data-cos-pick="${c.id}" style="--g:${elem.color}">
+        <span class="cos-charportrait" data-portrait="${c.id}"></span>
+        ${badge}
+        <span class="cos-cardname">${c.name}</span>
+        <span class="cos-elem" style="--g:${elem.color}">${elem.name}</span>
+      </button>`;
+    }).join('');
+    wrap.querySelectorAll('[data-portrait]').forEach((holder) => {
+      holder.appendChild(this.portraitCanvas(getCharacter(holder.dataset.portrait), 84));
+    });
+    wrap.querySelectorAll('[data-cos-pick]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this._cosChar = btn.dataset.cosPick;
+        this._cosStep = 'detail';
+        this._cosTab = 'frame';
+        this.audio.select?.();
+        this.haptics.tap();
+        this.buildCosmetics();
+      });
+    });
+  }
+
+  /** Step 2 — the chosen fighter's three upgrade slots + live preview. */
+  _buildCosDetail() {
+    this.root.querySelector('#screen-cosmetics')?.classList.remove('picking');
+    const id = this._cosChar;
+    const el = this._charElement(id);
+    const elem = ELEMENTS[el];
+    const head = this.root.querySelector('#cos-tabs');
+    if (head) {
+      head.className = 'cos-tabs cos-detailhead';
+      head.innerHTML = `
+        <button class="btn btn-ghost btn-sm" data-cos-back>‹ ${t('Fighters')}</button>
+        <div class="cos-detailtitle">
+          <b>${getCharacter(id).name}</b>
+          <span class="cos-elem" style="--g:${elem.color}">${elem.name}</span>
+        </div>`;
+      head.querySelector('[data-cos-back]')?.addEventListener('click', () => {
+        cancelAnimationFrame(this._cosRAF);
+        this._cosStep = 'pick';
+        this.audio.select?.();
+        this.haptics.tap();
+        this.buildCosmetics();
       });
     }
     this._renderCosPreview();
@@ -2209,12 +2288,13 @@ export class App {
     const stage = this.root.querySelector('#cos-preview');
     if (!stage) return;
     cancelAnimationFrame(this._cosRAF);
-    const p = this._cosPreview;
     const tab = this._cosTab;
-    // FRAME lives on the character-select portrait, so preview a bust. AURA/SP
-    // are in-world, so preview the actual 2D fighter with just that effect.
+    const id = this._cosChar;
+    const el = this._charElement(id);
+    // FRAME lives on the character-select portrait, so preview a bust + frame.
+    // AURA/SP are in-world, so preview the actual 2D fighter with that effect.
     const inner = tab === 'frame'
-      ? `<span class="cos-portrait" data-portrait="${this._cosPreviewChar}">${p.frame ? `<img class="cos-frame-img" src="${this._frameUrl(p.frame)}" alt="">` : ''}</span>`
+      ? `<span class="cos-portrait" data-portrait="${id}"><img class="cos-frame-img" src="${this._frameUrl(el)}" alt=""></span>`
       : `<canvas class="cos-canvas" id="cos-canvas" width="260" height="260"></canvas>`;
     stage.innerHTML = `
       <button class="cos-navbtn" data-cos-nav="-1" aria-label="prev">‹</button>
@@ -2226,15 +2306,16 @@ export class App {
     const caption = {
       frame: t('Frame — a portrait border shown in menus & selection'),
       aura: t('Aura — a glowing energy field around your fighter'),
-      sp: t('Special FX — recolours your special-attack projectiles'),
+      sp: t('Special FX — supercharged special-attack projectiles'),
     }[tab];
     const hint = this.root.querySelector('#cos-hint');
     if (hint) {
-      hint.innerHTML = `<b>${getCharacter(this._cosPreviewChar).name}</b> · ${caption}<br><span class="cos-subhint">${t('Tap a card to preview · applies to every fighter')}</span>`;
+      const elem = ELEMENTS[el];
+      hint.innerHTML = `<b>${getCharacter(id).name}</b> · <span class="cos-elem" style="--g:${elem.color}">${elem.name}</span> · ${caption}<br><span class="cos-subhint">${t('Each fighter wears its own element')}</span>`;
     }
     if (tab === 'frame') {
       const holder = stage.querySelector('[data-portrait]');
-      if (holder) holder.appendChild(this.portraitCanvas(getCharacter(this._cosPreviewChar), 168));
+      if (holder) holder.appendChild(this.portraitCanvas(getCharacter(id), 168));
     } else {
       this._startCosPreviewLoop();
     }
@@ -2244,13 +2325,14 @@ export class App {
   _cyclePreviewChar(dir) {
     const roster = this._pickableRoster();
     if (!roster.length) return;
-    let i = roster.findIndex((c) => c.id === this._cosPreviewChar);
+    let i = roster.findIndex((c) => c.id === this._cosChar);
     if (i < 0) i = 0;
     i = (i + dir + roster.length) % roster.length;
-    this._cosPreviewChar = roster[i].id;
+    this._cosChar = roster[i].id;
     this.audio.select?.();
     this.haptics.tap();
-    this._renderCosPreview();
+    // Rebuild so the detail header (name + element) tracks the new fighter too.
+    this.buildCosmetics();
   }
 
   /** Live animated preview: real fighter sprite + aura + a demo SP projectile. */
@@ -2270,14 +2352,15 @@ export class App {
     const loop = (ts) => {
       if (this.state !== 'cosmetics') return;
       const time = (ts - start) / 1000;
-      const p = this._cosPreview;
       const tab = this._cosTab;
       const bodyH = H * 0.82;
-      const char = getCharacter(this._cosPreviewChar);
+      const id = this._cosChar;
+      const el = this._charElement(id);
+      const char = getCharacter(id);
       const set = getSpriteSet(char.spriteBase || char.id);
       ctx.clearRect(0, 0, W, H);
 
-      const isSp = tab === 'sp' && !!p.sp;
+      const isSp = tab === 'sp';
       const oy = feetY - bodyH * 0.54;
       const handX = cx + bodyH * 0.16;
 
@@ -2292,7 +2375,7 @@ export class App {
       const casting = isSp && sinceFire < 0.34; // wind-up/release pose window
 
       // AURA: same scale/alpha as the real in-game renderer so it reads identically.
-      if (tab === 'aura' && p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.72, time, { alpha: 0.9 });
+      if (tab === 'aura') drawAura(ctx, el, cx, feetY, bodyH * 1.72, time, { alpha: 0.9 });
 
       // ---- the fighter sprite (special pose while casting, else idle) ----
       const flip = set && set.def.faceRight ? false : true; // fighters normalise to face RIGHT
@@ -2308,7 +2391,7 @@ export class App {
 
       // ---- projectile + trail + muzzle flash on the SP tab ----
       if (isSp) {
-        const sp = SP_THEME[p.sp];
+        const sp = SP_THEME[el];
         const img = ORB_IMAGES[sp.orb];
         const drawOrb = (x, y, h, alpha) => {
           ctx.save();
@@ -2345,79 +2428,74 @@ export class App {
   _renderCosItems() {
     const wrap = this.root.querySelector('#cos-items');
     if (!wrap) return;
-    const slot = this._cosTab;
+    const id = this._cosChar;
+    const el = this._charElement(id);
+    const elem = ELEMENTS[el];
     const owned = this.profile.cosmeticsOwned || [];
-    const equippedKey = equippedTheme(slot, this._cosEquipped());
-    const previewKey = this._cosPreview[slot];
-    wrap.classList.remove('cos-fade');
+    const equipped = this._cosEquipped();
+    wrap.className = 'cos-items cos-slots cos-fade';
     void wrap.offsetWidth;
-    wrap.classList.add('cos-fade');
-    // "None" removes this slot's cosmetic (always free/owned).
-    const noneEq = !equippedKey;
-    const noneCard = `<div class="cos-card ${noneEq ? 'equipped' : ''} ${!previewKey ? 'previewing' : ''}" data-cos-try="">
-      <span class="cos-thumb cos-thumb-none">∅</span>
-      <span class="cos-cardname">${t('None')}</span>
-      ${noneEq ? `<span class="skin-eq">✓ ${t('Equipped')}</span>` : `<button class="btn btn-ghost btn-xs" data-cos-equip="">${t('Remove')}</button>`}
-    </div>`;
-    wrap.innerHTML = noneCard + COSMETIC_THEMES.map((th) => {
-      const has = ownsCosmetic(slot, th.key, owned);
-      const isEq = th.key === equippedKey;
-      const price = cosmeticPrice(slot, th.key);
+    // One card per SLOT (Frame / Aura / SP FX) for the chosen fighter.
+    wrap.innerHTML = COSMETIC_SLOTS.map((s) => {
+      const slot = s.key;
+      const has = ownsCosmetic(owned, id, slot);
+      const isEq = isEquipped(equipped, id, slot);
+      const price = cosmeticPrice(slot);
       let thumb = '';
       if (slot === 'frame') {
-        thumb = `<img class="cos-thumb-img" src="${this._frameUrl(th.key)}" alt="">`;
+        thumb = `<span class="cos-thumb-portrait" data-portrait="${id}"></span><img class="cos-thumb-frame" src="${this._frameUrl(el)}" alt="">`;
       } else if (slot === 'sp') {
-        const orb = SP_THEME[th.key]?.orb;
-        thumb = orb
-          ? `<img class="cos-thumb-img orb" src="${this._orbUrl(orb)}" alt="">`
-          : `<span class="cos-thumb-glow" style="--g:${th.color}"></span>`;
+        thumb = `<img class="cos-thumb-img orb" src="${this._orbUrl(elem.orb)}" alt="">`;
       } else {
-        thumb = `<span class="cos-thumb-glow" style="--g:${th.color}"></span>`;
+        thumb = `<span class="cos-thumb-glow" style="--g:${elem.color}"></span>`;
       }
       const cta = isEq
-        ? `<span class="skin-eq">✓ ${t('Equipped')}</span>`
+        ? `<button class="btn btn-ghost btn-xs" data-cos-toggle="off">✓ ${t('Equipped')}</button>`
         : has
-          ? `<button class="btn btn-primary btn-xs" data-cos-equip="${th.key}">${t('Equip')}</button>`
-          : `<button class="btn btn-secondary btn-xs" data-cos-buy="${th.key}">${this._coinIco('coin-ico-xs')}${price}</button>`;
-      return `<div class="cos-card ${isEq ? 'equipped' : ''} ${th.key === previewKey ? 'previewing' : ''}" data-cos-try="${th.key}">
-        <span class="cos-thumb theme-${th.key}">${thumb}</span>
-        <span class="cos-cardname">${th.name}</span>${cta}</div>`;
+          ? `<button class="btn btn-primary btn-xs" data-cos-toggle="on">${t('Equip')}</button>`
+          : `<button class="btn btn-secondary btn-xs" data-cos-buy="1">${this._coinIco('coin-ico-xs')}${price}</button>`;
+      return `<div class="cos-card ${isEq ? 'equipped' : ''} ${slot === this._cosTab ? 'previewing' : ''}" data-cos-slot="${slot}">
+        <span class="cos-slotname">${s.name}</span>
+        <span class="cos-thumb theme-${el} ${slot === 'frame' ? 'is-frame' : ''}">${thumb}</span>
+        ${cta}</div>`;
     }).join('');
 
-    wrap.querySelectorAll('[data-cos-try]').forEach((card) => {
+    wrap.querySelectorAll('.cos-thumb-portrait[data-portrait]').forEach((holder) => {
+      holder.appendChild(this.portraitCanvas(getCharacter(holder.dataset.portrait), 72));
+    });
+    wrap.querySelectorAll('[data-cos-slot]').forEach((card) => {
+      const slot = card.dataset.cosSlot;
       card.addEventListener('click', (e) => {
-        if (e.target.closest('[data-cos-equip],[data-cos-buy]')) return;
-        this._cosPreview[slot] = card.dataset.cosTry;
+        const tgl = e.target.closest('[data-cos-toggle]');
+        if (tgl) { this._toggleEquip(id, slot, tgl.dataset.cosToggle === 'on'); return; }
+        if (e.target.closest('[data-cos-buy]')) { this._buyCosmetic(id, slot); return; }
+        if (this._cosTab === slot) return;
+        this._cosTab = slot;
         this.audio.select?.();
         this.haptics.tap();
         this._renderCosPreview();
         this._renderCosItems();
       });
     });
-    wrap.querySelectorAll('[data-cos-equip]').forEach((btn) => {
-      btn.addEventListener('click', () => this._equipCosmetic(slot, btn.dataset.cosEquip));
-    });
-    wrap.querySelectorAll('[data-cos-buy]').forEach((btn) => {
-      btn.addEventListener('click', () => this._buyCosmetic(slot, btn.dataset.cosBuy));
-    });
   }
 
-  async _equipCosmetic(slot, theme) {
-    const val = theme || null; // '' (None) clears the slot
-    const equipped = { ...this._cosEquipped(), [slot]: val };
+  async _toggleEquip(charId, slot, on) {
+    const equipped = { ...this._cosEquipped() };
+    equipped[charId] = { ...(equipped[charId] || {}), [slot]: on };
     this.profile = await StorageService.saveProfile({ cosmeticsEquipped: equipped });
-    this._cosPreview[slot] = val;
+    this._cosChar = charId;
     this.audio.select?.();
     this.haptics.tap();
-    this.toast(val ? tpl('{name} equipped', { name: THEME_MAP[val].name }) : t('Removed'));
+    this.toast(on ? tpl('{name} equipped', { name: SLOT_MAP[slot].name }) : t('Removed'));
     this.buildCosmetics();
   }
 
-  async _buyCosmetic(slot, theme) {
-    const price = cosmeticPrice(slot, theme);
-    const label = `${THEME_MAP[theme].name} ${SLOT_MAP[slot].name}`;
-    // Preview it first so the confirm dialog reflects what they'll get.
-    this._cosPreview[slot] = theme;
+  async _buyCosmetic(charId, slot) {
+    const price = cosmeticPrice(slot);
+    const c = getCharacter(charId);
+    const label = `${c.name} ${SLOT_MAP[slot].name}`;
+    // Browse to it first so the confirm dialog reflects what they'll get.
+    this._cosChar = charId;
     this._renderCosPreview();
     this._renderCosItems();
 
@@ -2436,9 +2514,10 @@ export class App {
     if (!ok) return;
     if (this.coins < price) { this.toast(t('Not enough coins')); return; }
     this.coins -= price;
-    const cosmeticsOwned = [...(this.profile.cosmeticsOwned || []), cosmeticId(slot, theme)];
-    const cosmeticsEquipped = { ...this._cosEquipped(), [slot]: theme };
-    this.profile = await StorageService.saveProfile({ coins: this.coins, cosmeticsOwned, cosmeticsEquipped });
+    const cosmeticsOwned = [...(this.profile.cosmeticsOwned || []), cosmeticId(charId, slot)];
+    const equipped = { ...this._cosEquipped() };
+    equipped[charId] = { ...(equipped[charId] || {}), [slot]: true };
+    this.profile = await StorageService.saveProfile({ coins: this.coins, cosmeticsOwned, cosmeticsEquipped: equipped });
     this.audio.select?.();
     this.haptics.impact?.('Medium');
     this.toast(tpl('{label} unlocked!', { label }));
@@ -3052,6 +3131,8 @@ export class App {
       arena: config.arena || this.selection.arena,
       playerCharacter: players[localIndex]?.character || this.selection.character,
       playerName: players[localIndex]?.name || this.profile.name,
+      playerAura: this._playerAura(),
+      playerSpFx: this._playerSpFx(),
       reduceMotion: this.settings.reduceMotion,
     });
     this._afterStart();

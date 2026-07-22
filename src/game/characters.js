@@ -330,9 +330,20 @@ export const SPECIAL_SLOTS = {
   air: { label: 'Jump + SP', hint: 'Jump, then SP in the air' },
 };
 
+// Signature element per fighter — drives the (element-locked) cosmetics:
+// frame border, battle aura and special-FX colour all follow this.
+const CHAR_ELEMENT = {
+  blaze: 'inferno', aurex: 'divine', solaris: 'divine',
+  frost: 'frost', tide: 'frost',
+  volt: 'storm', tempest: 'storm',
+  sylva: 'toxic', shade: 'toxic', golem: 'toxic', titania: 'toxic',
+  nox: 'void', sage: 'void', umbra: 'void',
+};
+
 // Back-compat: keep `.special` pointing at the neutral special.
 for (const c of CHARACTERS) {
   c.special = c.specials[0];
+  c.element = CHAR_ELEMENT[c.id] || 'inferno';
 }
 
 export const CHARACTER_MAP = Object.fromEntries(CHARACTERS.map((c) => [c.id, c]));
