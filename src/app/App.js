@@ -328,14 +328,14 @@ export class App {
             <div class="howto-card"><b>Weapons</b><span>Stand over an item and press <b>HIT</b> to pick it up. <b>THROW</b> hurls it; each weapon has limited swings.</span></div>
           </div>
           <div class="howto-group plat-kbd hidden">
-            <div class="howto-card"><b>Move</b><span>Arrows or <b>WASD</b> — up/down also shifts depth on the floor.</span></div>
-            <div class="howto-card"><b>Attack</b><span>Press <b>Enter</b> or <b>.</b> for a light combo. Chain them and back off.</span></div>
-            <div class="howto-card"><b>Jump</b><span>Press <b>Space</b> to hop over projectiles and juggle foes.</span></div>
-            <div class="howto-card"><b>Block</b><span>Hold <b>Right-Shift</b> to guard — you can't move while blocking.</span></div>
-            <div class="howto-card special"><b>Special · Neutral</b><span>Press <b>/</b> for your signature move (costs the blue energy bar).</span></div>
-            <div class="howto-card special"><b>Special · Dash</b><span>Tap <b>forward</b> twice, then <b>/</b> — a charging attack.</span></div>
-            <div class="howto-card special"><b>Special · Air</b><span>Press <b>Space</b>, then <b>/</b> in the air for a launcher.</span></div>
-            <div class="howto-card"><b>Weapons</b><span>Stand over an item and press <b>Enter</b> to pick it up. Press <b>,</b> to throw it.</span></div>
+            <div class="howto-card"><b>Move</b><span>Use the <b>Arrow keys</b> — up/down also shifts depth on the floor.</span></div>
+            <div class="howto-card"><b>Attack</b><span>Press <b>A</b> for a light combo. Chain them and back off.</span></div>
+            <div class="howto-card"><b>Jump</b><span>Press <b>W</b> to hop over projectiles and juggle foes.</span></div>
+            <div class="howto-card"><b>Block</b><span>Hold <b>D</b> to guard — you can't move while blocking.</span></div>
+            <div class="howto-card special"><b>Special · Neutral</b><span>Press <b>S</b> for your signature move (costs the blue energy bar).</span></div>
+            <div class="howto-card special"><b>Special · Dash</b><span>Tap <b>forward</b> twice, then <b>S</b> — a charging attack.</span></div>
+            <div class="howto-card special"><b>Special · Air</b><span>Press <b>W</b>, then <b>S</b> in the air for a launcher.</span></div>
+            <div class="howto-card"><b>Weapons</b><span>Stand over an item and press <b>A</b> to pick it up. Press <b>T</b> to throw it.</span></div>
           </div>
         </div>
         <button class="btn btn-secondary" data-action="menu">Got it</button>
@@ -2203,30 +2203,36 @@ export class App {
   _renderCosPreview() {
     const stage = this.root.querySelector('#cos-preview');
     if (!stage) return;
+    cancelAnimationFrame(this._cosRAF);
     const p = this._cosPreview;
+    const tab = this._cosTab;
+    // FRAME lives on the character-select portrait, so preview a bust. AURA/SP
+    // are in-world, so preview the actual 2D fighter with just that effect.
+    const inner = tab === 'frame'
+      ? `<span class="cos-portrait" data-portrait="${this._cosPreviewChar}"></span>${p.frame ? `<img class="cos-frame-img" src="${this._frameUrl(p.frame)}" alt="">` : ''}`
+      : `<canvas class="cos-canvas" id="cos-canvas" width="260" height="260"></canvas>`;
     stage.innerHTML = `
       <button class="cos-navbtn" data-cos-nav="-1" aria-label="prev">‹</button>
-      <div class="cos-manne">
-        <canvas class="cos-canvas" id="cos-canvas" width="260" height="260"></canvas>
-        ${p.frame ? `<img class="cos-frame-img" src="${this._frameUrl(p.frame)}" alt="">` : ''}
-      </div>
+      <div class="cos-manne ${tab === 'frame' ? 'is-portrait' : ''}">${inner}</div>
       <button class="cos-navbtn" data-cos-nav="1" aria-label="next">›</button>`;
     stage.querySelectorAll('[data-cos-nav]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        this._cyclePreviewChar(Number(btn.dataset.cosNav));
-      });
+      btn.addEventListener('click', () => this._cyclePreviewChar(Number(btn.dataset.cosNav)));
     });
-    // Caption describes exactly what the CURRENT tab changes (SP vs Aura etc).
     const caption = {
-      frame: t('Frame — a portrait border shown in menus'),
+      frame: t('Frame — a portrait border shown in menus & selection'),
       aura: t('Aura — a glowing energy field around your fighter'),
       sp: t('Special FX — recolours your special-attack projectiles'),
-    }[this._cosTab];
+    }[tab];
     const hint = this.root.querySelector('#cos-hint');
     if (hint) {
       hint.innerHTML = `<b>${getCharacter(this._cosPreviewChar).name}</b> · ${caption}<br><span class="cos-subhint">${t('Tap a card to preview · applies to every fighter')}</span>`;
     }
-    this._startCosPreviewLoop();
+    if (tab === 'frame') {
+      const holder = stage.querySelector('[data-portrait]');
+      if (holder) holder.appendChild(this.portraitCanvas(getCharacter(this._cosPreviewChar), 200));
+    } else {
+      this._startCosPreviewLoop();
+    }
   }
 
   /** Switch which fighter the preview mannequin shows (wraps around). */
@@ -2259,28 +2265,29 @@ export class App {
       if (this.state !== 'cosmetics') return;
       const time = (ts - start) / 1000;
       const p = this._cosPreview;
+      const tab = this._cosTab;
       ctx.clearRect(0, 0, W, H);
 
-      // aura behind the fighter (real in-game renderer)
+      // On the AURA tab: aura glow behind + body tinted to the theme.
       const bodyH = H * 0.82;
-      if (p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.6, time, { alpha: 0.95 });
+      if (tab === 'aura' && p.aura) drawAura(ctx, p.aura, cx, feetY, bodyH * 1.6, time, { alpha: 0.95 });
 
-      // the fighter's idle sprite, tinted to the aura theme
+      // the fighter's idle sprite (tinted only on the aura tab)
       const char = getCharacter(this._cosPreviewChar);
       const set = getSpriteSet(char.spriteBase || char.id);
       if (set) {
         const k = bodyH / set.refH;
         const idx = frameForState(set, 'idle', time, time);
         const flip = set.def.faceRight ? false : true;
-        const tint = THEME_MAP[p.aura]?.tint || 0;
+        const tint = tab === 'aura' ? (THEME_MAP[p.aura]?.tint || 0) : 0;
         ctx.save();
         if (tint) ctx.filter = `hue-rotate(${tint}deg) saturate(1.25)`;
         set.drawScaled(ctx, idx, cx, feetY, k, flip, 0);
         ctx.restore();
       }
 
-      // demo special-attack projectile so SP reads differently from the aura
-      if (p.sp) {
+      // On the SP tab: demo a special-attack projectile firing across.
+      if (tab === 'sp' && p.sp) {
         if (ts > nextOrb) { orbs.push({ x: cx - 30, t: 0 }); nextOrb = ts + 1400; }
         const img = ORB_IMAGES[SP_THEME[p.sp].orb];
         orbs = orbs.filter((o) => o.x < W + 40);

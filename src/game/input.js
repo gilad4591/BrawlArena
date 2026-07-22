@@ -112,21 +112,23 @@ export function bindHumanControls(controller, root, { haptics } = {}) {
   });
 
   // ---- Keyboard (desktop) ----
+  // Layout: ARROWS move · W jump · A attack · S special · D defend (held).
+  // A few extra aliases are kept for comfort (Space jump, J hit, K special, Shift block).
   const keys = {};
   const applyKeys = () => {
     let dx = 0;
     let dz = 0;
-    if (keys.ArrowLeft || keys.KeyA) dx -= 1;
-    if (keys.ArrowRight || keys.KeyD) dx += 1;
-    if (keys.ArrowUp || keys.KeyW) dz -= 1;
-    if (keys.ArrowDown || keys.KeyS) dz += 1;
+    if (keys.ArrowLeft) dx -= 1;
+    if (keys.ArrowRight) dx += 1;
+    if (keys.ArrowUp) dz -= 1;
+    if (keys.ArrowDown) dz += 1;
     controller.state.dirX = dx;
     controller.state.dirZ = dz;
-    controller.state.defend = !!(keys.ShiftLeft || keys.ShiftRight);
+    controller.state.defend = !!(keys.KeyD || keys.ShiftLeft || keys.ShiftRight);
   };
   const gameKeys = new Set([
     'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-    'KeyA', 'KeyD', 'KeyW', 'KeyS', 'ShiftLeft', 'ShiftRight',
+    'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight',
     'KeyJ', 'Enter', 'Numpad0', 'Period',
     'KeyK', 'Slash', 'NumpadDecimal',
     'Space', 'KeyL', 'NumpadEnter',
@@ -139,13 +141,10 @@ export function bindHumanControls(controller, root, { haptics } = {}) {
       return;
     }
     keys[e.code] = true;
-    // Two comfortable layouts so you can attack while steering with the arrows:
-    //   Left hand : WASD move · J hit · K special · L/Space jump · T throw
-    //   Right hand: Arrows move · Enter/Numpad0/. hit · //Numpad-dec special ·
-    //               Space/Numpad-Enter jump · , throw · RightShift block
-    const attackKeys = ['KeyJ', 'Enter', 'Numpad0', 'Period'];
-    const specialKeys = ['KeyK', 'Slash', 'NumpadDecimal'];
-    const jumpKeys = ['Space', 'KeyL', 'NumpadEnter'];
+    // Web layout: Arrows steer while W/A/S/D act (D is held for block).
+    const attackKeys = ['KeyA', 'KeyJ', 'Enter', 'Numpad0', 'Period'];
+    const specialKeys = ['KeyS', 'KeyK', 'Slash', 'NumpadDecimal'];
+    const jumpKeys = ['KeyW', 'Space', 'KeyL', 'NumpadEnter'];
     const throwKeys = ['KeyT', 'Comma'];
     if (attackKeys.includes(e.code)) controller.press('attack');
     if (specialKeys.includes(e.code)) controller.press('special');

@@ -300,7 +300,7 @@ const HE = {
   None: 'ללא',
   Remove: 'הסר',
   Removed: 'הוסר',
-  'Frame — a portrait border shown in menus': 'מסגרת — מסגרת פורטרט שמוצגת בתפריטים',
+  'Frame — a portrait border shown in menus & selection': 'מסגרת — מסגרת פורטרט שמוצגת בתפריטים ובבחירת הדמות',
   'Aura — a glowing energy field around your fighter': 'הילה — שדה אנרגיה זוהר סביב הלוחם',
   'Special FX — recolours your special-attack projectiles': 'אפקט מתקפה — צובע מחדש את הקליעים של המתקפות המיוחדות',
   'Tap a card to preview · applies to every fighter': 'הקש על כרטיס לתצוגה · חל על כל הלוחמים',
