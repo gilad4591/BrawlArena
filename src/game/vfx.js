@@ -45,28 +45,89 @@ export async function loadVfxImages() {
   ]);
 }
 
+// Elemental aura colours (procedural energy field — no baked silhouette).
+const AURA_COLORS = {
+  inferno: '#ff6a2b',
+  frost: '#7fd4ff',
+  storm: '#8ab6ff',
+  toxic: '#9dff45',
+  divine: '#ffd76a',
+  void: '#c06bff',
+};
+
+function _hexRgb(hex) {
+  const m = hex.replace('#', '');
+  const s = m.length === 3 ? m.split('').map((c) => c + c).join('') : m;
+  const n = parseInt(s, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
 /**
- * Draw one animated frame of an elemental aura loop, centered on (cx, cy=feet),
- * additively so the black sheet background contributes nothing. `t` is seconds.
+ * Draw a procedural elemental aura that wraps the fighter: a soft glow halo,
+ * a ground pool and rising sparks — all additive and theme-tinted. There is no
+ * baked silhouette, so it reads as an energy field around ANY fighter rather
+ * than a ghost body behind them. `targetH` follows the caller's fighter height
+ * convention (~1.72 x sprite height); `t` is seconds.
  */
 export function drawAura(ctx, theme, cx, feetY, targetH, t, opts = {}) {
-  const img = AURA_IMAGES[theme];
-  if (!img || !img.complete || !img.naturalWidth) return;
-  const fw = img.naturalWidth / AURA_COLS;
-  const fh = img.naturalHeight / AURA_ROWS;
-  const frame = Math.floor((t * (opts.fps ?? 14)) % AURA_FRAMES);
-  const sx = (frame % AURA_COLS) * fw;
-  const sy = Math.floor(frame / AURA_COLS) * fh;
-  const h = targetH;
-  const w = h * (fw / fh);
+  const color = AURA_COLORS[theme];
+  if (!color) return;
+  const alpha = opts.alpha ?? 0.9;
+  const fh = targetH / 1.72;            // approx fighter body height
+  const [r, g, b] = _hexRgb(color);
+  const rgba = (a) => `rgba(${r},${g},${b},${Math.max(0, a)})`;
+  const pulse = 0.9 + 0.1 * Math.sin(t * 5);
+
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
-  // The silhouette stands on the frame's bottom; anchor the aura at the feet.
-  ctx.drawImage(img, sx, sy, fw, fh, cx - w / 2, feetY - h * 0.94, w, h);
+
+  // 1) body halo — a vertical glow the fighter's body sits inside of.
+  ctx.save();
+  ctx.translate(cx, feetY - fh * 0.46);
+  const rh = fh * 0.62 * pulse;
+  ctx.scale((fh * 0.34 * pulse) / rh, 1); // squash into a vertical ellipse
+  const halo = ctx.createRadialGradient(0, 0, rh * 0.12, 0, 0, rh);
+  halo.addColorStop(0, rgba(0.32 * alpha));
+  halo.addColorStop(0.55, rgba(0.2 * alpha));
+  halo.addColorStop(1, rgba(0));
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(0, 0, rh, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
-  ctx.globalCompositeOperation = 'source-over';
+
+  // 2) ground pool at the feet.
+  ctx.save();
+  ctx.translate(cx, feetY);
+  ctx.scale(1, 0.3);
+  const gr = fh * 0.36 * pulse;
+  const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, gr);
+  pool.addColorStop(0, rgba(0.42 * alpha));
+  pool.addColorStop(1, rgba(0));
+  ctx.fillStyle = pool;
+  ctx.beginPath();
+  ctx.arc(0, 0, gr, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 3) rising sparks that swirl up around the body.
+  const N = 14;
+  for (let i = 0; i < N; i++) {
+    const rnd = (n) => { const s = Math.sin(i * 12.9898 + n) * 43758.5453; return s - Math.floor(s); };
+    const life = (t * (0.35 + rnd(1) * 0.4) + rnd(2)) % 1;
+    const px = cx + (rnd(3) - 0.5) * fh * 0.44 + Math.sin(t * 2 + i) * fh * 0.05;
+    const py = feetY - life * fh * 0.98;
+    const pr = Math.max(0.6, (0.5 + rnd(4) * 1.5) * (fh / 180) * 2.4);
+    ctx.globalAlpha = Math.sin(life * Math.PI) * alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
   ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 /** Draw a centered VFX sprite scaled to a target height. */

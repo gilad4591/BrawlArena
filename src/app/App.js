@@ -32,7 +32,7 @@ import { dailyStatus, applyDailyClaim, DAILY_REWARDS } from '../services/DailyRe
 import { questDesc, isClaimable } from '../game/quests.js';
 import { ACHIEVEMENTS } from '../game/achievements.js';
 import {
-  COSMETIC_THEMES, COSMETIC_SLOTS, THEME_MAP, SLOT_MAP,
+  COSMETIC_THEMES, COSMETIC_SLOTS, THEME_MAP, SLOT_MAP, SP_THEME,
   cosmeticId, cosmeticPrice, ownsCosmetic, equippedTheme,
   equippedTint, equippedAura, equippedSp,
 } from '../game/cosmetics.js';
@@ -1765,7 +1765,8 @@ export class App {
   }
 
   _playerTint() {
-    return equippedTint(this._cosEquipped());
+    // Auras no longer recolour the fighter's body — the aura is a glow only.
+    return 0;
   }
 
   /** Elemental aura theme from the equipped aura cosmetic. */
@@ -1778,10 +1779,9 @@ export class App {
     return equippedSp(this._cosEquipped());
   }
 
-  /** CSS filter that recolours a portrait to match the equipped aura theme. */
+  /** Portraits are no longer recoloured by the equipped aura. */
   _skinFilter() {
-    const t = equippedTint(this._cosEquipped());
-    return t ? `hue-rotate(${t}deg) saturate(1.25)` : '';
+    return '';
   }
 
   _frameUrl(theme) {
@@ -2301,9 +2301,7 @@ export class App {
         const state = casting ? 'special' : 'idle';
         const stateTime = casting ? sinceFire : time;
         const idx = frameForState(set, state, stateTime, time);
-        const tint = tab === 'aura' ? (THEME_MAP[p.aura]?.tint || 0) : 0;
         ctx.save();
-        if (tint) ctx.filter = `hue-rotate(${tint}deg) saturate(1.25)`;
         set.drawScaled(ctx, idx, cx, feetY, k, flip, 0);
         ctx.restore();
       }
