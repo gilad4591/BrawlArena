@@ -2228,13 +2228,10 @@ export class App {
     wrap.innerHTML = this._pickableRoster().map((c) => {
       const el = charElement(c);
       const elem = ELEMENTS[el];
-      const eqCount = COSMETIC_SLOTS.filter((s) => isEquipped(equipped, c.id, s.key)).length;
+      const total = COSMETIC_SLOTS.length;
       const owCount = COSMETIC_SLOTS.filter((s) => ownsCosmetic(owned, c.id, s.key)).length;
-      const badge = eqCount
-        ? `<span class="cos-eqbadge" title="${t('Equipped')}">${eqCount}</span>`
-        : owCount
-          ? `<span class="cos-eqbadge owned">${owCount}</span>`
-          : '';
+      const full = owCount >= total;
+      const badge = `<span class="cos-eqbadge ${full ? 'full' : owCount ? 'owned' : 'none'}" title="${t('Owned')}">${owCount}/${total}</span>`;
       return `<button class="cos-charcard" data-cos-pick="${c.id}" style="--g:${elem.color}">
         <span class="cos-charportrait" data-portrait="${c.id}"></span>
         ${badge}
@@ -2294,7 +2291,7 @@ export class App {
     // FRAME lives on the character-select portrait, so preview a bust + frame.
     // AURA/SP are in-world, so preview the actual 2D fighter with that effect.
     const inner = tab === 'frame'
-      ? `<span class="cos-portrait" data-portrait="${id}"><img class="cos-frame-img" src="${this._frameUrl(el)}" alt=""></span>`
+      ? `<span class="cos-portrait is-frame"><span class="cos-portrait-bust" data-portrait="${id}"></span><img class="cos-frame-img" src="${this._frameUrl(el)}" alt=""></span>`
       : `<canvas class="cos-canvas" id="cos-canvas" width="260" height="260"></canvas>`;
     stage.innerHTML = `
       <button class="cos-navbtn" data-cos-nav="-1" aria-label="prev">‹</button>
@@ -2315,7 +2312,7 @@ export class App {
     }
     if (tab === 'frame') {
       const holder = stage.querySelector('[data-portrait]');
-      if (holder) holder.appendChild(this.portraitCanvas(getCharacter(id), 168));
+      if (holder) holder.appendChild(this.portraitCanvas(getCharacter(id), 150));
     } else {
       this._startCosPreviewLoop();
     }

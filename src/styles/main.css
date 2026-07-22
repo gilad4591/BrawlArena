@@ -2743,6 +2743,7 @@ body,
   border-radius: 14px;
   background: var(--panel);
   border: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--text);
   cursor: pointer;
   transition: transform 0.08s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -2760,19 +2761,21 @@ body,
   position: absolute;
   top: 6px;
   right: 8px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 9px;
-  font-size: 0.68rem;
+  min-width: 34px;
+  height: 19px;
+  padding: 0 7px;
+  border-radius: 10px;
+  font-size: 0.7rem;
   font-weight: 900;
-  color: #0b0e1a;
-  background: var(--accent);
+  color: #fff;
+  background: rgba(15, 19, 34, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.cos-eqbadge.owned { background: #6b7299; color: #fff; }
+.cos-eqbadge.owned { background: rgba(79, 214, 255, 0.22); border-color: rgba(79, 214, 255, 0.5); }
+.cos-eqbadge.full { background: var(--ok); color: #0b0e1a; border-color: transparent; }
 
 /* ---- step 2: detail header + slot cards ---- */
 .cos-detailhead {
@@ -2821,14 +2824,30 @@ body,
   height: 200px;
   display: block;
 }
-.cos-manne.is-portrait { width: auto; height: 200px; }
-.cos-manne .cos-portrait { position: relative; display: inline-block; line-height: 0; }
-.cos-manne .cos-portrait canvas { display: block; border-radius: 10px; }
+.cos-manne.is-portrait { width: 200px; height: 200px; }
+/* The frame is the box; the bust sits centred inside its hollow window so the
+   portrait never spills past the border (mirrors the char-select frame). */
+.cos-manne .cos-portrait.is-frame {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cos-manne .cos-portrait-bust { width: 72%; height: 72%; line-height: 0; }
+.cos-manne .cos-portrait-bust canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+}
 .cos-frame-img {
   position: absolute;
-  inset: -8%;
-  width: 116%;
-  height: 116%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 .cos-hint { font-size: 0.8rem; color: #c7cdea; text-align: center; line-height: 1.5; }

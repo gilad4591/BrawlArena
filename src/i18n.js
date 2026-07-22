@@ -307,6 +307,7 @@ const HE = {
   'Each fighter wears its own element': 'לכל לוחם יש אלמנט משלו',
   'Choose a fighter to customise': 'בחר לוחם להתאמה אישית',
   Fighters: 'לוחמים',
+  Owned: 'ברשותך',
   'Tap a card to preview · applies to every fighter': 'הקש על כרטיס לתצוגה · חל על כל הלוחמים',
   Confirm: 'אישור',
   Cancel: 'ביטול',
