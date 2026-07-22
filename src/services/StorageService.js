@@ -31,6 +31,16 @@ const DEFAULT_PROFILE = {
   xp: 0,
   unlocked: ['blaze', 'frost', 'tide', 'volt', 'sylva', 'shade', 'nox', 'golem', 'aurex', 'sage'],
   campaignProgress: 0,
+  // --- economy + engagement (spendable Coins; XP stays leaderboard-only) ---
+  coins: 0,
+  dailyStreak: 0,
+  lastDailyClaim: null, // 'YYYY-MM-DD'
+  quests: { day: null, items: [] },
+  achievements: {}, // id -> true
+  survivalBest: 0,
+  ownedSkins: [], // ['blaze_gold', ...]
+  equippedSkins: {}, // charId -> skinId
+  adNudged: false, // one-time "remove ads?" prompt shown
 };
 
 export class StorageService {
@@ -92,6 +102,22 @@ export class StorageService {
     const merged = { ...current, ...profile };
     await this.set(KEYS.PROFILE, merged);
     return merged;
+  }
+
+  /** Add (or subtract, with n<0) coins and persist. Returns the new balance. */
+  static async addCoins(n) {
+    const profile = await this.getProfile();
+    const coins = Math.max(0, Math.round((profile.coins || 0) + n));
+    await this.saveProfile({ coins });
+    return coins;
+  }
+
+  /** Spend coins if affordable. Returns true on success, false if too poor. */
+  static async spendCoins(n) {
+    const profile = await this.getProfile();
+    if ((profile.coins || 0) < n) return false;
+    await this.saveProfile({ coins: (profile.coins || 0) - n });
+    return true;
   }
 
   /** Owned product ids (entitlements). Kept separate so a progress reset never

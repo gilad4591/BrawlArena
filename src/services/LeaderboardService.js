@@ -86,6 +86,21 @@ export class LeaderboardService {
     }
   }
 
+  /** Submit the Survival high score to its own board (if configured). */
+  async submitSurvival(score) {
+    if (!this.ready || !LEADERBOARD.survivalId || !Number.isFinite(score)) return;
+    try {
+      await this._signIn();
+      if (!this.player) return;
+      await this.plugin.submitScore({
+        leaderboardID: LEADERBOARD.survivalId,
+        totalScoreAmount: Math.max(0, Math.floor(score)),
+      });
+    } catch (err) {
+      console.warn('[leaderboard] survival submit failed:', err);
+    }
+  }
+
   /** Open the native Play Games leaderboard UI (has Daily/Weekly/All-time). */
   async show() {
     if (!this.available) return;

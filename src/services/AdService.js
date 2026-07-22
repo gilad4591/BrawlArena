@@ -22,9 +22,15 @@ export class AdService {
     this.AdMob = null;
     this._matchCount = 0;
     this._interstitialReady = false;
+    this._interstitialsShown = 0; // how many interstitials actually displayed
     this._overlay = null;
     this._closeTimer = null;
     this.purchases = null;
+  }
+
+  /** How many interstitials we've actually shown this session (for nudges). */
+  get interstitialsShown() {
+    return this._interstitialsShown;
   }
 
   /** Wire the purchase service so we can honor the "Remove Ads" entitlement. */
@@ -119,11 +125,83 @@ export class AdService {
     if (this.purchases?.ownsRemoveAds()) return; // paid to remove ads
     this._matchCount += 1;
     if (this._matchCount % ADS.interstitialEveryMatches !== 0) return;
+    this._interstitialsShown += 1;
     if (this.native) {
       await this._showNativeInterstitial();
     } else {
       await this._showWebInterstitial();
     }
+  }
+
+  /**
+   * Show a rewarded ad. Resolves `true` only if the reward was earned (ad fully
+   * watched), `false` otherwise. On web we prefer H5 rewarded adBreak and fall
+   * back to our dismissible overlay (granting on close, since there's no real
+   * reward SDK to verify). Callers grant the bonus only on `true`.
+   */
+  async showRewarded() {
+    if (this.native) return this._showNativeRewarded();
+    return this._showWebRewarded();
+  }
+
+  async _showNativeRewarded() {
+    if (!this.AdMob) return false;
+    try {
+      await this.AdMob.prepareRewardVideoAd({
+        adId: this.cfg.rewarded,
+        isTesting: ADS.useTestAds,
+      });
+      const item = await this.AdMob.showRewardVideoAd();
+      return !!item; // reward item present => reward earned
+    } catch (err) {
+      console.warn('[ads] rewarded failed:', err);
+      return false;
+    }
+  }
+
+  _showWebRewarded() {
+    if (this._overlay) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      if (typeof window.adBreak === 'function') {
+        let granted = false;
+        let settled = false;
+        const finish = (ok) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(watchdog);
+          this._muteForAd?.(false);
+          if (!ok && !granted) {
+            // No real rewarded ad filled — offer the fallback overlay and grant
+            // on close so the player still gets the reward they opted into.
+            this._showOverlayInterstitial(() => resolve(true));
+          } else {
+            resolve(true);
+          }
+        };
+        const watchdog = setTimeout(() => finish(false), 1800);
+        try {
+          window.adBreak({
+            type: 'reward',
+            name: 'reward',
+            beforeReward: (showAdFn) => {
+              clearTimeout(watchdog);
+              this._muteForAd?.(true);
+              showAdFn();
+            },
+            afterAd: () => this._muteForAd?.(false),
+            adViewed: () => {
+              granted = true;
+            },
+            adDismissed: () => finish(granted),
+            adBreakDone: () => finish(granted),
+          });
+          return;
+        } catch {
+          clearTimeout(watchdog);
+        }
+      }
+      this._showOverlayInterstitial(() => resolve(true));
+    });
   }
 
   async _showNativeInterstitial() {

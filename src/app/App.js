@@ -26,6 +26,11 @@ import {
 } from '../game/sprites.js';
 import { StorageService } from '../services/StorageService.js';
 import { MultiplayerService } from '../services/MultiplayerService.js';
+import { QuestService } from '../services/QuestService.js';
+import { dailyStatus, applyDailyClaim, DAILY_REWARDS } from '../services/DailyReward.js';
+import { questDesc, isClaimable } from '../game/quests.js';
+import { ACHIEVEMENTS } from '../game/achievements.js';
+import { SKIN_VARIANTS, skinId, parseSkinId, equippedTint, ownsSkin } from '../game/cosmetics.js';
 import { t, tpl, getLang, setLang, attachTranslator, retranslate } from '../i18n.js';
 
 export class App {
@@ -75,6 +80,9 @@ export class App {
     await loadVfxImages();
     // XP / unlocked roster (merge starters + purchased premium fighters).
     this.xp = this.profile.xp || 0;
+    this.coins = this.profile.coins || 0;
+    this.quests = new QuestService();
+    await this.quests.ensureDaily();
     this.unlocked = new Set([
       ...(this.profile.unlocked || []),
       ...STARTER_IDS,
@@ -112,6 +120,10 @@ export class App {
     retranslate(this.root);
     this.showScreen('menu');
     if (this.settings.music) this.audio.startMusic();
+    this._updateCurrencyUi();
+    this._refreshQuestBadge();
+    // Offer the daily login reward shortly after the menu settles.
+    setTimeout(() => this._maybeShowDaily(), 500);
 
     window.addEventListener('brawl-back', () => this.handleBack());
     this._bindLifecycle();
@@ -127,18 +139,26 @@ export class App {
       <div id="screen-menu" class="screen menu">
         <canvas id="menu-canvas" class="menu-canvas"></canvas>
         <div class="menu-scrim"></div>
+        <div class="menu-topbar">
+          <span class="coin-pill" data-action="cosmetics"><img class="coin-ico" src="${this._iconUrl('coin')}" alt=""><b id="coin-count">0</b></span>
+        </div>
         <div class="menu-content">
           <img class="menu-badge" src="/icons/icon-192.png?v=3" alt="" width="88" height="88" />
           <h1 class="logo">BRAWL<span>ARENA</span></h1>
           <p class="tagline">Pick a fighter. Own the arena.</p>
           <div class="btn-row col menu-buttons">
-            <button class="btn btn-primary" data-action="campaign">Solo Campaign</button>
-            <button class="btn btn-secondary" data-action="setup">Arcade</button>
-            <button class="btn btn-secondary" data-action="multiplayer">Multiplayer</button>
-            ${this._premiumEnabled() ? '<button class="btn btn-ghost" data-action="store">Store</button>' : ''}
-            ${this.leaderboard?.available ? '<button class="btn btn-ghost" data-action="leaderboard">🏆 Leaderboard</button>' : ''}
-            <button class="btn btn-ghost" data-action="howto">How to Play</button>
-            <button class="btn btn-ghost" data-action="settings">Settings</button>
+            <button class="btn btn-primary btn-play" data-action="play">Play</button>
+            <div class="menu-mini-row">
+              <button class="btn btn-ghost mini" data-action="quests"><img class="mini-ico" src="${this._iconUrl('quests')}" alt="">Quests<span class="mini-badge hidden" id="quest-badge">0</span></button>
+              <button class="btn btn-ghost mini" data-action="achievements"><img class="mini-ico" src="${this._iconUrl('achievements')}" alt="">Achievements</button>
+              <button class="btn btn-ghost mini" data-action="cosmetics"><img class="mini-ico" src="${this._iconUrl('skins')}" alt="">Skins</button>
+            </div>
+            <div class="menu-mini-row">
+              ${this._premiumEnabled() ? `<button class="btn btn-ghost mini" data-action="store"><img class="mini-ico" src="${this._iconUrl('daily')}" alt="">Store</button>` : ''}
+              ${this.leaderboard?.available ? `<button class="btn btn-ghost mini" data-action="leaderboard"><img class="mini-ico" src="${this._iconUrl('achievements')}" alt="">Ranks</button>` : ''}
+              <button class="btn btn-ghost mini" data-action="howto"><img class="mini-ico" src="${this._iconUrl('help')}" alt="">How to Play</button>
+              <button class="btn btn-ghost mini" data-action="settings"><img class="mini-ico" src="${this._iconUrl('settings')}" alt="">Settings</button>
+            </div>
           </div>
         </div>
         <p class="footer-note">${
@@ -148,9 +168,34 @@ export class App {
         }</p>
       </div>
 
-      <div id="screen-setup" class="screen setup hidden">
+      <div id="screen-play" class="screen menu-sub hidden">
         <div class="setup-head">
           <button class="icon-btn" data-action="menu">‹</button>
+          <h2>Choose a Mode</h2>
+        </div>
+        <div class="mode-cards">
+          <button class="mode-card" data-action="campaign">
+            <img class="mode-ico" src="${this._iconUrl('campaign')}" alt="">
+            <b>Solo Campaign</b><span>Fight 5 stages to the Overlord's throne</span>
+          </button>
+          <button class="mode-card" data-action="setup">
+            <img class="mode-ico" src="${this._iconUrl('arcade')}" alt="">
+            <b>Arcade</b><span>Custom 1v1, free-for-all or teams vs CPU</span>
+          </button>
+          <button class="mode-card" data-action="survival">
+            <img class="mode-ico" src="${this._iconUrl('survival')}" alt="">
+            <b>Survival</b><span>Endless waves that grow tougher and tougher</span>
+          </button>
+          <button class="mode-card" data-action="multiplayer">
+            <img class="mode-ico" src="${this._iconUrl('multiplayer')}" alt="">
+            <b>Multiplayer</b><span>Play with friends using an invite code</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="screen-setup" class="screen setup hidden">
+        <div class="setup-head">
+          <button class="icon-btn" data-action="play">‹</button>
           <h2>Choose Your Fighter</h2>
         </div>
         <div class="xp-bar" id="xp-bar"></div>
@@ -183,7 +228,7 @@ export class App {
 
       <div id="screen-campaign" class="screen setup hidden">
         <div class="setup-head">
-          <button class="icon-btn" data-action="menu">‹</button>
+          <button class="icon-btn" data-action="play">‹</button>
           <h2>Solo Campaign</h2>
         </div>
         <p class="camp-intro">Fight through 5 stages of Bruisers and Mages to the Gang Leader's throne.</p>
@@ -233,6 +278,7 @@ export class App {
           <h2 class="overlay-title" id="result-title">Victory</h2>
           <p class="overlay-meta" id="result-meta"></p>
           <div class="result-xp" id="result-xp"></div>
+          <button class="btn btn-reward hidden" id="double-reward" data-action="double-reward">▶ Watch ad — Double reward ×2</button>
           <div class="podium" id="result-podium"></div>
           <div class="btn-row col">
             <button class="btn btn-primary" data-action="rematch">Rematch</button>
@@ -256,15 +302,26 @@ export class App {
           <h2>How to Play</h2>
         </div>
         <div class="howto-body">
-          <div class="howto-card"><b>Move</b><span>Left joystick — up/down also shifts depth on the floor.</span></div>
-          <div class="howto-card"><b>HIT</b><span>Light melee combo. Chain them and back off.</span></div>
-          <div class="howto-card"><b>▲ Jump</b><span>Hop over projectiles and juggle airborne foes.</span></div>
-          <div class="howto-card"><b>DEF</b><span>Guard to soak hits — you can't move while blocking.</span></div>
-          <div class="howto-card special"><b>SP · Neutral</b><span>Tap <b>SP</b> for your signature move (costs the blue energy bar).</span></div>
-          <div class="howto-card special"><b>SP · Dash</b><span>Double-tap <b>forward</b>, then <b>SP</b> — a charging attack.</span></div>
-          <div class="howto-card special"><b>SP · Air</b><span>Press <b>Jump</b>, then <b>SP</b> in the air for a launcher.</span></div>
-          <div class="howto-card"><b>Weapons</b><span>Stand over an item and press <b>HIT</b> to pick it up. <b>THROW</b> hurls it; each weapon has limited swings.</span></div>
-          <div class="howto-card" id="howto-desktop"><b>Keyboard</b><span>Arrows move · <b>Enter</b> or <b>.</b> hit · <b>/</b> special · Space jump · Right-Shift block · <b>,</b> throw. (Left hand: WASD + J/K/L/T also work.)</span></div>
+          <div class="howto-group plat-touch">
+            <div class="howto-card"><b>Move</b><span>Left joystick — up/down also shifts depth on the floor.</span></div>
+            <div class="howto-card"><b>HIT</b><span>Light melee combo. Chain them and back off.</span></div>
+            <div class="howto-card"><b>▲ Jump</b><span>Hop over projectiles and juggle airborne foes.</span></div>
+            <div class="howto-card"><b>DEF</b><span>Guard to soak hits — you can't move while blocking.</span></div>
+            <div class="howto-card special"><b>SP · Neutral</b><span>Tap <b>SP</b> for your signature move (costs the blue energy bar).</span></div>
+            <div class="howto-card special"><b>SP · Dash</b><span>Double-tap <b>forward</b>, then <b>SP</b> — a charging attack.</span></div>
+            <div class="howto-card special"><b>SP · Air</b><span>Press <b>Jump</b>, then <b>SP</b> in the air for a launcher.</span></div>
+            <div class="howto-card"><b>Weapons</b><span>Stand over an item and press <b>HIT</b> to pick it up. <b>THROW</b> hurls it; each weapon has limited swings.</span></div>
+          </div>
+          <div class="howto-group plat-kbd hidden">
+            <div class="howto-card"><b>Move</b><span>Arrows or <b>WASD</b> — up/down also shifts depth on the floor.</span></div>
+            <div class="howto-card"><b>Attack</b><span>Press <b>Enter</b> or <b>.</b> for a light combo. Chain them and back off.</span></div>
+            <div class="howto-card"><b>Jump</b><span>Press <b>Space</b> to hop over projectiles and juggle foes.</span></div>
+            <div class="howto-card"><b>Block</b><span>Hold <b>Right-Shift</b> to guard — you can't move while blocking.</span></div>
+            <div class="howto-card special"><b>Special · Neutral</b><span>Press <b>/</b> for your signature move (costs the blue energy bar).</span></div>
+            <div class="howto-card special"><b>Special · Dash</b><span>Tap <b>forward</b> twice, then <b>/</b> — a charging attack.</span></div>
+            <div class="howto-card special"><b>Special · Air</b><span>Press <b>Space</b>, then <b>/</b> in the air for a launcher.</span></div>
+            <div class="howto-card"><b>Weapons</b><span>Stand over an item and press <b>Enter</b> to pick it up. Press <b>,</b> to throw it.</span></div>
+          </div>
         </div>
         <button class="btn btn-secondary" data-action="menu">Got it</button>
       </div>
@@ -305,8 +362,80 @@ export class App {
             </div></div>
         </div>
         <div class="stats-block" id="stats-block"></div>
+        <button class="btn btn-secondary" data-action="achievements">Achievements</button>
         <button class="btn btn-secondary" data-action="menu">Back</button>
         <button class="btn btn-danger" id="reset-progress">Reset Progress</button>
+      </div>
+
+      <div id="screen-survival" class="screen setup hidden">
+        <div class="setup-head">
+          <button class="icon-btn" data-action="play">‹</button>
+          <h2>Survival</h2>
+        </div>
+        <p class="camp-intro">Endless waves that grow tougher and tougher. How long can you last?</p>
+        <div class="opt-block">
+          <label class="opt-label">Best Wave <span class="opt-hint" id="survival-best"></span></label>
+        </div>
+        <div class="opt-block">
+          <label class="opt-label">Fighter</label>
+          <div class="camp-fighters" id="survival-fighters"></div>
+        </div>
+        <div class="opt-block">
+          <label class="opt-label">Difficulty</label>
+          <div class="chip-row" id="survival-diff"></div>
+        </div>
+        <button class="btn btn-primary btn-fight" data-action="start-survival">START</button>
+      </div>
+
+      <div id="screen-quests" class="screen howto hidden">
+        <div class="setup-head">
+          <button class="icon-btn" data-action="menu">‹</button>
+          <h2>Daily Quests</h2>
+        </div>
+        <div class="quest-list" id="quest-list"></div>
+        <button class="btn btn-secondary" data-action="menu">Back</button>
+      </div>
+
+      <div id="screen-achievements" class="screen howto hidden">
+        <div class="setup-head">
+          <button class="icon-btn" data-action="menu">‹</button>
+          <h2>Achievements</h2>
+        </div>
+        <div class="ach-list" id="ach-list"></div>
+        <button class="btn btn-secondary" data-action="menu">Back</button>
+      </div>
+
+      <div id="screen-cosmetics" class="screen setup hidden">
+        <div class="setup-head">
+          <button class="icon-btn" data-action="menu">‹</button>
+          <h2>Skins</h2>
+          <span class="coin-pill sm"><img class="coin-ico" src="${this._iconUrl('coin')}" alt=""><b id="coin-count-cos">0</b></span>
+        </div>
+        <div class="char-grid sm" id="cos-char-grid"></div>
+        <div class="cos-skins" id="cos-skins"></div>
+        <button class="btn btn-secondary" data-action="menu">Back</button>
+      </div>
+
+      <div id="premium-overlay" class="overlay hidden">
+        <h2 class="overlay-title" id="prem-name">Premium Fighter</h2>
+        <span class="prem-portrait" id="prem-portrait"></span>
+        <div class="move-list" id="prem-moves"></div>
+        <div class="btn-row col">
+          <button class="btn btn-primary" id="prem-buy" data-action="prem-buy">Unlock in Store</button>
+          <button class="btn btn-reward" id="prem-try" data-action="prem-try">▶ Watch ad — Try 1 match</button>
+          <button class="btn btn-ghost" data-action="prem-close">Close</button>
+        </div>
+      </div>
+
+      <div id="daily-overlay" class="overlay hidden">
+        <h2 class="overlay-title">Daily Reward</h2>
+        <p class="overlay-meta" id="daily-meta"></p>
+        <div class="daily-track" id="daily-track"></div>
+        <div class="btn-row col">
+          <button class="btn btn-primary" data-action="daily-claim" id="daily-claim">Claim</button>
+          <button class="btn btn-reward" data-action="daily-x2" id="daily-x2">▶ Watch ad — Claim ×2</button>
+          <button class="btn btn-ghost" data-action="daily-close">Close</button>
+        </div>
       </div>
     `;
 
@@ -361,8 +490,21 @@ export class App {
     switch (action) {
       // Rebuild so freshly-purchased/unlocked fighters show as unlocked
       // immediately (previously only a relaunch refreshed the Arcade grid).
-      case 'setup': this.buildSetup(); this.showScreen('setup'); break;
+      case 'play': this.showScreen('play'); break;
+      case 'setup': this._endTrialIfAny(); this.buildSetup(); this.showScreen('setup'); break;
       case 'campaign': this.showCampaign(); break;
+      case 'survival': this.showSurvival(); break;
+      case 'start-survival': this.startSurvival(); break;
+      case 'quests': this.showQuests(); break;
+      case 'achievements': this.showAchievements(); break;
+      case 'cosmetics': this.showCosmetics(); break;
+      case 'daily-claim': this.claimDaily(false); break;
+      case 'daily-x2': this.claimDaily(true); break;
+      case 'daily-close': this.root.querySelector('#daily-overlay')?.classList.add('hidden'); break;
+      case 'double-reward': this.doubleReward(); break;
+      case 'prem-buy': this.root.querySelector('#premium-overlay')?.classList.add('hidden'); this.showStore(); break;
+      case 'prem-try': this.tryPremium(); break;
+      case 'prem-close': this.root.querySelector('#premium-overlay')?.classList.add('hidden'); break;
       case 'menu': this.goMenu(); break;
       case 'multiplayer': this.showMultiplayer(); break;
       case 'store': this.showStore(); break;
@@ -602,12 +744,15 @@ export class App {
   }
 
   goMenu() {
+    this._endTrialIfAny();
     this._stopMpWatchdog();
     if (this.mp) {
       this.mp.leave();
       this.mp = null;
     }
     this.showScreen('menu');
+    this._updateCurrencyUi();
+    this._refreshQuestBadge();
     if (this.settings.music) this.audio.startMusic();
   }
 
@@ -618,6 +763,9 @@ export class App {
       if (over) this.quitGame();
       else if (paused) this.resumeGame();
       else this.pauseGame();
+    } else if (['setup', 'campaign', 'survival'].includes(this.state)) {
+      // These mode screens live under the Play hub — step back to it.
+      this.showScreen('play');
     } else if (this.state !== 'menu') {
       this.goMenu();
     }
@@ -723,6 +871,7 @@ export class App {
         // Premium fighters that aren't owned yet show their dark "locked" bust.
         const showLocked = c.premium && !this.isUnlocked(c.id);
         holder.appendChild(this.portraitCanvas(c, 160, showLocked));
+        if (!showLocked) holder.style.filter = this._skinFilter(c.id);
         // If a purpose-made (already dark) locked bust is used, mark the card so
         // CSS skips the extra darken filter that would crush it to a black void.
         if (showLocked && getLockedPortraitImage(c.id)) {
@@ -732,10 +881,10 @@ export class App {
       grid.querySelectorAll('[data-char]').forEach((btn) => {
         btn.addEventListener('click', () => {
           if (btn.dataset.premium) {
-            // Locked premium fighter — send the player to the Store.
+            // Locked premium fighter — show a teaser with Buy + "Try 1 match".
             this.audio.select?.();
             this.haptics.tap();
-            this.showStore();
+            this.showPremiumTease(btn.dataset.char);
             return;
           }
           if (btn.dataset.locked) {
@@ -783,7 +932,11 @@ export class App {
         </div>
         <span class="detail-portrait" data-portrait="${c.id}"></span>
       `;
-      detail.querySelector('[data-portrait]')?.appendChild(this.portraitCanvas(c, 112));
+      const detailPortrait = detail.querySelector('[data-portrait]');
+      if (detailPortrait) {
+        detailPortrait.appendChild(this.portraitCanvas(c, 112));
+        detailPortrait.style.filter = this._skinFilter(c.id);
+      }
     }
 
     this.buildChips('#mode-row', Object.values(MODES), this.selection.mode, (m) => {
@@ -1056,6 +1209,7 @@ export class App {
       teamAssign: this.selection.teamAssign,
       arena: this.selection.arena,
       playerName: this.profile.name,
+      playerTint: this._playerTint(),
       reduceMotion: this.settings.reduceMotion,
       excludePremium: !this._premiumEnabled(),
     });
@@ -1074,6 +1228,7 @@ export class App {
       onAnnounce: (text, kind) => this.showAnnounce(text, kind),
       onRoster: (fighters) => this.buildHud(fighters),
       onCampaign: (info) => this.updateStageIndicator(info),
+      onSurvival: (info) => this.updateSurvivalIndicator(info),
       onStageClear: (idx) => this.saveCampaignProgress(idx),
     });
   }
@@ -1167,6 +1322,7 @@ export class App {
       difficulty: this.selection.difficulty,
       campaign: { stages: STAGES, startStage },
       playerName: this.profile.name,
+      playerTint: this._playerTint(),
       reduceMotion: this.settings.reduceMotion,
     });
     this._afterStart();
@@ -1305,8 +1461,22 @@ export class App {
     this._setResultButtonsBusy(true);
     this._maybeInterstitial().finally(() => {
       this._setResultButtonsBusy(false);
+      this._maybeAdNudge();
       fn();
     });
+  }
+
+  /**
+   * One-time, non-blocking nudge toward the paid "Remove Ads" upgrade once the
+   * player has actually sat through a few interstitials. Native + store only.
+   */
+  async _maybeAdNudge() {
+    if (!this._premiumEnabled()) return;
+    if (this.profile?.adNudged) return;
+    if (this.purchases?.ownsRemoveAds?.()) return;
+    if ((this.ads?.interstitialsShown || 0) < 3) return;
+    this.profile = await StorageService.saveProfile({ adNudged: true });
+    this.toast('Tired of ads? Remove them in the Store');
   }
 
   _setResultButtonsBusy(busy) {
@@ -1320,6 +1490,10 @@ export class App {
     this._stopMpWatchdog(); // match's over — stop expecting host snapshots
     if (result.campaign) {
       await this.handleCampaignOver(result);
+      return;
+    }
+    if (result.survival) {
+      await this.handleSurvivalOver(result);
       return;
     }
     const overlay = this.root.querySelector('#result-overlay');
@@ -1341,9 +1515,11 @@ export class App {
     }
     this.buildPodium(ranking);
 
-    // Award XP + check unlocks, then show the XP line.
+    // Award XP + coins + check unlocks, then show the XP line.
     const award = this._awardXp(result, you, ranking.length);
+    this._lastAward = { gained: award.gained, coins: award.coins, doubled: false };
     this._renderResultXp(award);
+    this._showDoubleButton();
     overlay?.classList.remove('hidden');
     if (award.unlocked.length) {
       this.showAnnounce('UNLOCKED!', 'go');
@@ -1351,8 +1527,11 @@ export class App {
     }
 
     this.stats = await StorageService.updateStats(this._statsDelta(result));
-    await StorageService.saveProfile({ xp: this.xp, unlocked: [...this.unlocked] });
+    this.profile = await StorageService.saveProfile({ xp: this.xp, coins: this.coins, unlocked: [...this.unlocked] });
+    this._updateCurrencyUi();
     this.leaderboard.submitScore?.(this.xp);
+    await this._recordMatchProgress(result);
+    await this._checkAchievements();
     this._matchResulted = true;
   }
 
@@ -1382,6 +1561,11 @@ export class App {
     let gained = 12 + (result.stagesCleared || 0) * 14;
     if (result.win) gained += 60;
     this.xp += gained;
+    // Coins: a smaller payout per stage cleared plus a completion bonus.
+    let coins = 8 + (result.stagesCleared || 0) * 10;
+    if (result.win) coins += 40;
+    this.coins += coins;
+    this._lastAward = { gained, coins, doubled: false };
     const unlocked = [];
     for (const c of LOCKED_CHARACTERS) {
       if (!this.unlocked.has(c.id) && this.xp >= c.unlockXp) {
@@ -1389,19 +1573,24 @@ export class App {
         unlocked.push(c);
       }
     }
-    this._renderResultXp({ gained, unlocked });
+    this._renderResultXp({ gained, coins, unlocked });
+    this._showDoubleButton();
     overlay?.classList.remove('hidden');
     if (unlocked.length) this.showAnnounce('UNLOCKED!', 'go');
 
-    // Persist: progress unlock + XP. A full win unlocks every stage.
+    // Persist: progress unlock + XP + coins. A full win unlocks every stage.
     const progress = result.win ? STAGES.length - 1 : this.profile?.campaignProgress || 0;
     this.stats = await StorageService.updateStats(this._statsDelta(result));
     this.profile = await StorageService.saveProfile({
       xp: this.xp,
+      coins: this.coins,
       unlocked: [...this.unlocked],
       campaignProgress: progress,
     });
+    this._updateCurrencyUi();
     this.leaderboard.submitScore?.(this.xp);
+    await this._recordMatchProgress(result);
+    await this._checkAchievements();
     this._matchResulted = true;
   }
 
@@ -1427,6 +1616,12 @@ export class App {
     if (you && you.alive) gained += 6; // survival bonus
     this.xp += gained;
 
+    // Spendable coins: a smaller, win-weighted payout.
+    let coins = 5;
+    if (result.win) coins += 10;
+    if (you) coins += Math.max(0, count - you.place) * 2;
+    this.coins += coins;
+
     const unlocked = [];
     for (const c of LOCKED_CHARACTERS) {
       if (!this.unlocked.has(c.id) && this.xp >= c.unlockXp) {
@@ -1434,7 +1629,7 @@ export class App {
         unlocked.push(c);
       }
     }
-    return { gained, unlocked };
+    return { gained, coins, unlocked };
   }
 
   _renderResultXp(award) {
@@ -1445,10 +1640,13 @@ export class App {
         (c) => `<span class="xp-unlock" data-portrait="${c.id}"><b>${c.name}</b> ${t('unlocked!')}</span>`,
       )
       .join('');
+    const coinLine = award.coins
+      ? `<div class="coin-gain">${this._coinIco('coin-ico-sm')} ${tpl('+{c} · Total {total}', { c: award.coins, total: this.coins })}</div>`
+      : '';
     el.innerHTML = `<div class="xp-gain">${tpl('+{gained} XP · Total {xp}', {
       gained: award.gained,
       xp: this.xp,
-    })}</div>${unlocks}`;
+    })}</div>${coinLine}${unlocks}`;
     el.querySelectorAll('[data-portrait]').forEach((holder) => {
       holder.prepend(this.portraitCanvas(getCharacter(holder.dataset.portrait), 40));
     });
@@ -1500,6 +1698,483 @@ export class App {
     el.querySelectorAll('[data-char]').forEach((holder) => {
       holder.appendChild(this.portraitCanvas(getCharacter(holder.dataset.char), Number(holder.dataset.size) || 40));
     });
+  }
+
+  // ------------------------------------------------- economy + engagement
+  /** Cosmetic hue-rotate for the currently-selected fighter's equipped skin. */
+  _playerTint() {
+    return equippedTint(this.selection.character, this.profile?.equippedSkins || {});
+  }
+
+  /** CSS filter that recolours a portrait to match a character's equipped skin. */
+  _skinFilter(charId) {
+    const t = equippedTint(charId, this.profile?.equippedSkins || {});
+    return t ? `hue-rotate(${t}deg) saturate(1.25)` : '';
+  }
+
+  /** Repaint every coin counter in the DOM. */
+  _updateCurrencyUi() {
+    this.root.querySelectorAll('#coin-count, #coin-count-cos').forEach((el) => {
+      el.textContent = String(this.coins);
+    });
+  }
+
+  /** Show/hide the "claim" badge on the menu Quests button. */
+  _refreshQuestBadge() {
+    const badge = this.root.querySelector('#quest-badge');
+    if (!badge) return;
+    const n = this.quests?.claimableCount?.() || 0;
+    badge.textContent = String(n);
+    badge.classList.toggle('hidden', n === 0);
+  }
+
+  // ---- daily reward ----
+  _maybeShowDaily() {
+    const status = dailyStatus(this.profile);
+    if (!status.claimable) return;
+    this._dailyStatus = status;
+    const meta = this.root.querySelector('#daily-meta');
+    if (meta) meta.textContent = tpl('Day {d} streak · +{c} coins', { d: status.streak, c: status.reward });
+    this._renderDailyTrack(status);
+    const x2 = this.root.querySelector('#daily-x2');
+    if (x2) x2.classList.toggle('hidden', !this.ads?.showRewarded);
+    this.root.querySelector('#daily-claim')?.removeAttribute('disabled');
+    this.root.querySelector('#daily-overlay')?.classList.remove('hidden');
+  }
+
+  _renderDailyTrack(status) {
+    const track = this.root.querySelector('#daily-track');
+    if (!track) return;
+    track.innerHTML = DAILY_REWARDS.map((c, i) => {
+      const day = i + 1;
+      const done = day < status.streak;
+      const today = day === status.streak;
+      return `<div class="daily-cell ${done ? 'done' : ''} ${today ? 'today' : ''}">
+        <span class="daily-day">D${day}</span><span class="daily-amt">${this._coinIco('coin-ico-xs')}${c}</span></div>`;
+    }).join('');
+  }
+
+  async claimDaily(withAd) {
+    const status = this._dailyStatus || dailyStatus(this.profile);
+    if (!status.claimable) { this.root.querySelector('#daily-overlay')?.classList.add('hidden'); return; }
+    // Lock the buttons so a double-tap can't double-claim.
+    this.root.querySelector('#daily-claim')?.setAttribute('disabled', 'true');
+    this.root.querySelector('#daily-x2')?.setAttribute('disabled', 'true');
+    let multiplier = 1;
+    if (withAd && this.ads?.showRewarded) {
+      const ok = await this.ads.showRewarded();
+      if (ok) multiplier = 2;
+    }
+    const applied = applyDailyClaim(this.profile, status.day);
+    if (!applied) { this.root.querySelector('#daily-overlay')?.classList.add('hidden'); return; }
+    const reward = applied.reward * multiplier;
+    this.coins += reward;
+    this.profile = await StorageService.saveProfile({
+      coins: this.coins,
+      dailyStreak: applied.dailyStreak,
+      lastDailyClaim: applied.lastDailyClaim,
+    });
+    this._dailyStatus = { ...status, claimable: false };
+    this._updateCurrencyUi();
+    this.audio.select?.();
+    this.haptics.impact?.('Medium');
+    this.toast(tpl('+{c} coins!', { c: reward }));
+    this.root.querySelector('#daily-overlay')?.classList.add('hidden');
+    this._checkAchievements();
+  }
+
+  // ---- rewarded x2 at match end ----
+  async doubleReward() {
+    if (!this._lastAward || this._lastAward.doubled) return;
+    const btn = this.root.querySelector('#double-reward');
+    btn?.setAttribute('disabled', 'true');
+    const ok = this.ads?.showRewarded ? await this.ads.showRewarded() : false;
+    if (!ok) { btn?.removeAttribute('disabled'); return; }
+    this._lastAward.doubled = true;
+    this.xp += this._lastAward.gained;
+    this.coins += this._lastAward.coins;
+    this.profile = await StorageService.saveProfile({ xp: this.xp, coins: this.coins });
+    this._updateCurrencyUi();
+    this.leaderboard.submitScore?.(this.xp);
+    this.audio.select?.();
+    this.haptics.impact?.('Medium');
+    btn?.classList.add('hidden');
+    // Refresh the XP/coins line to reflect the doubled reward.
+    this._renderResultXp({ gained: this._lastAward.gained, coins: this._lastAward.coins, unlocked: [] });
+    this.toast(tpl('Reward doubled! +{c} coins', { c: this._lastAward.coins }));
+  }
+
+  // ---- achievements ----
+  async _checkAchievements() {
+    const owned = this.profile.achievements || {};
+    const unlocked = [];
+    for (const a of ACHIEVEMENTS) {
+      if (owned[a.id]) continue;
+      if (a.test(this.stats, this.profile)) {
+        owned[a.id] = true;
+        unlocked.push(a);
+      }
+    }
+    if (!unlocked.length) return;
+    const bonus = unlocked.reduce((sum, a) => sum + a.reward, 0);
+    this.coins += bonus;
+    this.profile = await StorageService.saveProfile({ achievements: owned, coins: this.coins });
+    this._updateCurrencyUi();
+    for (const a of unlocked) this.toast(tpl('🏅 {name} · +{c}', { name: t(a.name), c: a.reward }));
+  }
+
+  /** Show the "watch ad -> x2" button when a rewarded ad is available. */
+  _showDoubleButton() {
+    const btn = this.root.querySelector('#double-reward');
+    if (!btn) return;
+    const available = !!this.ads?.showRewarded && this._mode !== 'multiplayer' && !this._lastAward?.doubled;
+    btn.classList.toggle('hidden', !available);
+    btn.removeAttribute('disabled');
+  }
+
+  /** Feed a finished match into the daily quests and surface completions. */
+  async _recordMatchProgress(result) {
+    if (!this.quests) return;
+    const done = await this.quests.recordMatch(result);
+    this._refreshQuestBadge();
+    for (const q of done) this.toast(tpl('Quest complete: {d}', { d: questDesc(q) }));
+  }
+
+  // ---- premium try-before-buy ----
+  showPremiumTease(charId) {
+    const c = getCharacter(charId);
+    if (!c) return;
+    this._teaseChar = charId;
+    const overlay = this.root.querySelector('#premium-overlay');
+    const name = this.root.querySelector('#prem-name');
+    if (name) name.textContent = `${c.name} · ${c.tagline}`;
+    const portrait = this.root.querySelector('#prem-portrait');
+    if (portrait) {
+      portrait.innerHTML = '';
+      portrait.appendChild(this.portraitCanvas(c, 120));
+    }
+    const moves = this.root.querySelector('#prem-moves');
+    if (moves) {
+      moves.innerHTML = (c.specials || [c.special])
+        .map((s) => {
+          const slot = SPECIAL_SLOTS[s.slot] || SPECIAL_SLOTS.neutral;
+          return `<div class="move-row"><span class="move-combo">${slot.label}</span>
+            <span class="move-name">${s.name}</span><span class="move-type">${s.type}</span></div>`;
+        })
+        .join('');
+    }
+    const buy = this.root.querySelector('#prem-buy');
+    if (buy) {
+      const price = this.purchases.priceFor(c.productId);
+      buy.textContent = price ? tpl('Unlock · {price}', { price }) : t('Unlock in Store');
+    }
+    const tryBtn = this.root.querySelector('#prem-try');
+    if (tryBtn) tryBtn.classList.toggle('hidden', !this.ads?.showRewarded);
+    overlay?.classList.remove('hidden');
+  }
+
+  /** End a premium trial: restore the previously-selected owned fighter. */
+  _endTrialIfAny() {
+    if (!this._trialChar) return;
+    this.selection.character = this._trialRestore || 'blaze';
+    this._trialChar = null;
+    this._trialRestore = null;
+  }
+
+  async tryPremium() {
+    const charId = this._teaseChar;
+    if (!charId) return;
+    const tryBtn = this.root.querySelector('#prem-try');
+    tryBtn?.setAttribute('disabled', 'true');
+    const ok = this.ads?.showRewarded ? await this.ads.showRewarded() : false;
+    tryBtn?.removeAttribute('disabled');
+    if (!ok) return;
+    this.root.querySelector('#premium-overlay')?.classList.add('hidden');
+    // One-match trial: remember what to restore, force a quick 1v1, then play.
+    this._trialChar = charId;
+    this._trialRestore = this.selection.character;
+    this.selection.character = charId;
+    this.selection.mode = 'oneVsOne';
+    this.toast(tpl('Trial: {name} for one match', { name: getCharacter(charId).name }));
+    this.startGame();
+  }
+
+  // ------------------------------------------------------------- survival
+  showSurvival() {
+    this.showScreen('survival');
+    this.buildSurvival();
+  }
+
+  buildSurvival() {
+    const best = this.root.querySelector('#survival-best');
+    if (best) best.textContent = tpl('Wave {w}', { w: this.profile?.survivalBest || 0 });
+
+    const fighters = this.root.querySelector('#survival-fighters');
+    if (fighters) {
+      const roster = this._pickableRoster();
+      fighters.innerHTML = roster
+        .map(
+          (c) => `<button class="camp-fighter ${c.id === this.selection.character ? 'active' : ''}"
+            data-char="${c.id}" style="--c:${c.color}"><span data-portrait="${c.id}"></span></button>`,
+        )
+        .join('');
+      fighters.querySelectorAll('[data-portrait]').forEach((h) => {
+        h.appendChild(this.portraitCanvas(getCharacter(h.dataset.portrait), 52));
+      });
+      fighters.querySelectorAll('[data-char]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.selection.character = btn.dataset.char;
+          this.audio.select?.();
+          this.haptics.tap();
+          this.buildSurvival();
+        });
+      });
+    }
+
+    this.buildChips('#survival-diff', [1, 2, 3].map((d) => DIFFICULTY[d]), this.selection.difficulty,
+      (d) => { this.selection.difficulty = d.n; this.buildSurvival(); },
+      (d) => d.n, (d) => d.label, [1, 2, 3]);
+  }
+
+  async startSurvival() {
+    await StorageService.saveProfile({
+      lastCharacter: this.selection.character,
+      lastDifficulty: this.selection.difficulty,
+    });
+    this._mode = 'survival';
+    this.audio.stopMusic();
+    this.showScreen('game');
+    this.root.querySelector('#pause-overlay')?.classList.add('hidden');
+    this.root.querySelector('#result-overlay')?.classList.add('hidden');
+
+    this._ensureEngine();
+    this.engine.resize();
+    this.engine.start({
+      playerCharacter: this.selection.character,
+      difficulty: this.selection.difficulty,
+      survival: true,
+      playerName: this.profile.name,
+      playerTint: this._playerTint(),
+      reduceMotion: this.settings.reduceMotion,
+    });
+    this._afterStart();
+  }
+
+  updateSurvivalIndicator(info) {
+    const el = this.root.querySelector('#stage-indicator');
+    if (!el || !info) return;
+    el.classList.remove('hidden');
+    el.innerHTML = `<b>${tpl('Wave {w}', { w: info.wave })}</b> · ${tpl('Score {s}', { s: info.score })}${
+      info.boss ? ` · ${t('BOSS')}` : ''
+    }`;
+  }
+
+  async handleSurvivalOver(result) {
+    this._stopMpWatchdog();
+    const overlay = this.root.querySelector('#result-overlay');
+    const title = this.root.querySelector('#result-title');
+    const meta = this.root.querySelector('#result-meta');
+    this.root.querySelector('#stage-indicator')?.classList.add('hidden');
+    const podium = this.root.querySelector('#result-podium');
+    if (podium) podium.innerHTML = '';
+
+    const best = Math.max(this.profile?.survivalBest || 0, result.wave || 0);
+    const isRecord = (result.wave || 0) >= (this.profile?.survivalBest || 0) && result.wave > 0;
+    if (title) {
+      title.textContent = t('SURVIVAL OVER');
+      title.classList.add('lose');
+    }
+    if (meta) {
+      meta.textContent = tpl('Reached Wave {w} · Score {s}{best}', {
+        w: result.wave,
+        s: result.score,
+        best: isRecord ? ` · ${t('NEW BEST!')}` : '',
+      });
+    }
+
+    // Coins scale with how far you got; XP too (fed to the leaderboard).
+    const gained = 10 + (result.wave || 0) * 6;
+    const coins = 6 + (result.wave || 0) * 5;
+    this.xp += gained;
+    this.coins += coins;
+    this._lastAward = { gained, coins, doubled: false };
+    this._renderResultXp({ gained, coins, unlocked: [] });
+    this._showDoubleButton();
+    overlay?.classList.remove('hidden');
+
+    this.stats = await StorageService.updateStats(this._statsDelta(result));
+    this.profile = await StorageService.saveProfile({ xp: this.xp, coins: this.coins, survivalBest: best });
+    this._updateCurrencyUi();
+    this.leaderboard.submitScore?.(this.xp);
+    this.leaderboard.submitSurvival?.(result.score);
+    await this._recordMatchProgress(result);
+    await this._checkAchievements();
+    this._matchResulted = true;
+  }
+
+  // ---- daily quests screen ----
+  showQuests() {
+    this.showScreen('quests');
+    this.buildQuests();
+  }
+
+  buildQuests() {
+    const list = this.root.querySelector('#quest-list');
+    if (!list) return;
+    const items = this.quests?.items || [];
+    list.innerHTML = items
+      .map((q) => {
+        const pct = Math.min(100, Math.round(((q.progress || 0) / q.target) * 100));
+        const claimable = isClaimable(q);
+        const state = q.claimed ? 'claimed' : claimable ? 'ready' : 'active';
+        return `<div class="quest-card ${state}">
+          <div class="quest-main">
+            <div class="quest-desc">${questDesc(q)}</div>
+            <div class="quest-track"><b style="width:${pct}%"></b></div>
+            <div class="quest-prog">${Math.min(q.progress || 0, q.target)}/${q.target}</div>
+          </div>
+          <div class="quest-side">
+            <span class="quest-reward">${this._coinIco('coin-ico-xs')}${q.reward}</span>
+            ${q.claimed
+              ? '<span class="quest-done">✓</span>'
+              : `<button class="btn btn-primary btn-xs" data-claim="${q.id}" ${claimable ? '' : 'disabled'}>Claim</button>`}
+          </div>
+        </div>`;
+      })
+      .join('');
+    list.querySelectorAll('[data-claim]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const reward = await this.quests.claim(btn.dataset.claim);
+        if (reward > 0) {
+          this.coins += reward;
+          this.profile = await StorageService.saveProfile({ coins: this.coins });
+          this._updateCurrencyUi();
+          this.audio.select?.();
+          this.haptics.impact?.('Medium');
+          this.toast(tpl('+{c} coins!', { c: reward }));
+          this.buildQuests();
+          this._refreshQuestBadge();
+          this._checkAchievements();
+        }
+      });
+    });
+  }
+
+  // ---- achievements screen ----
+  showAchievements() {
+    this.showScreen('achievements');
+    this.buildAchievements();
+  }
+
+  buildAchievements() {
+    const list = this.root.querySelector('#ach-list');
+    if (!list) return;
+    const owned = this.profile.achievements || {};
+    const unlockedCount = ACHIEVEMENTS.filter((a) => owned[a.id]).length;
+    list.innerHTML = `<div class="ach-summary">${tpl('{n}/{total} unlocked', {
+      n: unlockedCount,
+      total: ACHIEVEMENTS.length,
+    })}</div>${ACHIEVEMENTS.map((a) => {
+      const got = !!owned[a.id];
+      return `<div class="ach-card ${got ? 'got' : 'locked'}">
+        <span class="ach-icon">${got ? `<img class="ach-icon-img" src="${this._iconUrl('achievements')}" alt="">` : '🔒'}</span>
+        <div class="ach-info"><b>${a.name}</b><span>${a.desc}</span></div>
+        <span class="ach-reward">${this._coinIco('coin-ico-xs')}${a.reward}</span>
+      </div>`;
+    }).join('')}`;
+  }
+
+  // ---- cosmetics / skins shop ----
+  showCosmetics() {
+    this._cosChar = this.selection.character;
+    this.showScreen('cosmetics');
+    this.buildCosmetics();
+  }
+
+  buildCosmetics() {
+    this._updateCurrencyUi();
+    const grid = this.root.querySelector('#cos-char-grid');
+    if (grid) {
+      const roster = this._pickableRoster();
+      grid.innerHTML = roster
+        .map(
+          (c) => `<button class="char-card sm ${c.id === this._cosChar ? 'active' : ''}"
+            data-cos-char="${c.id}" style="--c:${c.color};--a:${c.accent}">
+            <span class="char-portrait" data-portrait="${c.id}"></span>
+            <span class="char-name">${c.name}</span></button>`,
+        )
+        .join('');
+      grid.querySelectorAll('[data-portrait]').forEach((h) => {
+        h.appendChild(this.portraitCanvas(getCharacter(h.dataset.portrait), 120));
+        h.style.filter = this._skinFilter(h.dataset.portrait);
+      });
+      grid.querySelectorAll('[data-cos-char]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this._cosChar = btn.dataset.cosChar;
+          this.audio.select?.();
+          this.haptics.tap();
+          this.buildCosmetics();
+        });
+      });
+    }
+
+    const skins = this.root.querySelector('#cos-skins');
+    if (!skins) return;
+    const charId = this._cosChar;
+    const owned = this.profile.ownedSkins || [];
+    const equipped = this.profile.equippedSkins || {};
+    const equippedKey = equipped[charId] ? parseSkinId(equipped[charId]).key : 'default';
+    skins.innerHTML = SKIN_VARIANTS.map((v) => {
+      const has = ownsSkin(charId, v.key, owned);
+      const isEquipped = v.key === equippedKey;
+      const cta = isEquipped
+        ? `<span class="skin-eq">✓ Equipped</span>`
+        : has
+          ? `<button class="btn btn-primary btn-xs" data-equip="${v.key}">Equip</button>`
+          : `<button class="btn btn-secondary btn-xs" data-buy-skin="${v.key}">${this._coinIco('coin-ico-xs')}${v.price}</button>`;
+      return `<div class="skin-card ${isEquipped ? 'equipped' : ''}">
+        <span class="skin-swatch" data-skin-portrait="${charId}" style="filter:hue-rotate(${v.tint}deg) saturate(${v.tint ? 1.25 : 1})"></span>
+        <span class="skin-name">${v.name}</span>${cta}</div>`;
+    }).join('');
+
+    skins.querySelectorAll('[data-skin-portrait]').forEach((h) => {
+      h.appendChild(this.portraitCanvas(getCharacter(h.dataset.skinPortrait), 96));
+    });
+
+    skins.querySelectorAll('[data-equip]').forEach((btn) => {
+      btn.addEventListener('click', () => this._equipSkin(charId, btn.dataset.equip));
+    });
+    skins.querySelectorAll('[data-buy-skin]').forEach((btn) => {
+      btn.addEventListener('click', () => this._buySkin(charId, btn.dataset.buySkin));
+    });
+  }
+
+  async _buySkin(charId, key) {
+    const variant = SKIN_VARIANTS.find((v) => v.key === key);
+    if (!variant) return;
+    if (this.coins < variant.price) {
+      this.audio.block?.();
+      this.toast('Not enough coins');
+      return;
+    }
+    this.coins -= variant.price;
+    const owned = [...(this.profile.ownedSkins || []), skinId(charId, key)];
+    const equipped = { ...(this.profile.equippedSkins || {}), [charId]: skinId(charId, key) };
+    this.profile = await StorageService.saveProfile({ coins: this.coins, ownedSkins: owned, equippedSkins: equipped });
+    this.audio.select?.();
+    this.haptics.impact?.('Medium');
+    this.toast('Skin unlocked & equipped');
+    this.buildCosmetics();
+  }
+
+  async _equipSkin(charId, key) {
+    const equipped = { ...(this.profile.equippedSkins || {}) };
+    if (key === 'default') delete equipped[charId];
+    else equipped[charId] = skinId(charId, key);
+    this.profile = await StorageService.saveProfile({ equippedSkins: equipped });
+    this.audio.select?.();
+    this.haptics.tap();
+    this.buildCosmetics();
   }
 
   // ------------------------------------------------------------- settings
@@ -1618,7 +2293,11 @@ export class App {
     this.stats = stats;
     this.profile = profile;
     this.xp = 0;
+    this.coins = 0;
     this.unlocked = new Set(STARTER_IDS);
+    await this.quests.ensureDaily();
+    this._updateCurrencyUi();
+    this._refreshQuestBadge();
     this.toast('Progress reset');
     this.showSettings();
   }
@@ -1634,6 +2313,8 @@ export class App {
     // observer/retranslate re-apply Hebrew, and reopen the settings screen.
     this.render();
     retranslate(this.root);
+    this._updateCurrencyUi();
+    this._refreshQuestBadge();
     this.showSettings();
   }
 
@@ -1665,6 +2346,17 @@ export class App {
     return !!(typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.());
   }
 
+  /** URL for a bundled UI icon (scripts/raw/_icons.mjs output). */
+  _iconUrl(name) {
+    const base = import.meta.env.BASE_URL || '/';
+    return `${base}ui/icons/${name}.png?v=2`;
+  }
+
+  /** Inline coin icon markup for use inside innerHTML templates. */
+  _coinIco(extra = '') {
+    return `<img class="coin-ico ${extra}" src="${this._iconUrl('coin')}" alt="🪙">`;
+  }
+
   // In-app purchases aren't live yet, so the Store is switched off everywhere:
   // no Store button, no navigation into it, and premium fighters/arenas stay
   // hidden (rather than showing as permanently-locked dead-ends). Flip this to
@@ -1679,9 +2371,11 @@ export class App {
   }
 
   showHowto() {
-    // The keyboard card is only relevant on desktop/web builds.
-    const kb = this.root.querySelector('#howto-desktop');
-    if (kb) kb.classList.toggle('hidden', this._isNative());
+    // Show only the control scheme that matches the platform: touch buttons on
+    // native, keyboard on web/desktop.
+    const native = this._isNative();
+    this.root.querySelector('.plat-touch')?.classList.toggle('hidden', !native);
+    this.root.querySelector('.plat-kbd')?.classList.toggle('hidden', native);
     this.showScreen('howto');
   }
 

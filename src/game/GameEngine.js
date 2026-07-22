@@ -123,6 +123,7 @@ export class GameEngine {
     this._fid = 0;
     this.boss = null;
     this.campaign = null;
+    this.survival = null;
     // Timed drop waves: nothing drops at the start of the fight. The first wave
     // arrives after ~10s, then a fresh wave every ~30s. Each wave drops a few
     // player-only power-ups plus one rare, high-power weapon.
@@ -142,6 +143,8 @@ export class GameEngine {
 
     if (config.campaign) {
       this._startCampaign(config);
+    } else if (config.survival) {
+      this._startSurvival(config);
     } else if (config.network) {
       this._startNetworkMatch(config);
     } else {
@@ -163,6 +166,9 @@ export class GameEngine {
       this._humanTookDamage = false;
       this.cb.onAnnounce?.('FIGHT!', 'go');
     }
+
+    // Apply the player's equipped cosmetic skin (hue-rotate) to their fighter.
+    if (this.human && config.playerTint) this.human.tint = config.playerTint;
 
     this.shake = 0;
     this.hitStop = 0;
@@ -329,6 +335,156 @@ export class GameEngine {
       facing,
       aiDiff: { ...def.ai },
     });
+  }
+
+  // ---- Endless Survival ------------------------------------------------
+  _startSurvival(config) {
+    // A rotating arena keeps the endless mode visually fresh.
+    this._survivalArenas = ['dojo', 'forest', 'frozen', 'volcano'];
+    this.arena = getArena(this._survivalArenas[0]);
+    this._addFighter({
+      character: config.playerCharacter,
+      team: 0,
+      isHuman: true,
+      name: config.playerName || 'You',
+      x: this.vw * 0.5,
+      z: ARENA_DEPTH * 0.5,
+      facing: 1,
+    });
+    this.survival = {
+      wave: 0,
+      wavesCleared: 0,
+      kills: 0,
+      score: 0,
+      state: 'between',
+      betweenTimer: 1.1,
+    };
+    this._spawnItems();
+  }
+
+  _survivalInfo() {
+    const sv = this.survival;
+    return {
+      survival: true,
+      wave: sv.wave,
+      score: sv.score,
+      enemies: this.fighters.filter((f) => f.team !== 0 && f.alive).length,
+      boss: !!(this.boss && this.boss.alive),
+    };
+  }
+
+  /** Enemy id list for a given wave, escalating in size and toughness. */
+  _survivalWaveComposition(wave) {
+    // Every 10th wave is a boss fight; every 5th brings a mini-boss.
+    if (wave % 10 === 0) {
+      const guards = 1 + Math.floor(wave / 20);
+      return ['leader', ...Array(guards).fill('bruiser'), 'mage'];
+    }
+    const list = [];
+    const total = Math.min(6, 2 + Math.floor(wave / 2));
+    const mageChance = wave >= 3 ? Math.min(0.45, 0.15 + wave * 0.03) : 0;
+    for (let i = 0; i < total; i += 1) {
+      list.push(Math.random() < mageChance ? 'mage' : 'bruiser');
+    }
+    if (wave % 5 === 0) list.push('superbruiser');
+    return list;
+  }
+
+  _spawnSurvivalWave() {
+    const sv = this.survival;
+    sv.wave += 1;
+    // Rotate the backdrop every few waves.
+    const arenaId = this._survivalArenas[Math.floor((sv.wave - 1) / 3) % this._survivalArenas.length];
+    this.arena = getArena(arenaId);
+    const w = this.vw;
+    // Enemies get tougher/stronger the deeper you go.
+    const hpMul = 1 + (sv.wave - 1) * 0.09;
+    const powMul = 1 + (sv.wave - 1) * 0.04;
+    const types = this._survivalWaveComposition(sv.wave);
+    types.forEach((type, i) => {
+      const base = getEnemy(type);
+      const def = {
+        ...base,
+        maxHp: Math.round(base.maxHp * hpMul),
+        attackPower: +(base.attackPower * powMul).toFixed(1),
+      };
+      const fromLeft = i % 2 === 0;
+      const x = fromLeft ? w * 0.06 - i * 8 : w * 0.94 + i * 8;
+      const z = ARENA_DEPTH * (0.28 + Math.random() * 0.44);
+      const f = this._addEnemy(def, Math.max(24, Math.min(w - 24, x)), z, fromLeft ? 1 : -1);
+      if (def.isBoss) this.boss = f;
+    });
+    sv.state = 'fighting';
+    this.cb.onAnnounce?.(`WAVE ${sv.wave}`, 'go');
+    this.cb.onRoster?.(this.fighters);
+    this.cb.onSurvival?.(this._survivalInfo());
+    this._emitHud();
+  }
+
+  _updateSurvival(dt) {
+    const sv = this.survival;
+
+    // Score every fresh enemy KO (scaled by the wave it happened on).
+    for (const f of this.fighters) {
+      if (f.team !== 0 && !f.alive && !f._svCounted) {
+        f._svCounted = true;
+        sv.kills += 1;
+        sv.score += 10 * sv.wave;
+      }
+    }
+
+    // Drop faded corpses so the fighter/AI lists stay tidy across waves.
+    if (this.fighters.some((f) => !f.isHuman && f.gone)) {
+      const goneIds = new Set(this.fighters.filter((f) => !f.isHuman && f.gone).map((f) => f.id));
+      this.fighters = this.fighters.filter((f) => !goneIds.has(f.id));
+      this.ais = this.ais.filter((a) => !goneIds.has(a.fighter.id));
+    }
+
+    if (sv.state === 'lost') {
+      this.overTimer -= dt;
+      if (this.overTimer <= 0 && !this._reported) {
+        this._reported = true;
+        this.cb.onRoundOver?.({
+          survival: true,
+          win: false,
+          wave: sv.wave,
+          wavesCleared: sv.wavesCleared,
+          score: sv.score,
+          time: this.elapsed,
+          bestCombo: this._humanBestCombo,
+          koDealt: this._humanKOs,
+        });
+      }
+      return;
+    }
+
+    if (!this.human.alive) {
+      sv.state = 'lost';
+      this.overTimer = 1.8;
+      this._slowmo = 1.2;
+      this.addShake(14);
+      this.cb.onAnnounce?.('DEFEATED', 'ko');
+      return;
+    }
+
+    if (sv.state === 'between') {
+      sv.betweenTimer -= dt;
+      if (sv.betweenTimer <= 0) this._spawnSurvivalWave();
+      return;
+    }
+
+    if (sv.state === 'fighting') {
+      const enemiesLeft = this.fighters.some((f) => f.team !== 0 && f.alive);
+      if (enemiesLeft) return;
+      // Wave cleared: heal a little, refresh props, cue the next wave.
+      sv.wavesCleared += 1;
+      this.human.hp = Math.min(this.human.maxHp, this.human.hp + this.human.maxHp * 0.18);
+      this.boss = null;
+      this._spawnItems();
+      sv.state = 'between';
+      sv.betweenTimer = 1.8;
+      this.cb.onSurvival?.(this._survivalInfo());
+    }
   }
 
   _campaignInfo() {
@@ -791,6 +947,7 @@ export class GameEngine {
 
     this._emitHud();
     if (this.campaign) this._updateCampaign(dt);
+    else if (this.survival) this._updateSurvival(dt);
     else this._checkRoundOver(dt);
   }
 

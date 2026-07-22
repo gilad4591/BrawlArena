@@ -16,5 +16,9 @@
  * Leave id empty to keep the whole feature dormant (button hidden, no calls).
  */
 export const LEADERBOARD = {
-  id: 'CgkI8fXupq4PEAIQAQ', // "Top Brawlers"
+  id: 'CgkI8fXupq4PEAIQAQ', // "Top Brawlers" (submits total XP)
+  // Optional second board for the endless Survival high score (best score).
+  // Create a separate INTEGER leaderboard in Play Console and paste its id
+  // here; leave empty to keep survival submissions dormant.
+  survivalId: '',
 };

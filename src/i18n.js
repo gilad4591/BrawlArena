@@ -220,6 +220,146 @@ const HE = {
   'Arrows move · Enter or . hit · / special · Space jump · Right-Shift block · , throw. (Left hand: WASD + J/K/L/T also work.)':
     'חצים לתנועה · Enter או . מכה · / מיוחד · רווח קפיצה · Shift-ימני חסימה · , זריקה. (יד שמאל: WASD + J/K/L/T גם עובדים.)',
   'Got it': 'הבנתי',
+
+  // --- How to Play (keyboard scheme) ---
+  'Arrows or WASD — up/down also shifts depth on the floor.':
+    'חצים או WASD — מעלה/מטה גם מזיז לעומק הרצפה.',
+  Attack: 'התקפה',
+  'Press Enter or . for a light combo. Chain them and back off.':
+    'לחץ Enter או . לקומבו קל. שרשר אותם ותיסוג.',
+  Jump: 'קפיצה',
+  'Press Space to hop over projectiles and juggle foes.':
+    'לחץ רווח כדי לקפוץ מעל קליעים וללהטט אויבים.',
+  Block: 'חסימה',
+  "Hold Right-Shift to guard — you can't move while blocking.":
+    'החזק Shift-ימני כדי להתגונן — אי אפשר לזוז בזמן חסימה.',
+  'Special · Neutral': 'מיוחד · רגיל',
+  'Press / for your signature move (costs the blue energy bar).':
+    'לחץ / למהלך החתימה שלך (עולה מפס האנרגיה הכחול).',
+  'Special · Dash': 'מיוחד · דאש',
+  'Tap forward twice, then / — a charging attack.':
+    'הקש קדימה פעמיים, ואז / — התקפת הסתערות.',
+  'Special · Air': 'מיוחד · אוויר',
+  'Press Space, then / in the air for a launcher.':
+    'לחץ רווח, ואז / באוויר לשיגור.',
+  'Stand over an item and press Enter to pick it up. Press , to throw it.':
+    'עמוד מעל חפץ ולחץ Enter כדי להרים. לחץ , כדי לזרוק.',
+
+  // --- Modes / menu additions ---
+  Play: 'שחק',
+  'Choose a Mode': 'בחר מצב משחק',
+  "Fight 5 stages to the Overlord's throne": 'הילחם ב-5 שלבים עד כס השליט',
+  'Custom 1v1, free-for-all or teams vs CPU': '1 נגד 1, כולם נגד כולם או קבוצות נגד המחשב',
+  'Endless waves that grow tougher and tougher': 'גלים אינסופיים שהולכים ומתחזקים',
+  'Play with friends using an invite code': 'שחק עם חברים בעזרת קוד הזמנה',
+  Survival: 'הישרדות',
+  Quests: 'משימות',
+  Achievements: 'הישגים',
+  Skins: 'מראות',
+  'Daily Quests': 'משימות יומיות',
+  'Daily Reward': 'תגמול יומי',
+  Back: 'חזרה',
+  Close: 'סגור',
+  Claim: 'קבל',
+  Equip: 'הצטייד',
+  '✓ Equipped': '✓ מצויד',
+  START: 'התחל',
+  BOSS: 'בוס',
+  'unlocked!': 'נפתח!',
+  'UNLOCKED!': 'נפתח!',
+  'Progress reset': 'ההתקדמות אופסה',
+
+  // --- Survival ---
+  'Endless waves that grow tougher and tougher. How long can you last?':
+    'גלים אינסופיים שהולכים ומתחזקים. כמה זמן תשרוד?',
+  'Best Wave': 'הגל הטוב ביותר',
+  Fighter: 'לוחם',
+  'SURVIVAL OVER': 'ההישרדות הסתיימה',
+  'NEW BEST!': 'שיא חדש!',
+
+  // --- Daily reward ---
+  '▶ Watch ad — Claim ×2': '▶ צפה בפרסומת — קבל ×2',
+  '▶ Watch ad — Double reward ×2': '▶ צפה בפרסומת — הכפל תגמול ×2',
+  '▶ Watch ad — Try 1 match': '▶ צפה בפרסומת — נסה קרב אחד',
+  'Tired of ads? Remove them in the Store': 'נמאס מפרסומות? הסר אותן בחנות',
+
+  // --- Cosmetics / skins ---
+  Original: 'מקורי',
+  Crimson: 'ארגמן',
+  Emerald: 'אזמרגד',
+  Azure: 'תכלת',
+  Golden: 'זהוב',
+  Shadow: 'צל',
+  'Not enough coins': 'אין מספיק מטבעות',
+  'Skin unlocked & equipped': 'המראה נפתח והוצמד',
+
+  // --- Premium tease ---
+  'Premium Fighter': 'לוחם מיוחד',
+  'Unlock in Store': 'פתח בחנות',
+
+  // --- Achievements (names + descriptions) ---
+  'First Blood': 'דם ראשון',
+  'Win your first match': 'נצח בקרב הראשון שלך',
+  Contender: 'מתמודד',
+  'Win 10 matches': 'נצח ב-10 קרבות',
+  Veteran: 'ותיק',
+  'Win 50 matches': 'נצח ב-50 קרבות',
+  Champion: 'אלוף',
+  'Win 100 matches': 'נצח ב-100 קרבות',
+  'Warmed Up': 'מחומם',
+  'Play 10 matches': 'שחק 10 קרבות',
+  Regular: 'קבוע',
+  'Play 50 matches': 'שחק 50 קרבות',
+  Addicted: 'מכור',
+  'Play 200 matches': 'שחק 200 קרבות',
+  Bruiser: 'חובט',
+  'Knock out 50 fighters': 'הפל 50 לוחמים',
+  Demolisher: 'הורס',
+  'Knock out 250 fighters': 'הפל 250 לוחמים',
+  Unstoppable: 'בלתי ניתן לעצירה',
+  'Knock out 1000 fighters': 'הפל 1000 לוחמים',
+  'Combo Starter': 'פותח קומבו',
+  'Land a 5-hit combo': 'בצע קומבו של 5 מכות',
+  'Combo Master': 'אמן קומבו',
+  'Land a 10-hit combo': 'בצע קומבו של 10 מכות',
+  'Combo God': 'אל הקומבו',
+  'Land a 20-hit combo': 'בצע קומבו של 20 מכות',
+  'On a Roll': 'ברצף',
+  'Win 3 in a row': 'נצח 3 ברצף',
+  Dominating: 'שולט',
+  'Win 5 in a row': 'נצח 5 ברצף',
+  Legendary: 'אגדי',
+  'Win 10 in a row': 'נצח 10 ברצף',
+  Trailblazer: 'פורץ דרך',
+  'Clear campaign stage 1': 'סיים שלב 1 בקמפיין',
+  'Overlord Slayer': 'קוטל השליט',
+  'Clear the whole campaign': 'סיים את כל הקמפיין',
+  Survivor: 'שורד',
+  'Reach wave 5 in Survival': 'הגע לגל 5 בהישרדות',
+  'Last Stand': 'מעמד אחרון',
+  'Reach wave 10 in Survival': 'הגע לגל 10 בהישרדות',
+  Endless: 'אינסופי',
+  'Reach wave 20 in Survival': 'הגע לגל 20 בהישרדות',
+  'Coin Collector': 'אספן מטבעות',
+  'Hold 500 coins': 'החזק 500 מטבעות',
+  'Coin Baron': 'ברון מטבעות',
+  'Hold 2000 coins': 'החזק 2000 מטבעות',
+  Dedicated: 'מסור',
+  'Reach a 7-day login streak': 'הגע לרצף כניסה של 7 ימים',
+
+  // --- Templated strings (used via tpl) ---
+  '+{c} · Total {total}': '+{c} · סה״כ {total}',
+  'Day {d} streak · +{c} coins': 'רצף יום {d} · +{c} מטבעות',
+  '+{c} coins!': '+{c} מטבעות!',
+  '🏅 {name} · +{c}': '🏅 {name} · +{c}',
+  'Reward doubled! +{c} coins': 'התגמול הוכפל! +{c} מטבעות',
+  'Quest complete: {d}': 'משימה הושלמה: {d}',
+  'Reached Wave {w} · Score {s}{best}': 'הגעת לגל {w} · ניקוד {s}{best}',
+  '{n}/{total} unlocked': '{n}/{total} נפתחו',
+  'Trial: {name} for one match': 'התנסות: {name} לקרב אחד',
+  'Unlock · {price}': 'פתח · {price}',
+  'Wave {w}': 'גל {w}',
+  'Score {s}': 'ניקוד {s}',
 };
 
 // Patterns for strings composed with numbers.
@@ -232,6 +372,15 @@ const RULES = [
   [/^WAVE (\d+)$/, 'גל $1'],
   [/^STAGE (\d+)$/, 'שלב $1'],
   [/^at (\d+) XP$/, 'ב-$1 XP'],
+  // Survival + quests dynamic strings.
+  [/^Wave (\d+)$/, 'גל $1'],
+  [/^Score (\d+)$/, 'ניקוד $1'],
+  [/^Win (\d+) matches$/, 'נצח $1 קרבות'],
+  [/^Play (\d+) matches$/, 'שחק $1 קרבות'],
+  [/^Knock out (\d+) fighters$/, 'הפל $1 לוחמים'],
+  [/^Land a (\d+)-hit combo$/, 'בצע קומבו של $1 מכות'],
+  [/^Clear (\d+) campaign stage\(s\)$/, 'סיים $1 שלבי קמפיין'],
+  [/^Reach wave (\d+) in Survival$/, 'הגע לגל $1 בהישרדות'],
 ];
 
 export function getLang() {
