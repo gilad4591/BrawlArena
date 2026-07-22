@@ -11,7 +11,7 @@ import {
   TEAM_COLORS,
 } from './constants.js';
 import { getSpriteSet, frameForState } from './sprites.js';
-import { STATUS_IMAGES, drawVfx } from './vfx.js';
+import { STATUS_IMAGES, drawVfx, drawAura } from './vfx.js';
 
 // Melee combo timing (seconds)
 const ATTACK = { windup: 0.07, active: 0.11, recover: 0.16 };
@@ -107,6 +107,8 @@ export class Fighter {
     // recoloured with a hue shift (character.tint, in degrees).
     this.spriteSet = getSpriteSet(character.spriteBase || character.id);
     this.tint = character.tint || 0;
+    this.skinAura = null; // elemental aura theme from the player's equipped skin
+    this.spTheme = null; // special-attack fx theme from the player's equipped skin
   }
 
   /** True once the corpse has fully faded and should no longer be drawn. */
@@ -424,6 +426,13 @@ export class Fighter {
     ctx.arc(0, 0, shW, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+
+    // equipped-skin elemental aura (animated, additive) drawn BEHIND the body
+    if (this.alive && this.skinAura) {
+      drawAura(ctx, this.skinAura, sx, bodyBottom, h * 1.72, Date.now() / 1000, {
+        alpha: 0.9,
+      });
+    }
 
     // power-up aura (player buff) — golden rays behind the fighter
     if (this.alive && this.powerTimer > 0) {

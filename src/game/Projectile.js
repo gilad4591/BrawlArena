@@ -1,5 +1,6 @@
 import { ARENA_DEPTH } from './constants.js';
 import { ORB_IMAGES } from './vfx.js';
+import { SP_THEME } from './cosmetics.js';
 
 export class Projectile {
   constructor(owner, spec) {
@@ -14,6 +15,13 @@ export class Projectile {
     this.radius = spec.radius;
     this.damage = spec.damage;
     this.color = spec.color;
+    // Cosmetic SP theme (player only): recolour + re-orb the projectile.
+    this.orbName = spec.orb;
+    const th = owner.spTheme && SP_THEME[owner.spTheme];
+    if (th) {
+      this.color = th.color;
+      this.orbName = th.orb;
+    }
     this.knockback = spec.knockback ?? 1;
     this.freeze = spec.freeze ?? 0;
     this.homing = spec.homing ?? 0;
@@ -79,7 +87,7 @@ export class Projectile {
     const r = this.radius * scale;
 
     // Painted orb sprite (glowing energy ball) if this spec has one.
-    const img = this.spec.orb && ORB_IMAGES[this.spec.orb];
+    const img = this.orbName && ORB_IMAGES[this.orbName];
     if (img && img.complete && img.naturalWidth) {
       const h = r * 3.6;
       const w = h * (img.naturalWidth / img.naturalHeight);

@@ -2692,50 +2692,159 @@ body,
   width: 100%;
   height: auto;
 }
-.cos-skins {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
+/* ---- cosmetics: tabs + preview stage + item grid ---- */
+.cos-tabs {
+  display: flex;
+  gap: 8px;
   width: min(620px, 94vw);
-  margin-top: 8px;
+  justify-content: center;
 }
-.skin-card {
+.cos-tab {
+  flex: 1;
+  padding: 9px 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cfd6f2;
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.08s ease;
+}
+.cos-tab.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #fff;
+  border-color: transparent;
+}
+.cos-tab:active { transform: scale(0.96); }
+
+.cos-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.cos-preview { display: flex; align-items: center; gap: 18px; }
+.cos-manne {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cos-manne .cos-portrait { display: block; width: 150px; height: 150px; }
+.cos-manne .cos-portrait canvas { width: 100%; height: 100%; border-radius: 14px; }
+.cos-aura-glow {
+  position: absolute;
+  inset: -18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--g) 0%, transparent 68%);
+  filter: blur(6px);
+  opacity: 0.85;
+  animation: cos-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cos-pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 0.95; } }
+.cos-frame-img {
+  position: absolute;
+  inset: -12%;
+  width: 124%;
+  height: 124%;
+  pointer-events: none;
+}
+.cos-sp-demo {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 12px 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #cfd6f2;
+}
+.cos-sp-orb { width: 56px; height: 56px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,255,255,0.4)); }
+.cos-sp-none { opacity: 0.5; }
+.cos-hint { font-size: 0.75rem; color: #9aa3c7; }
+
+.cos-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 10px;
+  width: min(620px, 94vw);
+}
+.cos-fade { animation: cos-fade-in 0.22s ease; }
+@keyframes cos-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.cos-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
   border-radius: 12px;
   background: var(--panel);
   border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
 }
-.skin-card.equipped {
-  border-color: var(--accent);
-}
-.skin-swatch {
-  width: 72px;
-  height: 72px;
-  border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  overflow: hidden;
+.cos-card.previewing { border-color: rgba(255, 255, 255, 0.4); }
+.cos-card.equipped { border-color: var(--accent); }
+.cos-thumb {
+  width: 68px;
+  height: 68px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.25);
 }
-.skin-swatch canvas {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.cos-thumb-img { width: 100%; height: 100%; object-fit: contain; }
+.cos-thumb-img.orb { filter: drop-shadow(0 0 8px rgba(255,255,255,0.4)); }
+.cos-thumb-glow {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--g) 0%, transparent 70%);
+  box-shadow: 0 0 16px var(--g);
 }
-.skin-name {
-  font-weight: 700;
-  font-size: 0.85rem;
-}
+.cos-cardname { font-weight: 700; font-size: 0.82rem; }
 .skin-eq {
   color: var(--accent);
   font-weight: 800;
   font-size: 0.8rem;
+}
+
+/* ---- coin packs ---- */
+.coin-packs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  width: min(420px, 90vw);
+  margin: 6px 0 10px;
+}
+.coin-pack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  cursor: pointer;
+}
+.coin-pack:active { transform: scale(0.96); }
+.coin-pack-amt { font-weight: 900; font-size: 1.05rem; display: flex; align-items: center; gap: 4px; }
+.coin-pack-price {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #7ee0a6;
+}
+
+/* portrait frame overlay on the selected fighter's detail bust */
+.detail-portrait { position: relative; }
+.portrait-frame {
+  position: absolute;
+  inset: -8%;
+  width: 116%;
+  height: 116%;
+  pointer-events: none;
 }
 
 /* ---- premium tease ---- */
@@ -2814,23 +2923,13 @@ body,
     width: 34px;
     height: 34px;
   }
-  /* Skins: pack the roster + variants tighter so both fit a short phone. */
-  .char-grid.sm {
-    grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
-    gap: 5px;
-    width: min(680px, 96vw);
-  }
-  .cos-skins {
-    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  /* Cosmetics: shrink the preview + pack the item grid tighter on short phones. */
+  .cos-manne, .cos-manne .cos-portrait { width: 104px; height: 104px; }
+  .cos-sp-orb { width: 40px; height: 40px; }
+  .cos-items {
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
     gap: 6px;
-    width: min(680px, 96vw);
+    width: min(720px, 96vw);
   }
-  .skin-swatch {
-    width: 48px;
-    height: 48px;
-  }
-  .skin-card {
-    padding: 7px 5px;
-    gap: 4px;
-  }
+  .cos-thumb { width: 52px; height: 52px; }
 }

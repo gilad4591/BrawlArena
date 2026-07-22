@@ -1,6 +1,8 @@
 import { StorageService } from './StorageService.js';
 import {
   ALL_PRODUCT_IDS,
+  ALL_STORE_IDS,
+  COIN_PACK_IDS,
   ALL_CHARACTERS_ID,
   ARENA_PACK_ID,
   REMOVE_ADS_ID,
@@ -58,9 +60,13 @@ export class PurchaseService {
       this.adapter = await this._loadNativeAdapter();
       if (this.adapter) {
         try {
-          await this.adapter.init(ALL_PRODUCT_IDS);
+          await this.adapter.init(ALL_STORE_IDS);
           Object.assign(this.prices, await this.adapter.getPrices());
-          for (const id of await this.adapter.getOwned()) this.owned.add(id);
+          // Only NON-consumable entitlements are restored as "owned"; coin packs
+          // are consumables and must never be treated as a permanent unlock.
+          for (const id of await this.adapter.getOwned()) {
+            if (!COIN_PACK_IDS.includes(id)) this.owned.add(id);
+          }
           await this._persist();
         } catch (err) {
           console.warn('[iap] native init failed:', err);
@@ -131,6 +137,23 @@ export class PurchaseService {
     // Web/dev: simulated purchase (local only). Native success falls through here
     // to record the entitlement locally too.
     return this._grant(productId);
+  }
+
+  /**
+   * Buy a CONSUMABLE coin pack (mobile only). Coins are granted by the caller
+   * on { ok:true }; nothing is added to the owned entitlement set. On web/dev
+   * there is no store, so this reports unavailable (web stays coins-only).
+   */
+  async buyCoins(packId) {
+    if (!this.native || !this.adapter) {
+      return { ok: false, error: 'Coin packs are only available in the app.' };
+    }
+    try {
+      const res = await this.adapter.buyConsumable(packId);
+      return res?.ok ? { ok: true } : { ok: false, error: res?.error || 'Purchase cancelled.' };
+    } catch (err) {
+      return { ok: false, error: String(err?.message || err) };
+    }
   }
 
   async restore() {
@@ -237,6 +260,29 @@ export class PurchaseService {
               productType: INAPP,
             });
             const ok = !!(res && res.transactionId);
+            return { ok, error: ok ? undefined : 'Purchase cancelled.' };
+          } catch (err) {
+            return { ok: false, error: String(err?.message || err) };
+          }
+        },
+        async buyConsumable(productId) {
+          try {
+            const res = await NativePurchases.purchaseProduct({
+              productIdentifier: productId,
+              productType: INAPP,
+              // Some plugin versions honour this to auto-consume so the pack can
+              // be bought again; harmless if ignored.
+              quantity: 1,
+            });
+            const ok = !!(res && (res.transactionId || res.purchaseToken));
+            // Best-effort consume so Google Play lets the pack be re-purchased.
+            const token = res?.purchaseToken || res?.transactionId;
+            if (ok && token) {
+              try {
+                await (NativePurchases.consume?.({ purchaseToken: token, productIdentifier: productId })
+                  ?? NativePurchases.consumePurchase?.({ purchaseToken: token }));
+              } catch { /* ignore — verified/consumed on next query */ }
+            }
             return { ok, error: ok ? undefined : 'Purchase cancelled.' };
           } catch (err) {
             return { ok: false, error: String(err?.message || err) };

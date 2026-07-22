@@ -167,8 +167,12 @@ export class GameEngine {
       this.cb.onAnnounce?.('FIGHT!', 'go');
     }
 
-    // Apply the player's equipped cosmetic skin (hue-rotate) to their fighter.
+    // Apply the player's equipped cosmetics: body hue, elemental aura, SP theme.
     if (this.human && config.playerTint) this.human.tint = config.playerTint;
+    if (this.human) {
+      this.human.skinAura = config.playerAura || null;
+      this.human.spTheme = config.playerSpTheme || null;
+    }
 
     this.shake = 0;
     this.hitStop = 0;

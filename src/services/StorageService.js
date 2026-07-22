@@ -38,8 +38,11 @@ const DEFAULT_PROFILE = {
   quests: { day: null, items: [] },
   achievements: {}, // id -> true
   survivalBest: 0,
-  ownedSkins: [], // ['blaze_gold', ...]
-  equippedSkins: {}, // charId -> skinId
+  ownedSkins: [], // legacy per-character tint skins (kept for back-compat)
+  equippedSkins: {}, // legacy: charId -> skinId
+  // account-wide cosmetics (frame / aura / sp slots x elemental themes)
+  cosmeticsOwned: [], // ['aura:void', 'frame:divine', ...]
+  cosmeticsEquipped: { frame: null, aura: null, sp: null },
   adNudged: false, // one-time "remove ads?" prompt shown
 };
 

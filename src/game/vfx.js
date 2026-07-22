@@ -9,6 +9,13 @@ export const STATUS_IMAGES = {};
 export const SLASH_IMAGES = {};
 export const DUST_IMAGES = {};
 export const BANNER_IMAGES = {};
+// Elemental skin auras: black-background 4x2 (8-frame) loops drawn additively
+// around a fighter. AURA_IMAGES[theme] = HTMLImageElement.
+export const AURA_IMAGES = {};
+export const AURA_COLS = 4;
+export const AURA_ROWS = 2;
+export const AURA_FRAMES = AURA_COLS * AURA_ROWS;
+const AURA_NAMES = ['inferno', 'frost', 'storm', 'toxic', 'divine', 'void'];
 const VFX_VERSION = '2';
 
 const ORB_NAMES = ['fire', 'ice', 'lightning', 'toxic', 'void', 'holy', 'water', 'blood'];
@@ -34,7 +41,32 @@ export async function loadVfxImages() {
     ...SLASH_NAMES.map((n) => load(SLASH_IMAGES, 'vfx', 'slash_', n)),
     ...DUST_NAMES.map((n) => load(DUST_IMAGES, 'vfx', 'dust_', n)),
     ...BANNER_NAMES.map((n) => load(BANNER_IMAGES, 'banners', 'banner_', n)),
+    ...AURA_NAMES.map((n) => load(AURA_IMAGES, 'vfx', 'aura_', n)),
   ]);
+}
+
+/**
+ * Draw one animated frame of an elemental aura loop, centered on (cx, cy=feet),
+ * additively so the black sheet background contributes nothing. `t` is seconds.
+ */
+export function drawAura(ctx, theme, cx, feetY, targetH, t, opts = {}) {
+  const img = AURA_IMAGES[theme];
+  if (!img || !img.complete || !img.naturalWidth) return;
+  const fw = img.naturalWidth / AURA_COLS;
+  const fh = img.naturalHeight / AURA_ROWS;
+  const frame = Math.floor((t * (opts.fps ?? 14)) % AURA_FRAMES);
+  const sx = (frame % AURA_COLS) * fw;
+  const sy = Math.floor(frame / AURA_COLS) * fh;
+  const h = targetH;
+  const w = h * (fw / fh);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
+  // The silhouette stands on the frame's bottom; anchor the aura at the feet.
+  ctx.drawImage(img, sx, sy, fw, fh, cx - w / 2, feetY - h * 0.94, w, h);
+  ctx.restore();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
 }
 
 /** Draw a centered VFX sprite scaled to a target height. */

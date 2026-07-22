@@ -37,6 +37,20 @@ export const IAP = {
   },
 };
 
+/**
+ * Coin packs are CONSUMABLE products (buyable repeatedly) that grant soft-
+ * currency Coins. Mobile only — the web build stays coins-only (earn in-game).
+ * Create these in Play Console as *Consumable* managed products with these IDs.
+ */
+export const COIN_PACKS = [
+  { id: 'coins_500', coins: 500 },
+  { id: 'coins_1200', coins: 1200 },
+  { id: 'coins_3000', coins: 3000 },
+  { id: 'coins_8000', coins: 8000 },
+];
+
+export const COIN_PACK_IDS = COIN_PACKS.map((p) => p.id);
+
 // Product id -> the character id it unlocks (built from the roster).
 export const PRODUCT_TO_CHARACTER = Object.fromEntries(
   PREMIUM_CHARACTERS.map((c) => [c.productId, c.id]),
@@ -49,3 +63,6 @@ export const ALL_PRODUCT_IDS = [
   ARENA_PACK_ID,
   ...PREMIUM_CHARACTERS.map((c) => c.productId),
 ];
+
+// Every product we query the store for pricing (entitlements + consumables).
+export const ALL_STORE_IDS = [...ALL_PRODUCT_IDS, ...COIN_PACK_IDS];

@@ -8,7 +8,7 @@ import {
   LOCKED_CHARACTERS,
   PREMIUM_CHARACTERS,
 } from '../game/characters.js';
-import { IAP, REMOVE_ADS_ID, ALL_CHARACTERS_ID, ARENA_PACK_ID } from '../services/purchasesConfig.js';
+import { IAP, REMOVE_ADS_ID, ALL_CHARACTERS_ID, ARENA_PACK_ID, COIN_PACKS } from '../services/purchasesConfig.js';
 import { STAGES } from '../game/enemies.js';
 import { MODES, DIFFICULTY, TEAM_COLORS } from '../game/constants.js';
 import { ARENAS, ARENA_MAP, loadArenaImages, isPremiumArena } from '../game/arenas.js';
@@ -30,7 +30,11 @@ import { QuestService } from '../services/QuestService.js';
 import { dailyStatus, applyDailyClaim, DAILY_REWARDS } from '../services/DailyReward.js';
 import { questDesc, isClaimable } from '../game/quests.js';
 import { ACHIEVEMENTS } from '../game/achievements.js';
-import { SKIN_VARIANTS, skinId, parseSkinId, equippedTint, ownsSkin } from '../game/cosmetics.js';
+import {
+  COSMETIC_THEMES, COSMETIC_SLOTS, THEME_MAP, SLOT_MAP,
+  cosmeticId, cosmeticPrice, ownsCosmetic, equippedTheme,
+  equippedTint, equippedAura, equippedSp,
+} from '../game/cosmetics.js';
 import { t, tpl, getLang, setLang, attachTranslator, retranslate } from '../i18n.js';
 
 export class App {
@@ -418,12 +422,34 @@ export class App {
       <div id="screen-cosmetics" class="screen setup hidden">
         <div class="setup-head">
           <button class="icon-btn" data-action="menu">‹</button>
-          <h2>Skins</h2>
+          <h2>Cosmetics</h2>
           <span class="coin-pill sm"><img class="coin-ico" src="${this._iconUrl('coin')}" alt=""><b id="coin-count-cos">0</b></span>
         </div>
-        <div class="char-grid sm" id="cos-char-grid"></div>
-        <div class="cos-skins" id="cos-skins"></div>
+        <div class="cos-tabs" id="cos-tabs"></div>
+        <div class="cos-stage">
+          <div class="cos-preview" id="cos-preview"></div>
+          <div class="cos-hint" id="cos-hint"></div>
+        </div>
+        <div class="cos-items" id="cos-items"></div>
         <button class="btn btn-secondary" data-action="menu">Back</button>
+      </div>
+
+      <div id="confirm-overlay" class="overlay hidden">
+        <h2 class="overlay-title" id="confirm-title">Confirm</h2>
+        <p class="overlay-meta" id="confirm-msg"></p>
+        <div class="btn-row col">
+          <button class="btn btn-primary" id="confirm-ok">Confirm</button>
+          <button class="btn btn-ghost" id="confirm-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <div id="coins-overlay" class="overlay hidden">
+        <h2 class="overlay-title">Get Coins</h2>
+        <p class="overlay-meta" id="coins-meta">Top up with coins to unlock cosmetics.</p>
+        <div class="coin-packs" id="coin-packs"></div>
+        <div class="btn-row col">
+          <button class="btn btn-ghost" data-action="coins-close">Close</button>
+        </div>
       </div>
 
       <div id="premium-overlay" class="overlay hidden">
@@ -508,6 +534,7 @@ export class App {
       case 'quests': this.showQuests(); break;
       case 'achievements': this.showAchievements(); break;
       case 'cosmetics': this.showCosmetics(); break;
+      case 'coins-close': this.root.querySelector('#coins-overlay')?.classList.add('hidden'); break;
       case 'daily-claim': this.claimDaily(false); break;
       case 'daily-x2': this.claimDaily(true); break;
       case 'daily-close': this.root.querySelector('#daily-overlay')?.classList.add('hidden'); break;
@@ -881,7 +908,9 @@ export class App {
         // Premium fighters that aren't owned yet show their dark "locked" bust.
         const showLocked = c.premium && !this.isUnlocked(c.id);
         holder.appendChild(this.portraitCanvas(c, 160, showLocked));
-        if (!showLocked) holder.style.filter = this._skinFilter(c.id);
+        // Cosmetics are account-wide, so preview the equipped look on the
+        // currently-selected fighter's card only.
+        if (!showLocked && c.id === this.selection.character) holder.style.filter = this._skinFilter();
         // If a purpose-made (already dark) locked bust is used, mark the card so
         // CSS skips the extra darken filter that would crush it to a black void.
         if (showLocked && getLockedPortraitImage(c.id)) {
@@ -944,8 +973,16 @@ export class App {
       `;
       const detailPortrait = detail.querySelector('[data-portrait]');
       if (detailPortrait) {
-        detailPortrait.appendChild(this.portraitCanvas(c, 112));
-        detailPortrait.style.filter = this._skinFilter(c.id);
+        const cv = this.portraitCanvas(c, 112);
+        cv.style.filter = this._skinFilter(); // tint the body, not the frame
+        detailPortrait.appendChild(cv);
+        const frameTheme = equippedTheme('frame', this._cosEquipped());
+        if (frameTheme) {
+          const fr = document.createElement('img');
+          fr.className = 'portrait-frame';
+          fr.src = this._frameUrl(frameTheme);
+          detailPortrait.appendChild(fr);
+        }
       }
     }
 
@@ -1220,6 +1257,8 @@ export class App {
       arena: this.selection.arena,
       playerName: this.profile.name,
       playerTint: this._playerTint(),
+      playerAura: this._playerAura(),
+      playerSpTheme: this._playerSpTheme(),
       reduceMotion: this.settings.reduceMotion,
       excludePremium: !this._premiumEnabled(),
     });
@@ -1333,6 +1372,8 @@ export class App {
       campaign: { stages: STAGES, startStage },
       playerName: this.profile.name,
       playerTint: this._playerTint(),
+      playerAura: this._playerAura(),
+      playerSpTheme: this._playerSpTheme(),
       reduceMotion: this.settings.reduceMotion,
     });
     this._afterStart();
@@ -1712,14 +1753,38 @@ export class App {
 
   // ------------------------------------------------- economy + engagement
   /** Cosmetic hue-rotate for the currently-selected fighter's equipped skin. */
-  _playerTint() {
-    return equippedTint(this.selection.character, this.profile?.equippedSkins || {});
+  _cosEquipped() {
+    return this.profile?.cosmeticsEquipped || { frame: null, aura: null, sp: null };
   }
 
-  /** CSS filter that recolours a portrait to match a character's equipped skin. */
-  _skinFilter(charId) {
-    const t = equippedTint(charId, this.profile?.equippedSkins || {});
+  _playerTint() {
+    return equippedTint(this._cosEquipped());
+  }
+
+  /** Elemental aura theme from the equipped aura cosmetic. */
+  _playerAura() {
+    return equippedAura(this._cosEquipped());
+  }
+
+  /** Special-fx theme from the equipped SP cosmetic. */
+  _playerSpTheme() {
+    return equippedSp(this._cosEquipped());
+  }
+
+  /** CSS filter that recolours a portrait to match the equipped aura theme. */
+  _skinFilter() {
+    const t = equippedTint(this._cosEquipped());
     return t ? `hue-rotate(${t}deg) saturate(1.25)` : '';
+  }
+
+  _frameUrl(theme) {
+    const base = import.meta.env.BASE_URL || '/';
+    return `${base}ui/frames/frame_${theme}.png?v=1`;
+  }
+
+  _auraUrl(theme) {
+    const base = import.meta.env.BASE_URL || '/';
+    return `${base}vfx/aura_${theme}.png?v=1`;
   }
 
   /** Repaint every coin counter in the DOM. */
@@ -1965,6 +2030,8 @@ export class App {
       survival: true,
       playerName: this.profile.name,
       playerTint: this._playerTint(),
+      playerAura: this._playerAura(),
+      playerSpTheme: this._playerSpTheme(),
       reduceMotion: this.settings.reduceMotion,
     });
     this._afterStart();
@@ -2094,97 +2161,210 @@ export class App {
     }).join('')}`;
   }
 
-  // ---- cosmetics / skins shop ----
+  // ---- cosmetics: frame / aura / sp slots, try-before-buy, per-slot tabs ----
   showCosmetics() {
-    this._cosChar = this.selection.character;
+    this._cosTab = this._cosTab || 'frame';
+    // Preview mirrors what's equipped; "trying" a theme only changes preview.
+    const eq = this._cosEquipped();
+    this._cosPreview = { frame: eq.frame, aura: eq.aura, sp: eq.sp };
     this.showScreen('cosmetics');
     this.buildCosmetics();
   }
 
+  _orbUrl(name) {
+    const base = import.meta.env.BASE_URL || '/';
+    return `${base}ui/vfx/orb_${name}.png?v=2`;
+  }
+
   buildCosmetics() {
     this._updateCurrencyUi();
-    const grid = this.root.querySelector('#cos-char-grid');
-    if (grid) {
-      const roster = this._pickableRoster();
-      grid.innerHTML = roster
-        .map(
-          (c) => `<button class="char-card sm ${c.id === this._cosChar ? 'active' : ''}"
-            data-cos-char="${c.id}" style="--c:${c.color};--a:${c.accent}">
-            <span class="char-portrait" data-portrait="${c.id}"></span>
-            <span class="char-name">${c.name}</span></button>`,
-        )
-        .join('');
-      grid.querySelectorAll('[data-portrait]').forEach((h) => {
-        h.appendChild(this.portraitCanvas(getCharacter(h.dataset.portrait), 120));
-        h.style.filter = this._skinFilter(h.dataset.portrait);
-      });
-      grid.querySelectorAll('[data-cos-char]').forEach((btn) => {
+    const tabs = this.root.querySelector('#cos-tabs');
+    if (tabs) {
+      tabs.innerHTML = COSMETIC_SLOTS.map(
+        (s) => `<button class="cos-tab ${s.key === this._cosTab ? 'active' : ''}" data-cos-tab="${s.key}">${s.name}</button>`,
+      ).join('');
+      tabs.querySelectorAll('[data-cos-tab]').forEach((btn) => {
         btn.addEventListener('click', () => {
-          this._cosChar = btn.dataset.cosChar;
+          if (this._cosTab === btn.dataset.cosTab) return;
+          this._cosTab = btn.dataset.cosTab;
           this.audio.select?.();
           this.haptics.tap();
           this.buildCosmetics();
         });
       });
     }
+    this._renderCosPreview();
+    this._renderCosItems();
+  }
 
-    const skins = this.root.querySelector('#cos-skins');
-    if (!skins) return;
-    const charId = this._cosChar;
-    const owned = this.profile.ownedSkins || [];
-    const equipped = this.profile.equippedSkins || {};
-    const equippedKey = equipped[charId] ? parseSkinId(equipped[charId]).key : 'default';
-    skins.innerHTML = SKIN_VARIANTS.map((v) => {
-      const has = ownsSkin(charId, v.key, owned);
-      const isEquipped = v.key === equippedKey;
-      const cta = isEquipped
-        ? `<span class="skin-eq">✓ Equipped</span>`
+  _renderCosPreview() {
+    const stage = this.root.querySelector('#cos-preview');
+    if (!stage) return;
+    const p = this._cosPreview;
+    const tint = THEME_MAP[p.aura]?.tint || 0;
+    const glow = THEME_MAP[p.aura]?.color;
+    stage.innerHTML = `
+      <div class="cos-manne">
+        ${p.aura ? `<span class="cos-aura-glow" style="--g:${glow}"></span>` : ''}
+        <span class="cos-portrait" data-portrait="${this.selection.character}" style="filter:${tint ? `hue-rotate(${tint}deg) saturate(1.25)` : 'none'}"></span>
+        ${p.frame ? `<img class="cos-frame-img" src="${this._frameUrl(p.frame)}" alt="">` : ''}
+      </div>
+      <div class="cos-sp-demo">
+        ${p.sp ? `<img class="cos-sp-orb" src="${this._orbUrl(SP_THEME[p.sp].orb)}" alt=""><span>SP: ${THEME_MAP[p.sp].name}</span>` : `<span class="cos-sp-none">No Special FX</span>`}
+      </div>`;
+    const holder = stage.querySelector('[data-portrait]');
+    if (holder) holder.appendChild(this.portraitCanvas(getCharacter(holder.dataset.portrait), 150));
+    const hint = this.root.querySelector('#cos-hint');
+    if (hint) hint.textContent = t('Tap to preview · applies to every fighter');
+  }
+
+  _renderCosItems() {
+    const wrap = this.root.querySelector('#cos-items');
+    if (!wrap) return;
+    const slot = this._cosTab;
+    const owned = this.profile.cosmeticsOwned || [];
+    const equippedKey = equippedTheme(slot, this._cosEquipped());
+    const previewKey = this._cosPreview[slot];
+    wrap.classList.remove('cos-fade');
+    void wrap.offsetWidth;
+    wrap.classList.add('cos-fade');
+    wrap.innerHTML = COSMETIC_THEMES.map((th) => {
+      const has = ownsCosmetic(slot, th.key, owned);
+      const isEq = th.key === equippedKey;
+      const price = cosmeticPrice(slot, th.key);
+      let thumb = '';
+      if (slot === 'frame') thumb = `<img class="cos-thumb-img" src="${this._frameUrl(th.key)}" alt="">`;
+      else if (slot === 'sp') thumb = `<img class="cos-thumb-img orb" src="${this._orbUrl(SP_THEME[th.key].orb)}" alt="">`;
+      else thumb = `<span class="cos-thumb-glow" style="--g:${th.color}"></span>`;
+      const cta = isEq
+        ? `<span class="skin-eq">✓ ${t('Equipped')}</span>`
         : has
-          ? `<button class="btn btn-primary btn-xs" data-equip="${v.key}">Equip</button>`
-          : `<button class="btn btn-secondary btn-xs" data-buy-skin="${v.key}">${this._coinIco('coin-ico-xs')}${v.price}</button>`;
-      return `<div class="skin-card ${isEquipped ? 'equipped' : ''}">
-        <span class="skin-swatch" data-skin-portrait="${charId}" style="filter:hue-rotate(${v.tint}deg) saturate(${v.tint ? 1.25 : 1})"></span>
-        <span class="skin-name">${v.name}</span>${cta}</div>`;
+          ? `<button class="btn btn-primary btn-xs" data-cos-equip="${th.key}">${t('Equip')}</button>`
+          : `<button class="btn btn-secondary btn-xs" data-cos-buy="${th.key}">${this._coinIco('coin-ico-xs')}${price}</button>`;
+      return `<div class="cos-card ${isEq ? 'equipped' : ''} ${th.key === previewKey ? 'previewing' : ''}" data-cos-try="${th.key}">
+        <span class="cos-thumb theme-${th.key}">${thumb}</span>
+        <span class="cos-cardname">${th.name}</span>${cta}</div>`;
     }).join('');
 
-    skins.querySelectorAll('[data-skin-portrait]').forEach((h) => {
-      h.appendChild(this.portraitCanvas(getCharacter(h.dataset.skinPortrait), 96));
+    wrap.querySelectorAll('[data-cos-try]').forEach((card) => {
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('[data-cos-equip],[data-cos-buy]')) return;
+        this._cosPreview[slot] = card.dataset.cosTry;
+        this.audio.select?.();
+        this.haptics.tap();
+        this._renderCosPreview();
+        this._renderCosItems();
+      });
     });
-
-    skins.querySelectorAll('[data-equip]').forEach((btn) => {
-      btn.addEventListener('click', () => this._equipSkin(charId, btn.dataset.equip));
+    wrap.querySelectorAll('[data-cos-equip]').forEach((btn) => {
+      btn.addEventListener('click', () => this._equipCosmetic(slot, btn.dataset.cosEquip));
     });
-    skins.querySelectorAll('[data-buy-skin]').forEach((btn) => {
-      btn.addEventListener('click', () => this._buySkin(charId, btn.dataset.buySkin));
+    wrap.querySelectorAll('[data-cos-buy]').forEach((btn) => {
+      btn.addEventListener('click', () => this._buyCosmetic(slot, btn.dataset.cosBuy));
     });
   }
 
-  async _buySkin(charId, key) {
-    const variant = SKIN_VARIANTS.find((v) => v.key === key);
-    if (!variant) return;
-    if (this.coins < variant.price) {
-      this.audio.block?.();
-      this.toast('Not enough coins');
-      return;
-    }
-    this.coins -= variant.price;
-    const owned = [...(this.profile.ownedSkins || []), skinId(charId, key)];
-    const equipped = { ...(this.profile.equippedSkins || {}), [charId]: skinId(charId, key) };
-    this.profile = await StorageService.saveProfile({ coins: this.coins, ownedSkins: owned, equippedSkins: equipped });
-    this.audio.select?.();
-    this.haptics.impact?.('Medium');
-    this.toast('Skin unlocked & equipped');
-    this.buildCosmetics();
-  }
-
-  async _equipSkin(charId, key) {
-    const equipped = { ...(this.profile.equippedSkins || {}) };
-    if (key === 'default') delete equipped[charId];
-    else equipped[charId] = skinId(charId, key);
-    this.profile = await StorageService.saveProfile({ equippedSkins: equipped });
+  async _equipCosmetic(slot, theme) {
+    const equipped = { ...this._cosEquipped(), [slot]: theme };
+    this.profile = await StorageService.saveProfile({ cosmeticsEquipped: equipped });
+    this._cosPreview[slot] = theme;
     this.audio.select?.();
     this.haptics.tap();
+    this.toast(tpl('{name} equipped', { name: THEME_MAP[theme].name }));
     this.buildCosmetics();
+  }
+
+  async _buyCosmetic(slot, theme) {
+    const price = cosmeticPrice(slot, theme);
+    const label = `${THEME_MAP[theme].name} ${SLOT_MAP[slot].name}`;
+    // Preview it first so the confirm dialog reflects what they'll get.
+    this._cosPreview[slot] = theme;
+    this._renderCosPreview();
+    this._renderCosItems();
+
+    if (this.coins < price) {
+      this.audio.block?.();
+      // Mobile: offer a real-money top-up. Web: coins only.
+      if (this.purchases?.native) this.showCoinStore(price - this.coins);
+      else this.toast(t('Not enough coins'));
+      return;
+    }
+
+    const ok = await this._confirm(
+      tpl('Unlock {label}?', { label }),
+      tpl('Spend {price} coins to unlock this cosmetic.', { price }),
+    );
+    if (!ok) return;
+    if (this.coins < price) { this.toast(t('Not enough coins')); return; }
+    this.coins -= price;
+    const cosmeticsOwned = [...(this.profile.cosmeticsOwned || []), cosmeticId(slot, theme)];
+    const cosmeticsEquipped = { ...this._cosEquipped(), [slot]: theme };
+    this.profile = await StorageService.saveProfile({ coins: this.coins, cosmeticsOwned, cosmeticsEquipped });
+    this.audio.select?.();
+    this.haptics.impact?.('Medium');
+    this.toast(tpl('{label} unlocked!', { label }));
+    this.buildCosmetics();
+  }
+
+  /** Promise-based yes/no confirm using #confirm-overlay. */
+  _confirm(title, msg) {
+    const ov = this.root.querySelector('#confirm-overlay');
+    const okBtn = this.root.querySelector('#confirm-ok');
+    const cancelBtn = this.root.querySelector('#confirm-cancel');
+    if (!ov || !okBtn || !cancelBtn) return Promise.resolve(false);
+    this.root.querySelector('#confirm-title').textContent = title;
+    this.root.querySelector('#confirm-msg').textContent = msg;
+    ov.classList.remove('hidden');
+    return new Promise((resolve) => {
+      const done = (val) => {
+        ov.classList.add('hidden');
+        okBtn.replaceWith(okBtn.cloneNode(true));
+        cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+        resolve(val);
+      };
+      okBtn.addEventListener('click', () => done(true), { once: true });
+      cancelBtn.addEventListener('click', () => done(false), { once: true });
+    });
+  }
+
+  // ---- coin packs (real money, mobile only) ----
+  showCoinStore(shortBy = 0) {
+    const ov = this.root.querySelector('#coins-overlay');
+    const list = this.root.querySelector('#coin-packs');
+    if (!ov || !list) return;
+    const meta = this.root.querySelector('#coins-meta');
+    if (meta) meta.textContent = shortBy > 0
+      ? tpl('You need {n} more coins.', { n: shortBy })
+      : t('Top up with coins to unlock cosmetics.');
+    list.innerHTML = COIN_PACKS.map((p) => {
+      const price = this.purchases?.priceFor(p.id) || '';
+      return `<button class="coin-pack" data-coin-pack="${p.id}">
+        <span class="coin-pack-amt">${this._coinIco('coin-ico-sm')} ${p.coins}</span>
+        <span class="coin-pack-price">${price || t('Unavailable')}</span>
+      </button>`;
+    }).join('');
+    list.querySelectorAll('[data-coin-pack]').forEach((btn) => {
+      btn.addEventListener('click', () => this._buyCoins(btn.dataset.coinPack));
+    });
+    ov.classList.remove('hidden');
+  }
+
+  async _buyCoins(packId) {
+    const pack = COIN_PACKS.find((p) => p.id === packId);
+    if (!pack) return;
+    const res = await this.purchases.buyCoins(packId);
+    if (!res?.ok) {
+      this.toast(res?.error || t('Purchase failed'));
+      return;
+    }
+    this.coins += pack.coins;
+    this.profile = await StorageService.saveProfile({ coins: this.coins });
+    this.audio.select?.();
+    this.haptics.impact?.('Medium');
+    this.toast(tpl('+{n} coins', { n: pack.coins }));
+    this._updateCurrencyUi();
+    this.root.querySelector('#coins-overlay')?.classList.add('hidden');
+    if (this.state === 'cosmetics') this.buildCosmetics();
   }
 
   // ------------------------------------------------------------- settings
