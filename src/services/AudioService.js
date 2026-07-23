@@ -1,3 +1,57 @@
+// ---------------------------------------------------------------------------
+// Background music — a handful of small procedural loops (no audio files).
+// Each track is a chord progression split into equal-length segments; a bass
+// note pulses the root, a lead plays a broken-chord (arpeggio) riff over it,
+// and (optionally) a soft pad sustains the full chord underneath. Everything
+// is scheduled on the AudioContext clock with a short lookahead so the loop
+// stays tight instead of drifting like a naive setInterval melody would.
+const N = { // equal-tempered note table (Hz), just what these tracks need
+  A2: 110.0, Bb2: 116.54, C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61,
+  G3: 196.0, A3: 220.0, B3: 246.94, C4: 261.63, D4: 293.66, E4: 329.63,
+  F4: 349.23, Fs4: 369.99, G4: 392.0, A4: 440.0, Bb4: 466.16, B4: 493.88,
+  C5: 523.25, Cs5: 554.37, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99,
+};
+
+export const MUSIC_TRACKS = {
+  anthem: {
+    name: 'Arena Anthem',
+    desc: 'Warm & heroic',
+    bpm: 128, segSteps: 8, leadType: 'triangle', bassType: 'sine', pad: true,
+    leadOffsets: [0, 2, 4, 6], bassOffsets: [0, 4],
+    chords: [
+      { root: N.A3, arp: [N.A4, N.C5, N.E5, N.C5] },
+      { root: N.F3, arp: [N.F4, N.A4, N.C5, N.A4] },
+      { root: N.C3, arp: [N.C4, N.E4, N.G4, N.E4] },
+      { root: N.G3, arp: [N.G4, N.B4, N.D5, N.B4] },
+    ],
+  },
+  drift: {
+    name: 'Neon Drift',
+    desc: 'Energetic & driving',
+    bpm: 140, segSteps: 8, leadType: 'sawtooth', bassType: 'square', pad: false,
+    leadOffsets: [0, 2, 3, 5], bassOffsets: [0, 4],
+    chords: [
+      { root: N.E3, arp: [N.E4, N.G4, N.B4, N.G4] },
+      { root: N.C3, arp: [N.C4, N.E4, N.G4, N.E4] },
+      { root: N.D3, arp: [N.D4, N.Fs4, N.A4, N.Fs4] },
+      { root: N.G3, arp: [N.G4, N.B4, N.D5, N.B4] },
+    ],
+  },
+  shadow: {
+    name: 'Shadow Pulse',
+    desc: 'Dark & tense',
+    bpm: 100, segSteps: 8, leadType: 'square', bassType: 'sine', pad: true,
+    leadOffsets: [0, 4], bassOffsets: [0],
+    chords: [
+      { root: N.D3, arp: [N.D4, N.F4, N.A4, N.F4] },
+      { root: N.Bb2, arp: [N.Bb4, N.D4, N.F4, N.D4] },
+      { root: N.G3, arp: [N.G4, N.Bb4, N.D5, N.Bb4] },
+      { root: N.A3, arp: [N.A4, N.Cs5, N.E5, N.Cs5] },
+    ],
+  },
+};
+export const DEFAULT_MUSIC_TRACK = 'anthem';
+
 export class AudioService {
   constructor() {
     this.enabled = true;
@@ -6,6 +60,7 @@ export class AudioService {
     this.musicInterval = null;
     this.volume = 0.8;
     this.master = null;
+    this.musicTrack = DEFAULT_MUSIC_TRACK;
   }
 
   async init() {
@@ -135,18 +190,65 @@ export class AudioService {
     this.tone(330, 0.24, 'triangle', 0.04, 0.08);
   }
 
+  /** Play one note at an ABSOLUTE AudioContext time, with a soft attack so it
+   *  reads as a musical note rather than a percussive sfx hit. */
+  _noteAt(time, freq, duration, type, gain) {
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.connect(g);
+    g.connect(this.out);
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(gain, time + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+    osc.start(time);
+    osc.stop(time + duration + 0.02);
+  }
+
+  /** Change the selected loop; if music is already playing, hot-swap it. */
+  setMusicTrack(id) {
+    this.musicTrack = MUSIC_TRACKS[id] ? id : DEFAULT_MUSIC_TRACK;
+    if (this.musicInterval) this.startMusic();
+  }
+
   startMusic() {
-    if (!this.musicEnabled || !this.ctx || this.musicInterval) return;
+    this.stopMusic();
+    if (!this.musicEnabled || !this.ctx) return;
     this.resume();
-    const bass = [55, 55, 73, 65];
-    const lead = [220, 277, 330, 294, 262, 220, 196, 247];
-    let i = 0;
+    const track = MUSIC_TRACKS[this.musicTrack] || MUSIC_TRACKS[DEFAULT_MUSIC_TRACK];
+    const stepDur = 60 / track.bpm / 4; // one 16th note, in seconds
+    const totalSteps = track.chords.length * track.segSteps;
+    const lookahead = 0.15; // schedule this far ahead of "now" each tick
+    let step = 0;
+    let nextTime = this.ctx.currentTime + 0.05;
+
+    const scheduleStep = (time) => {
+      const s = step % totalSteps;
+      const chordIdx = Math.floor(s / track.segSteps) % track.chords.length;
+      const local = s % track.segSteps;
+      const chord = track.chords[chordIdx];
+
+      if (track.bassOffsets.includes(local)) {
+        this._noteAt(time, chord.root, stepDur * 1.8, track.bassType, 0.05);
+      }
+      if (track.leadOffsets.includes(local)) {
+        const idx = track.leadOffsets.indexOf(local) % chord.arp.length;
+        this._noteAt(time, chord.arp[idx], stepDur * 1.5, track.leadType, 0.04);
+      }
+      if (track.pad && local === 0) {
+        for (const f of chord.arp) this._noteAt(time, f, stepDur * track.segSteps * 0.95, 'sine', 0.012);
+      }
+      step += 1;
+    };
+
     this.musicInterval = setInterval(() => {
       if (!this.musicEnabled) return;
-      this.tone(bass[i % bass.length], 0.22, 'triangle', 0.03);
-      this.tone(lead[i % lead.length], 0.16, 'sine', 0.012);
-      i += 1;
-    }, 300);
+      while (nextTime < this.ctx.currentTime + lookahead) {
+        scheduleStep(nextTime);
+        nextTime += stepDur;
+      }
+    }, 40);
   }
 
   stopMusic() {

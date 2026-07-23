@@ -27,6 +27,7 @@ import {
 } from '../game/sprites.js';
 import { StorageService } from '../services/StorageService.js';
 import { MultiplayerService } from '../services/MultiplayerService.js';
+import { MUSIC_TRACKS, DEFAULT_MUSIC_TRACK } from '../services/AudioService.js';
 import { QuestService } from '../services/QuestService.js';
 import { dailyStatus, applyDailyClaim, DAILY_REWARDS } from '../services/DailyReward.js';
 import { questDesc, isClaimable } from '../game/quests.js';
@@ -119,6 +120,7 @@ export class App {
 
     this.audio.setEnabled(this.settings.sound, this.settings.music);
     this.audio.setVolume(this.settings.volume ?? 0.8);
+    this.audio.setMusicTrack(this.settings.musicTrack || 'anthem');
     this.haptics.setEnabled(this.settings.haptics);
 
     // Language must be set before the first render so the observer can translate it.
@@ -370,6 +372,10 @@ export class App {
             <button class="toggle ${this.settings?.sound ? 'on' : ''}" data-toggle="sound"></button></div>
           <div class="setting-row"><span>Music</span>
             <button class="toggle ${this.settings?.music ? 'on' : ''}" data-toggle="music"></button></div>
+          <div class="music-track-frame">
+            <label class="opt-label">Music Track</label>
+            <div class="music-track-list" id="music-track-list"></div>
+          </div>
           <div class="setting-row"><span>Haptics</span>
             <button class="toggle ${this.settings?.haptics ? 'on' : ''}" data-toggle="haptics"></button></div>
           <div class="setting-row"><span>Reduce Motion<small>Turns off screen shake</small></span>
@@ -2601,7 +2607,33 @@ export class App {
     if (nameEl) nameEl.value = this.profile?.name || 'Player';
     const volEl = this.root.querySelector('#volume-slider');
     if (volEl) volEl.value = Math.round((this.settings?.volume ?? 0.8) * 100);
+    this._renderMusicTracks();
     this.showScreen('settings');
+  }
+
+  /** A few small procedural loops to choose from — picked track persists. */
+  _renderMusicTracks() {
+    const wrap = this.root.querySelector('#music-track-list');
+    if (!wrap) return;
+    const current = this.settings?.musicTrack || DEFAULT_MUSIC_TRACK;
+    wrap.innerHTML = Object.entries(MUSIC_TRACKS).map(([id, tr]) => `
+      <button class="music-track-card ${id === current ? 'active' : ''}" data-track="${id}">
+        <span class="music-track-note">♪</span>
+        <span class="music-track-info"><b>${t(tr.name)}</b><small>${t(tr.desc)}</small></span>
+        ${id === current ? '<span class="music-track-check">✓</span>' : ''}
+      </button>`).join('');
+    wrap.querySelectorAll('[data-track]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.track;
+        if (id === current) return;
+        this.settings.musicTrack = id;
+        await StorageService.saveSettings(this.settings);
+        this.audio.setMusicTrack(id);
+        this.audio.select?.();
+        this.haptics.tap();
+        this._renderMusicTracks();
+      });
+    });
   }
 
   // ------------------------------------------------------------------- store

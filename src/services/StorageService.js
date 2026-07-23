@@ -8,6 +8,7 @@ const KEYS = {
 const DEFAULT_SETTINGS = {
   sound: true,
   music: true,
+  musicTrack: 'anthem',
   haptics: true,
   reduceMotion: false,
   volume: 0.8,

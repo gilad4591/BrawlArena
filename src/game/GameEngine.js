@@ -70,7 +70,9 @@ export class GameEngine {
     this.vw = w;
     this.vh = h;
 
-    this.floorTopY = h * 0.52;
+    // Extra headroom above the back row so jump kicks/uppercuts/specials have
+    // room to read fully instead of nearing the top edge (or the HUD strip).
+    this.floorTopY = h * 0.57;
     this.floorBottomY = h * 0.94;
     this._arenaCache = null; // size changed -> rebuild the cached background
     this._vignette = null;
@@ -998,8 +1000,11 @@ export class GameEngine {
       burst(this.effects, sx, sy, '#8fd0ff', 6, { spread: 160, up: 120, life: 0.3 });
     } else {
       this.effects.push(new FloatingText(sx, sy - 24, `${Math.round(result.damage)}`, '#fff', 20));
-      spark(this.effects, sx, sy, attacker.char.accent);
-      burst(this.effects, sx, sy, attacker.char.accent, 8, { spread: 260, up: 200 });
+      // Normalise the hit's damage into a 0-1 "power" so finishers/specials
+      // visibly hit harder than a jab, instead of every hit looking the same.
+      const power = Math.max(0, Math.min(1, (result.damage - 4) / 26));
+      spark(this.effects, sx, sy, attacker.char.accent, power);
+      burst(this.effects, sx, sy, attacker.char.accent, 8 + Math.round(power * 6), { spread: 260, up: 200 });
 
       // Combo tracking on the attacker.
       attacker._combo = (attacker._combo || 0) + 1;

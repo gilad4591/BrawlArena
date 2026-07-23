@@ -80,25 +80,65 @@ export class FloatingText {
   }
 }
 
-/** Bright, fast impact spark used when a hit connects. */
-export function spark(list, x, y, color = '#fff') {
+/** Bright, fast impact spark used when a hit connects. `power` (0-1) scales
+ *  the burst for harder hits so finishers read as noticeably bigger. */
+export function spark(list, x, y, color = '#fff', power = 0) {
+  const k = 1 + Math.max(0, Math.min(1, power)) * 0.9; // up to +90% size
   // painted starburst flash (falls back silently to particles if not loaded)
   if (IMPACT_IMAGES.starburst) {
-    list.push(new ImpactFx(x, y, IMPACT_IMAGES.starburst, { size: 46, life: 0.2, startScale: 0.5, grow: 0.7, spin: (Math.random() - 0.5) * 6 }));
+    list.push(new ImpactFx(x, y, IMPACT_IMAGES.starburst, { size: 46 * k, life: 0.2 + power * 0.08, startScale: 0.5, grow: 0.7 + power * 0.3, spin: (Math.random() - 0.5) * 6 }));
   }
-  list.push(new Particle(x, y, { color: '#ffffff', size: 10, vx: 0, vy: 0, gravity: 0, life: 0.12 }));
-  for (let i = 0; i < 8; i += 1) {
-    const ang = (i / 8) * Math.PI * 2;
+  // Big hits also get a fast-expanding ring shockwave, purely procedural
+  // (no extra asset needed) so heavy finishers read as an impactful punch.
+  if (power > 0.45) {
+    list.push(new ShockRing(x, y, color, { maxR: 44 + power * 46, life: 0.24 + power * 0.1 }));
+  }
+  list.push(new Particle(x, y, { color: '#ffffff', size: 10 * k, vx: 0, vy: 0, gravity: 0, life: 0.12 }));
+  const count = 8 + Math.round(power * 6);
+  for (let i = 0; i < count; i += 1) {
+    const ang = (i / count) * Math.PI * 2;
     list.push(
       new Particle(x, y, {
         color,
-        size: 3 + Math.random() * 3,
-        vx: Math.cos(ang) * (260 + Math.random() * 140),
-        vy: Math.sin(ang) * (260 + Math.random() * 140),
+        size: (3 + Math.random() * 3) * k,
+        vx: Math.cos(ang) * (260 + Math.random() * 140) * k,
+        vy: Math.sin(ang) * (260 + Math.random() * 140) * k,
         gravity: 200,
         life: 0.22 + Math.random() * 0.12,
       }),
     );
+  }
+}
+
+/** Procedural expanding ring (no image needed) for punchy, heavy impacts. */
+export class ShockRing {
+  constructor(x, y, color = '#fff', opts = {}) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.maxR = opts.maxR ?? 60;
+    this.life = opts.life ?? 0.3;
+    this.maxLife = this.life;
+    this.dead = false;
+  }
+
+  update(dt) {
+    this.life -= dt;
+    if (this.life <= 0) this.dead = true;
+  }
+
+  render(ctx) {
+    const t = 1 - Math.max(0, this.life / this.maxLife); // 0 -> 1
+    const r = this.maxR * (0.25 + t * 0.75);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.max(0, 1 - t) * 0.8;
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = Math.max(1.5, 6 * (1 - t));
+    ctx.beginPath();
+    ctx.ellipse(this.x, this.y, r, r * 0.55, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 }
 

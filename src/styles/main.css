@@ -1602,6 +1602,66 @@ body,
   color: var(--text);
 }
 
+/* ---- music track picker: a nice framed card inside the settings list ---- */
+.music-track-frame {
+  margin: 4px 14px 14px;
+  padding: 14px 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 0 24px rgba(79, 214, 255, 0.06);
+}
+.music-track-frame .opt-label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.music-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.music-track-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.08s ease;
+}
+.music-track-card:active { transform: scale(0.98); }
+.music-track-card.active {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(79, 214, 255, 0.16), rgba(79, 214, 255, 0.04));
+  box-shadow: 0 0 16px rgba(79, 214, 255, 0.18);
+}
+.music-track-note {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent);
+}
+.music-track-card.active .music-track-note { background: rgba(79, 214, 255, 0.22); }
+.music-track-info { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
+.music-track-info b { font-size: 0.92rem; }
+.music-track-info small { color: var(--muted); font-size: 0.74rem; }
+.music-track-check { color: var(--accent); font-weight: 900; font-size: 1.1rem; }
+
 .setting-row span small {
   display: block;
   font-weight: 500;
@@ -2897,10 +2957,12 @@ body,
   background: radial-gradient(circle, var(--g) 0%, transparent 70%);
   box-shadow: 0 0 16px var(--g);
 }
-/* Frame thumbnails: fighter bust with the element border overlaid on top. */
-.cos-thumb.is-frame { position: relative; }
-.cos-thumb-portrait { display: block; width: 74%; height: 74%; line-height: 0; }
-.cos-thumb-portrait canvas { width: 100%; height: 100%; border-radius: 8px; object-fit: cover; }
+/* Frame thumbnails: fighter bust with the element border overlaid on top.
+   The bust must sit INSIDE the frame's ornate border with a margin, matching
+   the big preview — shrink it well below the frame's own footprint. */
+.cos-thumb.is-frame { position: relative; overflow: visible; }
+.cos-thumb-portrait { display: block; width: 56%; height: 56%; line-height: 0; }
+.cos-thumb-portrait canvas { width: 100%; height: 100%; border-radius: 6px; object-fit: cover; }
 .cos-thumb-frame {
   position: absolute;
   inset: 0;
