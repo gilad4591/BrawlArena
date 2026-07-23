@@ -49,6 +49,12 @@ body,
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  /* #app/body force `touch-action: none` (kills pull-to-refresh/pinch-zoom
+     during gameplay); without an explicit override here, some Android
+     WebViews take that as blocking ALL touch scrolling on every screen too —
+     so any screen taller than the viewport (e.g. Settings with the music
+     track list) reads as "cut off" with no way to reach the rest. */
+  touch-action: pan-y;
   padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
   gap: 16px;
 }
@@ -1533,6 +1539,14 @@ body,
   background: var(--panel);
   border-radius: 16px;
   overflow: hidden;
+  /* `.screen` is a column flexbox with overflow-y:auto so tall screens scroll
+     — but a flex child with `overflow: hidden` gets an automatic min-height
+     of 0, so the browser happily SHRINKS this whole panel to fit instead of
+     ever growing the screen enough to scroll, crushing/overlapping every row
+     inside it (the music track picker made this panel tall enough to expose
+     the bug). Pin it to its natural content height so the screen scrolls
+     instead of clipping. */
+  flex-shrink: 0;
 }
 
 .setting-row {
