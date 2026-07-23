@@ -344,48 +344,35 @@ body,
   z-index: 2;
   width: 100%;
   height: 100%;
+  max-width: 640px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: safe center;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  /* Sizing scales with viewport HEIGHT so the whole stack always fits a short
-     landscape phone without scrolling — no reliance on a max-height cliff. */
-  gap: clamp(6px, 1.8vh, 16px);
-  padding: max(12px, env(safe-area-inset-top)) 20px clamp(16px, 5vh, 72px);
+  /* Sized off `vmin` (the smaller of width/height), not just height, so a
+     wide-but-short landscape phone AND a squarish/wide desktop browser tab
+     both scale the whole stack sensibly -- a pure `vh` formula ignores width
+     entirely, so on web a wide-but-modest-height window looked stuck at a
+     small, cramped size no matter how much horizontal room was available. */
+  gap: clamp(6px, 1.8vmin, 20px);
+  padding: max(12px, env(safe-area-inset-top)) 20px clamp(16px, 5vmin, 72px);
 }
 
 .menu-buttons {
-  margin-top: clamp(2px, 0.8vh, 6px);
-  gap: clamp(7px, 1.4vh, 12px);
+  margin-top: clamp(2px, 0.8vmin, 8px);
+  gap: clamp(7px, 1.4vmin, 14px);
 }
 
 .menu-buttons .btn {
-  padding: clamp(9px, 1.9vh, 14px) 26px;
-  font-size: clamp(0.94rem, 2.4vh, 1.05rem);
-}
-
-/* Mobile: menu buttons ~10% smaller so the row of mini buttons has more
-   breathing room and the whole stack reads less oversized on a phone screen. */
-@media (max-width: 600px) {
-  .menu-buttons .btn {
-    padding: clamp(8px, 1.7vh, 12.6px) 23px;
-    font-size: clamp(0.85rem, 2.16vh, 0.945rem);
-  }
-  .btn.mini {
-    padding: 8px 5px;
-    font-size: 0.74rem;
-  }
-  .mini-ico {
-    width: 16px;
-    height: 16px;
-  }
+  padding: clamp(9px, 1.9vmin, 18px) 26px;
+  font-size: clamp(0.94rem, 2.4vmin, 1.2rem);
 }
 
 /* Staggered entrance for the title, tagline and each menu button. */
 .menu-badge {
-  width: clamp(40px, 10vh, 92px);
+  width: clamp(40px, 9vmin, 120px);
   height: auto;
   display: block;
   margin: 0 auto 2px;
@@ -432,7 +419,7 @@ body,
 }
 
 .logo {
-  font-size: clamp(1.9rem, 7.5vh, 4.4rem);
+  font-size: clamp(1.9rem, 7vmin, 5.6rem);
   font-weight: 900;
   letter-spacing: 2px;
   line-height: 0.9;
@@ -456,7 +443,7 @@ body,
 
 .tagline {
   color: #eef1ff;
-  font-size: clamp(0.74rem, 2.5vh, 1rem);
+  font-size: clamp(0.74rem, 2.4vmin, 1.3rem);
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
 }
 
@@ -2666,11 +2653,11 @@ body,
   margin-right: 1px;
 }
 .mini-ico {
-  width: 18px;
-  height: 18px;
+  width: clamp(18px, 2.7vmin, 22px);
+  height: clamp(18px, 2.7vmin, 22px);
   object-fit: contain;
   vertical-align: middle;
-  margin-right: 5px;
+  flex-shrink: 0;
 }
 .coin-pill.sm {
   padding: 4px 10px;
@@ -2692,9 +2679,22 @@ body,
      minimum, which overflows any phone width and causes sideways scrolling
      on the main menu. */
   min-width: 0;
-  padding: 9px 6px;
-  font-size: 0.82rem;
+  padding: clamp(9px, 1.6vmin, 14px) clamp(6px, 1vmin, 10px);
+  font-size: clamp(0.82rem, 1.85vmin, 0.98rem);
   position: relative;
+  /* Icon + label as a real wrapping flex row instead of plain inline text --
+     a single long word like "Achievements" has no space to break on, so once
+     the enlarged web sizing left too little width for it on one line, it was
+     overflowing past the button's border instead of wrapping. `overflow-wrap`
+     is a safety net so it breaks cleanly inside the word if it still doesn't
+     fit, rather than spilling out. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 .mini-badge {
   position: absolute;
@@ -3268,4 +3268,25 @@ body,
     width: min(720px, 96vw);
   }
   .cos-thumb { width: 52px; height: 52px; }
+}
+
+/* Mobile: menu buttons ~10% smaller so the row of mini buttons has more
+   breathing room and the whole stack reads less oversized on a phone screen.
+   (Placed at the end of the file so it wins the cascade over the base
+   .menu-buttons .btn / .btn.mini / .mini-ico rules above, which share the
+   same specificity — a media query only overrides an equal-specificity rule
+   declared *earlier* in the stylesheet.) */
+@media (max-width: 600px) {
+  .menu-buttons .btn {
+    padding: clamp(8px, 1.7vmin, 12.6px) 23px;
+    font-size: clamp(0.85rem, 2.16vmin, 0.945rem);
+  }
+  .btn.mini {
+    padding: 8px 5px;
+    font-size: 0.74rem;
+  }
+  .mini-ico {
+    width: 16px;
+    height: 16px;
+  }
 }

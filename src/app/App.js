@@ -2198,8 +2198,11 @@ export class App {
   async doubleReward() {
     if (!this._lastAward || this._lastAward.doubled) return;
     const btn = this.root.querySelector('#double-reward');
+    // Players who bought "Remove Ads" should never be shown an ad prompt —
+    // just grant the bonus outright when they tap the button.
+    const skipAd = !!this.purchases?.ownsRemoveAds?.();
     btn?.setAttribute('disabled', 'true');
-    const ok = this.ads?.showRewarded ? await this.ads.showRewarded() : false;
+    const ok = skipAd || (this.ads?.showRewarded ? await this.ads.showRewarded() : false);
     if (!ok) { btn?.removeAttribute('disabled'); return; }
     this._lastAward.doubled = true;
     this.xp += this._lastAward.gained;
@@ -2241,6 +2244,14 @@ export class App {
     const available = !!this.ads?.showRewarded && this._mode !== 'multiplayer' && !this._lastAward?.doubled;
     btn.classList.toggle('hidden', !available);
     btn.removeAttribute('disabled');
+    // Remove Ads purchasers never see a real ad here (doubleReward() grants
+    // it outright for them) — the label should say so instead of promising
+    // an ad that will never show.
+    if (available) {
+      btn.textContent = this.purchases?.ownsRemoveAds?.()
+        ? t('🎁 Double reward ×2')
+        : t('▶ Watch ad — Double reward ×2');
+    }
   }
 
   /** Feed a finished match into the daily quests and surface completions. */

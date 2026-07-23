@@ -300,6 +300,7 @@ const HE = {
   // --- Daily reward ---
   '▶ Watch ad — Claim ×2': '▶ צפה בפרסומת — קבל ×2',
   '▶ Watch ad — Double reward ×2': '▶ צפה בפרסומת — הכפל תגמול ×2',
+  '🎁 Double reward ×2': '🎁 הכפל תגמול ×2',
   '▶ Watch ad — Try 1 match': '▶ צפה בפרסומת — נסה קרב אחד',
   'Tired of ads? Remove them in the Store': 'נמאס מפרסומות? הסר אותן בחנות',
 
