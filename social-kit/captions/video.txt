@@ -1,0 +1,30 @@
+=== FILES ===
+video/promo_square.mp4 — 1080x1080, 27s (Feed / X / Facebook)
+video/promo_story.mp4  — 1080x1920, 27s (Reels / Stories / TikTok / YouTube Shorts)
+
+=== CAPTION (Reels / TikTok / Shorts) ===
+Pick a fighter. Own the arena. 👊🔥
+
+BRAWL ARENA is OUT NOW — play FREE, no download:
+👉 brawl-arena.com (link in bio)
+
+14 fighters, 8 arenas, Solo Campaign + Multiplayer.
+Which one's your main? 👇
+
+@brawlarenagame
+
+=== CAPTION (Feed post) ===
+🎮 New game alert — BRAWL ARENA is here.
+
+A fast, free browser brawler with 14 fighters, special-move combos, pickable
+weapons and a full solo campaign. Swipe for the roster, then go pick a main.
+
+👉 brawl-arena.com
+
+=== FIRST COMMENT (hashtags) ===
+#newrelease #launch #brawlarena #indiegame #fightinggame #beatemup #arcadegame #browsergame #freegame #gaming #gamer #mobilegaming #indiedev #gamedev #2dgame #videogames #newgame #playnow #gamingcommunity #gamereels #gamingreels #indiegamedev #arcade #brawler #onlinegame #gamedesign #instagaming #tiktokgaming #shorts
+
+=== REGENERATE ===
+node scripts/social/video.mjs
+(reads the existing social-kit/*.png cards + a freshly rendered background
+music bed; rerun scripts/social/gen.mjs first if the roster/portraits change)
