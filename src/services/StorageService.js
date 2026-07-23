@@ -45,6 +45,7 @@ const DEFAULT_PROFILE = {
   cosmeticsOwned: [], // ['blaze:aura', 'frost:frame', ...] ("charId:slot")
   cosmeticsEquipped: {}, // { blaze: { aura: true }, frost: { frame: true } }
   adNudged: false, // one-time "remove ads?" prompt shown
+  tutorialDone: false, // one-time interactive first-match tutorial completed/skipped
 };
 
 export class StorageService {

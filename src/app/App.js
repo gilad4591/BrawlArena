@@ -39,12 +39,13 @@ import {
 import { t, tpl, getLang, setLang, attachTranslator, retranslate } from '../i18n.js';
 
 export class App {
-  constructor(root, { audio, haptics, ads, purchases, leaderboard }) {
+  constructor(root, { audio, haptics, ads, purchases, leaderboard, share }) {
     this.root = root;
     this.audio = audio;
     this.haptics = haptics;
     this.leaderboard = leaderboard || { available: false, submitScore() {}, show() {} };
     this.ads = ads || { showBanner() {}, hideBanner() {}, onMatchFinished() {} };
+    this.share = share || { shareCanvas: async () => false };
     this.purchases = purchases || {
       owns: () => false,
       ownsRemoveAds: () => false,
@@ -88,6 +89,7 @@ export class App {
     // Dev/test convenience: on localhost give unlimited coins so every cosmetic
     // and premium unlock can be exercised without grinding.
     this._dev = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(location.hostname);
+    if (this._dev) window.__app = this; // dev-only: console/headless-test access
     this.coins = this._dev ? 999999 : (this.profile.coins || 0);
     this.quests = new QuestService();
     await this.quests.ensureDaily();
@@ -287,6 +289,18 @@ export class App {
           </div>
         </div>
 
+        <div id="tutorial-overlay" class="tutorial-overlay hidden">
+          <div class="tutorial-dots" id="tutorial-dots"></div>
+          <div class="tutorial-card">
+            <div class="tutorial-icon" id="tutorial-icon">👊</div>
+            <div class="tutorial-copy">
+              <b id="tutorial-title">Move</b>
+              <p id="tutorial-desc">Drag the joystick to move around.</p>
+            </div>
+          </div>
+          <button class="tutorial-skip" data-action="tutorial-end">Skip Tutorial ✕</button>
+        </div>
+
         <div id="pause-overlay" class="overlay hidden">
           <h2 class="overlay-title">Paused</h2>
           <div class="btn-row col">
@@ -303,6 +317,7 @@ export class App {
           <div class="podium" id="result-podium"></div>
           <div class="btn-row col">
             <button class="btn btn-primary" data-action="rematch">Rematch</button>
+            <button class="btn btn-secondary" data-action="share-result">📤 Share</button>
             <button class="btn btn-secondary" data-action="setup">Change Fighter</button>
             <button class="btn btn-ghost" data-action="quit">Main Menu</button>
           </div>
@@ -388,6 +403,8 @@ export class App {
         </div>
         <div class="stats-block" id="stats-block"></div>
         <button class="btn btn-secondary" data-action="achievements">Achievements</button>
+        <button class="btn btn-secondary" data-action="tutorial-replay">Replay Tutorial</button>
+        <button class="btn btn-ghost btn-privacy hidden" id="privacy-options">Ad Privacy Options</button>
         <button class="btn btn-secondary" data-action="menu">Back</button>
         <button class="btn btn-danger" id="reset-progress">Reset Progress</button>
       </div>
@@ -537,7 +554,10 @@ export class App {
     switch (action) {
       // Rebuild so freshly-purchased/unlocked fighters show as unlocked
       // immediately (previously only a relaunch refreshed the Arcade grid).
-      case 'play': this.showScreen('play'); break;
+      case 'play': this._openPlayHub(); break;
+      case 'tutorial-end': this._endTutorial(); break;
+      case 'tutorial-replay': this.startTutorial(); break;
+      case 'share-result': this._shareResult(); break;
       case 'setup': this._endTrialIfAny(); this.buildSetup(); this.showScreen('setup'); break;
       case 'campaign': this.showCampaign(); break;
       case 'survival': this.showSurvival(); break;
@@ -807,6 +827,10 @@ export class App {
 
   handleBack() {
     if (this.state === 'game') {
+      if (this._mode === 'tutorial') {
+        this._endTutorial();
+        return;
+      }
       const paused = !this.root.querySelector('#pause-overlay')?.classList.contains('hidden');
       const over = !this.root.querySelector('#result-overlay')?.classList.contains('hidden');
       if (over) this.quitGame();
@@ -1304,6 +1328,267 @@ export class App {
     this.unbindControls = bindHumanControls(this.engine.humanController, this.root, {
       haptics: this.haptics,
     });
+  }
+
+  // -------------------------------------------------------------- tutorial
+  /** "Play" hub entry point — first-ever visit offers the interactive tutorial. */
+  async _openPlayHub() {
+    if (this.profile?.tutorialDone) {
+      this.showScreen('play');
+      return;
+    }
+    const start = await this._confirm(
+      t('Learn the Basics?'),
+      t('A 60-second practice round teaches you how to move, jump, attack, use your special and block. You can skip anytime.'),
+    );
+    if (start) this.startTutorial();
+    else {
+      await this._markTutorialDone();
+      this.showScreen('play');
+    }
+  }
+
+  async _markTutorialDone() {
+    if (!this.profile) return;
+    this.profile.tutorialDone = true;
+    await StorageService.saveProfile(this.profile);
+  }
+
+  /** Steps walked through in order; each waits for its own condition to become true. */
+  _tutorialSteps() {
+    return [
+      {
+        icon: '🕹️', title: t('Move'), desc: t('Drag the joystick (or press the arrow keys) to walk around.'),
+        highlight: '#joystick',
+        done: (h) => h.control.state.dirX !== 0 || h.control.state.dirZ !== 0,
+      },
+      {
+        icon: '⤴️', title: t('Jump'), desc: t('Tap ▲ (or press W) to jump.'),
+        highlight: '[data-btn="jump"]',
+        done: (h) => h.state === 'jump',
+      },
+      {
+        icon: '👊', title: t('Attack'), desc: t('Tap HIT (or press A) to throw a punch.'),
+        highlight: '[data-btn="attack"]',
+        done: (h) => h.state === 'attack',
+      },
+      {
+        icon: '⚡', title: t('Special'), desc: t('Tap SP (or press S) to unleash your special attack.'),
+        highlight: '[data-btn="special"]',
+        done: (h) => h.state === 'special',
+      },
+      {
+        icon: '🛡️', title: t('Block'), desc: t('Hold DEF (or press D) to block an incoming hit.'),
+        highlight: '[data-btn="defend"]',
+        done: (h) => h.state === 'defend',
+      },
+    ];
+  }
+
+  startTutorial() {
+    this.showScreen('game');
+    this.root.querySelector('#pause-overlay')?.classList.add('hidden');
+    this.root.querySelector('#result-overlay')?.classList.add('hidden');
+    this._mode = 'tutorial';
+    this.root.querySelector('#hud')?.classList.add('hidden');
+    this.root.querySelector('.pause-btn')?.classList.add('hidden');
+    const si = this.root.querySelector('#stage-indicator');
+    if (si) { si.classList.add('hidden'); si.innerHTML = ''; }
+
+    this._ensureEngine();
+    this.engine.resize();
+    this.engine.start({
+      playerCharacter: this.selection.character || 'blaze',
+      arena: this.selection.arena || 'forest',
+      tutorial: true,
+      reduceMotion: this.settings.reduceMotion,
+    });
+    this.unbindControls?.();
+    this.unbindControls = bindHumanControls(this.engine.humanController, this.root, {
+      haptics: this.haptics,
+    });
+
+    this._tutSteps = this._tutorialSteps();
+    this._tutIndex = 0;
+    this._tutHoldTime = 0;
+    const ov = this.root.querySelector('#tutorial-overlay');
+    ov?.classList.remove('hidden');
+    const dots = this.root.querySelector('#tutorial-dots');
+    if (dots) dots.innerHTML = this._tutSteps.map((_, i) => `<span class="tut-dot" data-i="${i}"></span>`).join('');
+    this._renderTutorialStep();
+    cancelAnimationFrame(this._tutRaf);
+    this._tutRaf = requestAnimationFrame(() => this._tutorialLoop());
+  }
+
+  _renderTutorialStep() {
+    const step = this._tutSteps[this._tutIndex];
+    if (!step) return;
+    this.root.querySelector('#tutorial-icon').textContent = step.icon;
+    this.root.querySelector('#tutorial-title').textContent = step.title;
+    this.root.querySelector('#tutorial-desc').textContent = step.desc;
+    this.root.querySelectorAll('.tut-dot').forEach((d, i) => {
+      d.classList.toggle('done', i < this._tutIndex);
+      d.classList.toggle('active', i === this._tutIndex);
+    });
+    this.root.querySelectorAll('.tut-highlight').forEach((el) => el.classList.remove('tut-highlight'));
+    if (step.highlight) this.root.querySelector(step.highlight)?.classList.add('tut-highlight');
+  }
+
+  _tutorialLoop() {
+    const human = this.engine?.human;
+    const step = this._tutSteps?.[this._tutIndex];
+    if (human && step) {
+      // A short hold (not just an instant flicker) so a step reads as
+      // deliberately completed, e.g. blocking needs to actually stick.
+      if (step.done(human)) this._tutHoldTime += 1 / 60;
+      else this._tutHoldTime = 0;
+      if (this._tutHoldTime > 0.25) {
+        this.haptics.tap();
+        this._tutIndex += 1;
+        this._tutHoldTime = 0;
+        if (this._tutIndex >= this._tutSteps.length) {
+          this._finishTutorial();
+          return;
+        }
+        this._renderTutorialStep();
+      }
+    }
+    this._tutRaf = requestAnimationFrame(() => this._tutorialLoop());
+  }
+
+  async _finishTutorial() {
+    this.root.querySelector('#tutorial-icon').textContent = '🏆';
+    this.root.querySelector('#tutorial-title').textContent = t('All Set!');
+    this.root.querySelector('#tutorial-desc').textContent = t("You're ready to fight — pick your character and go!");
+    this.root.querySelectorAll('.tut-highlight').forEach((el) => el.classList.remove('tut-highlight'));
+    this.root.querySelectorAll('.tut-dot').forEach((d) => d.classList.add('done'));
+    await new Promise((r) => setTimeout(r, 1400));
+    this._endTutorial();
+  }
+
+  _endTutorial() {
+    cancelAnimationFrame(this._tutRaf);
+    this._tutRaf = null;
+    this.root.querySelector('#tutorial-overlay')?.classList.add('hidden');
+    this.root.querySelectorAll('.tut-highlight').forEach((el) => el.classList.remove('tut-highlight'));
+    this.root.querySelector('#hud')?.classList.remove('hidden');
+    this.root.querySelector('.pause-btn')?.classList.remove('hidden');
+    this.unbindControls?.();
+    this.unbindControls = null;
+    this.engine?.stop();
+    this._mode = null;
+    this._markTutorialDone();
+    this.showScreen('play');
+  }
+
+  // ------------------------------------------------------------- share card
+  /**
+   * Renders a branded PNG of the just-finished match (reusing whatever the
+   * result screen is already showing — its title/meta text is populated per
+   * mode by handleRoundOver/handleCampaignOver/handleSurvivalOver, so this
+   * works for every mode without needing its own copy of that logic) and
+   * hands it to ShareService for the OS share sheet (or a plain download on
+   * desktop browsers without Web Share support).
+   */
+  async _shareResult() {
+    this.haptics.tap();
+    const titleEl = this.root.querySelector('#result-title');
+    const metaEl = this.root.querySelector('#result-meta');
+    const win = !!titleEl && !titleEl.classList.contains('lose');
+    const titleText = titleEl?.textContent?.trim() || t('BRAWL ARENA');
+    const metaText = metaEl?.textContent?.trim() || '';
+    const char = getCharacter(this.selection.character);
+    const award = this._lastAward;
+
+    const W = 1080;
+    const H = 1350;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#141a30');
+    bg.addColorStop(1, '#0b0e1a');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    const glow = ctx.createRadialGradient(W / 2, 460, 40, W / 2, 460, 480);
+    glow.addColorStop(0, win ? 'rgba(255, 176, 59, 0.32)' : 'rgba(79, 214, 255, 0.16)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+    const roundRectPath = (x, y, w, h, r) => {
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+    };
+
+    if (char) {
+      const size = 600;
+      const px = (W - size) / 2;
+      const py = 150;
+      const port = this.portraitCanvas(char, size);
+      ctx.save();
+      roundRectPath(px, py, size, size, 34);
+      ctx.clip();
+      ctx.drawImage(port, px, py, size, size);
+      ctx.restore();
+      ctx.strokeStyle = win ? '#ffb03b' : '#4fd6ff';
+      ctx.lineWidth = 8;
+      roundRectPath(px, py, size, size, 34);
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 40px system-ui, sans-serif';
+      ctx.fillText(char.name.toUpperCase(), W / 2, py - 34);
+    }
+
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = win ? '#ffb03b' : '#c7cdea';
+    ctx.font = '900 88px system-ui, sans-serif';
+    ctx.fillText(titleText.toUpperCase(), W / 2, 860);
+
+    ctx.shadowBlur = 0;
+    ctx.font = '600 38px system-ui, sans-serif';
+    ctx.fillStyle = '#c7cdea';
+    if (metaText) ctx.fillText(metaText, W / 2, 918);
+
+    if (award) {
+      ctx.font = '800 36px system-ui, sans-serif';
+      ctx.fillStyle = '#54e07a';
+      ctx.fillText(`+${award.gained} XP   •   +${award.coins} 🪙`, W / 2, 978);
+    }
+
+    ctx.font = '900 46px system-ui, sans-serif';
+    ctx.fillStyle = '#ff7a2b';
+    ctx.fillText('BRAWL ARENA', W / 2, H - 96);
+    ctx.font = '600 30px system-ui, sans-serif';
+    ctx.fillStyle = '#9aa3c7';
+    ctx.fillText('brawl-arena.com — play free', W / 2, H - 48);
+
+    const shareText = win
+      ? tpl('I just won a match in Brawl Arena! {meta}', { meta: metaText })
+      : tpl('Brawl Arena — {meta}', { meta: metaText });
+    const ok = await this.share.shareCanvas(canvas, {
+      title: 'Brawl Arena',
+      text: shareText,
+      fileName: 'brawl-arena-result.png',
+    });
+    if (!ok) this.toast(t("Couldn't share — try again"));
   }
 
   // --------------------------------------------------------------- campaign
@@ -2608,6 +2893,14 @@ export class App {
     const volEl = this.root.querySelector('#volume-slider');
     if (volEl) volEl.value = Math.round((this.settings?.volume ?? 0.8) * 100);
     this._renderMusicTracks();
+    // The "Ad Privacy Options" re-open link is a Google UMP requirement for
+    // EEA/UK users who saw a consent form — only meaningful on native
+    // (AdMob), where AdService actually wires up requestConsentInfo().
+    const privBtn = this.root.querySelector('#privacy-options');
+    if (privBtn) {
+      privBtn.classList.toggle('hidden', !this.ads?.native || !this.ads?.showPrivacyOptions);
+      privBtn.onclick = () => this.ads?.showPrivacyOptions?.();
+    }
     this.showScreen('settings');
   }
 

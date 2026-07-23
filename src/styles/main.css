@@ -1286,6 +1286,110 @@ body,
   display: none;
 }
 
+/* ---- interactive first-match tutorial overlay ---- */
+.tutorial-overlay {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 8; /* above the arena/HUD, below the announce banner */
+}
+
+.tutorial-dots {
+  display: flex;
+  gap: 7px;
+}
+
+.tut-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.tut-dot.active {
+  background: var(--accent);
+  transform: scale(1.25);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.tut-dot.done {
+  background: var(--ok);
+}
+
+.tutorial-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(420px, 92vw);
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(20, 24, 42, 0.92), rgba(11, 14, 26, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  animation: tut-card-in 0.25s ease;
+}
+
+@keyframes tut-card-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.tutorial-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.25));
+}
+
+.tutorial-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.tutorial-copy b {
+  font-size: 1rem;
+  color: #fff;
+}
+
+.tutorial-copy p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #c7cdea;
+  line-height: 1.3;
+}
+
+.tutorial-skip {
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #c7cdea;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+/* Pulsing glow ring the tutorial drops onto whichever control is the current
+   step's focus (joystick, or one of the round action buttons). */
+.tut-highlight {
+  animation: tut-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes tut-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 65%, transparent), 0 0 0 3px var(--accent); }
+  50% { box-shadow: 0 0 0 14px color-mix(in srgb, var(--accent) 0%, transparent), 0 0 0 3px var(--accent); }
+}
+
 /* announce banner (FIGHT! / K.O.!) */
 .announce {
   position: absolute;
@@ -2449,6 +2553,12 @@ body,
 
 .btn-restore {
   margin-top: 4px;
+}
+
+.btn-privacy {
+  font-size: 0.82rem;
+  padding: 10px;
+  color: var(--muted);
 }
 
 /* premium fighter cards in the select grid */

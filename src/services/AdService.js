@@ -68,9 +68,48 @@ export class AdService {
         testingDevices: ADS.testDeviceIds || [],
       });
       this.ready = true;
+      await this._requestConsent();
       this._prepareInterstitial();
     } catch (err) {
       console.warn('[ads] AdMob init failed:', err);
+    }
+  }
+
+  /**
+   * GDPR (UMP) consent + iOS App Tracking Transparency, in Google's
+   * recommended order: consent info -> (iOS) ATT prompt -> consent form if
+   * required. Every step is best-effort — a failure here should never block
+   * ads entirely, it just means we fall back to non-personalized ads.
+   */
+  async _requestConsent() {
+    if (!this.AdMob) return;
+    try {
+      if (this.platform === 'ios' && this.AdMob.trackingAuthorizationStatus) {
+        const tracking = await this.AdMob.trackingAuthorizationStatus();
+        if (tracking?.status === 'notDetermined') {
+          await this.AdMob.requestTrackingAuthorization();
+        }
+      }
+    } catch (err) {
+      console.warn('[ads] ATT request failed:', err);
+    }
+    try {
+      const consentInfo = await this.AdMob.requestConsentInfo();
+      if (consentInfo?.isConsentFormAvailable && !consentInfo.canRequestAds) {
+        await this.AdMob.showConsentForm();
+      }
+    } catch (err) {
+      console.warn('[ads] consent info failed:', err);
+    }
+  }
+
+  /** Re-open the privacy/consent choices (for a "Privacy Options" settings link). */
+  async showPrivacyOptions() {
+    if (!this.native || !this.AdMob?.showPrivacyOptionsForm) return;
+    try {
+      await this.AdMob.showPrivacyOptionsForm();
+    } catch (err) {
+      console.warn('[ads] showPrivacyOptionsForm failed:', err);
     }
   }
 

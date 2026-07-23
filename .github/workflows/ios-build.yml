@@ -1,0 +1,147 @@
+name: iOS Build
+
+# Builds the iOS app on GitHub's macOS runners (which have Xcode preinstalled
+# — no local Mac needed). Runs on every push to main and can also be
+# triggered manually from the Actions tab.
+#
+# Two stages:
+#   1. Simulator build — always runs, needs NO Apple Developer account or
+#      certificates. This is the "does the iOS app still compile" CI signal.
+#   2. Signed IPA (TestFlight/App Store) — only runs once you add the repo
+#      secrets below (Settings -> Secrets and variables -> Actions):
+#        IOS_DIST_CERT_BASE64       base64 of your .p12 distribution cert
+#        IOS_DIST_CERT_PASSWORD     password for that .p12
+#        IOS_PROVISION_PROFILE_BASE64  base64 of your .mobileprovision file
+#        IOS_TEAM_ID                your Apple Developer Team ID
+#        VITE_MP_RELAY_URL          (optional) wss URL for multiplayer
+#
+#      Get a distribution cert + App Store provisioning profile from
+#      https://developer.apple.com/account/resources (requires a paid Apple
+#      Developer Program membership). Once the secrets above are set, also
+#      set a repo VARIABLE (not secret) named IOS_SIGNING_READY = "true"
+#      (Settings -> Secrets and variables -> Actions -> Variables tab) to
+#      flip the signed-archive job on. Until then, only stage 1 runs — that's
+#      expected, not a failure.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  simulator-build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle
+        run: npm run build
+        env:
+          VITE_MP_RELAY_URL: ${{ secrets.VITE_MP_RELAY_URL }}
+
+      - name: Capacitor sync (ios)
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        working-directory: ios/App
+        run: pod install --repo-update
+
+      - name: Build for iOS Simulator (no signing required)
+        working-directory: ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -sdk iphonesimulator -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+
+  signed-archive:
+    runs-on: macos-15
+    needs: simulator-build
+    if: ${{ vars.IOS_SIGNING_READY == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle
+        run: npm run build
+        env:
+          VITE_MP_RELAY_URL: ${{ secrets.VITE_MP_RELAY_URL }}
+
+      - name: Capacitor sync (ios)
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        working-directory: ios/App
+        run: pod install --repo-update
+
+      - name: Import signing certificate & profile
+        env:
+          CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
+          CERT_PW: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+        run: |
+          KEYCHAIN_PW=$(openssl rand -base64 24)
+          security create-keychain -p "$KEYCHAIN_PW" build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PW" build.keychain
+          security list-keychains -d user -s build.keychain $(security list-keychains -d user | sed 's/"//g')
+
+          echo "$CERT_BASE64" | base64 -d > cert.p12
+          security import cert.p12 -k build.keychain -P "$CERT_PW" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PW" build.keychain
+          rm cert.p12
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROFILE_BASE64" | base64 -d > profile.mobileprovision
+          uuid=$(security cms -D -i profile.mobileprovision | plutil -extract UUID xml1 -o - - | sed -n 's/.*<string>\(.*\)<\/string>.*/\1/p')
+          cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/"$uuid".mobileprovision
+
+      - name: Archive & export IPA
+        working-directory: ios/App
+        env:
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -configuration Release -archivePath build/App.xcarchive \
+            -destination 'generic/platform=iOS' \
+            DEVELOPMENT_TEAM="$TEAM_ID" archive
+
+          cat > exportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive -archivePath build/App.xcarchive \
+            -exportPath build/ipa -exportOptionsPlist exportOptions.plist
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: brawl-arena-ios-ipa
+          path: ios/App/build/ipa/*.ipa
+          if-no-files-found: error

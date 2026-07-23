@@ -149,6 +149,8 @@ export class GameEngine {
       this._startSurvival(config);
     } else if (config.network) {
       this._startNetworkMatch(config);
+    } else if (config.tutorial) {
+      this._startTutorial(config);
     } else {
       // Build the participant list: teams + characters.
       const participants = this._buildParticipants(config, mode);
@@ -220,6 +222,45 @@ export class GameEngine {
       this.ais.push(new AIController(fighter, controller, aiDiff || this._diff));
     }
     return fighter;
+  }
+
+  /**
+   * A short, self-paced practice match: the player's fighter vs. a totally
+   * passive training partner (added via the same `remote` path used for
+   * networked opponents, which deliberately skips AI wiring, so it never
+   * moves, attacks or blocks — a live "punching bag" instead of a static
+   * pose). Both fighters get effectively infinite HP so nothing can KO the
+   * match while the tutorial overlay walks through each control; the caller
+   * (App.js) ends the practice explicitly once every step is done.
+   */
+  _startTutorial(config) {
+    const w = this.vw;
+    const char = getCharacter(config.playerCharacter) || CHARACTERS[0];
+    const partner = CHARACTERS.find((c) => c.id !== char.id) || char;
+    const human = this._addFighter({
+      character: char,
+      team: 0,
+      isHuman: true,
+      name: t('You'),
+      x: w * 0.32,
+      z: ARENA_DEPTH * 0.5,
+      facing: 1,
+    });
+    const dummy = this._addFighter({
+      character: partner,
+      team: 1,
+      isHuman: false,
+      remote: true,
+      netId: 'tutorial-dummy',
+      name: t('Training Dummy'),
+      x: w * 0.68,
+      z: ARENA_DEPTH * 0.5,
+      facing: -1,
+    });
+    human.maxHp = human.hp = 99999;
+    human.maxMp = human.mp = 99999;
+    dummy.maxHp = dummy.hp = 99999;
+    this.cb.onAnnounce?.(t('PRACTICE'), 'go');
   }
 
   /**
