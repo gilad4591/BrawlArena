@@ -1,8 +1,19 @@
-// Records a ~35s vertical (TikTok/Reels/Shorts) gameplay promo directly from
-// the real running game: main menu -> character/cosmetics ("skin") pick ->
-// live fight -> K.O. -> victory screen. No narration is added here (by
-// design — the user is adding voiceover separately); a plain instrumental
-// music bed is muxed in so the clip isn't silent on socials.
+// Records a ~35s landscape (16:9 — the game's native orientation; it locks to
+// landscape on native mobile via @capacitor/screen-orientation) gameplay
+// promo directly from the real running game: main menu -> character/cosmetics
+// ("skin") pick -> live fight -> K.O. -> victory screen. No narration is
+// added here (by design — the user is adding voiceover separately); a plain
+// instrumental music bed is muxed in so the clip isn't silent on socials.
+//
+// NOTE ON CAPTURE METHOD: Puppeteer's experimental `page.screencast()` (a
+// thin wrapper that pipes CDP screencast frames into an ffmpeg child) was
+// tried first but reliably stalls partway through longer/heavier recordings
+// on this machine — the raw file keeps growing in bytes but the *decodable*
+// video track silently truncates to just the first several seconds, with no
+// error. Lowering fps only delayed the stall, so it isn't a resolution/fps
+// issue but a backpressure bug in that pipe on Windows. This script instead
+// drives capture manually via `page.screenshot()` on a timed loop and
+// assembles the resulting JPEG sequence with ffmpeg — slower, but reliable.
 //
 // Usage: node scripts/social/record-gameplay.mjs [devServerPort]
 import puppeteer from 'puppeteer-core';
@@ -16,23 +27,32 @@ const PORT = process.argv[2] || '5175';
 const ROOT = process.cwd();
 const OUT_DIR = path.join(ROOT, 'social-kit', 'video');
 fs.mkdirSync(OUT_DIR, { recursive: true });
-const RAW = path.join(OUT_DIR, 'gameplay_raw.webm');
+const FRAMES_DIR = path.join(OUT_DIR, 'frames_tmp');
 const MUSIC = path.join(OUT_DIR, 'gameplay_music.wav');
 const FINAL = path.join(OUT_DIR, 'brawl-arena-promo.mp4');
+const CAPTURE_FPS = 20;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
+  // Hard ceiling on the whole capture phase (menu -> fight -> KO -> victory
+  // hold) so a stuck browser/CDP session can never hang the script forever.
+  const watchdog = setTimeout(() => {
+    console.error('watchdog: capture phase exceeded time budget — forcing exit');
+    process.exit(1);
+  }, 120_000);
+
+  fs.rmSync(FRAMES_DIR, { recursive: true, force: true });
+  fs.mkdirSync(FRAMES_DIR, { recursive: true });
+
   const browser = await puppeteer.launch({
     executablePath: CHROME,
     headless: true,
     args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'],
   });
   const page = await browser.newPage();
-  // Chrome's screencast captures at the CSS viewport size regardless of
-  // deviceScaleFactor, so set the viewport directly to the vertical target
-  // resolution (9:16 — Reels/TikTok/Shorts) instead of relying on DPR upscaling.
-  await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1 });
+  // 16:9 landscape, matching the game's actual (locked) native orientation.
+  await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
 
   page.on('pageerror', (e) => console.warn('[page error]', e.message));
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });
@@ -44,10 +64,31 @@ async function main() {
   });
   await sleep(300);
 
-  console.log('recording ->', RAW);
-  const recorder = await page.screencast({ path: RAW, ffmpegPath, format: 'webm', fps: 30 });
+  console.log('capturing frames ->', FRAMES_DIR);
   const t0 = Date.now();
   const mark = (label) => console.log(`  [${((Date.now() - t0) / 1000).toFixed(1)}s] ${label}`);
+
+  let frameIdx = 0;
+  let capturing = true;
+  const captureLoop = (async () => {
+    while (capturing) {
+      const shotStart = Date.now();
+      const idx = frameIdx++;
+      try {
+        await page.screenshot({
+          path: path.join(FRAMES_DIR, `f${String(idx).padStart(6, '0')}.jpg`),
+          type: 'jpeg',
+          quality: 70,
+          optimizeForSpeed: true,
+        });
+      } catch (e) {
+        console.warn('frame capture failed', idx, e.message);
+      }
+      const elapsed = Date.now() - shotStart;
+      const wait = 1000 / CAPTURE_FPS - elapsed;
+      if (wait > 0) await sleep(wait);
+    }
+  })();
 
   try {
     // ---- 1) Branded main menu ------------------------------------------------
@@ -102,6 +143,15 @@ async function main() {
 
     // ---- 5) Live, keyboard-driven fight --------------------------------------
     mark('fight');
+    // Real CPU fights are unpredictable — keep the human topped up during the
+    // scripted button-mashing so a lucky CPU combo can't KO the *player*
+    // before the guaranteed finishing blow (below) ends the match as a win.
+    await page.evaluate(() => {
+      window.__promoGuard = setInterval(() => {
+        const h = window.__app.engine?.human;
+        if (h && h.alive) h.hp = h.maxHp;
+      }, 200);
+    });
     const tap = async (key, ms = 140) => {
       await page.keyboard.down(key);
       await sleep(ms);
@@ -143,6 +193,7 @@ async function main() {
     // guaranteeing the KO/victory beats land inside the recording window.
     mark('finishing blow');
     await page.evaluate(() => {
+      clearInterval(window.__promoGuard);
       const app = window.__app;
       const eng = app.engine;
       const cpu = eng?.fighters.find((f) => !f.isHuman && f.alive);
@@ -153,27 +204,33 @@ async function main() {
     mark('victory hold');
     await sleep(6800);
   } finally {
-    // The experimental ScreenRecorder's stop() occasionally never observes the
-    // ffmpeg child's 'close' event on Windows and hangs forever — race it
-    // against a timeout so the script always finishes; closing the browser
-    // right after forces the CDP session (and thus ffmpeg's stdin) closed.
-    await Promise.race([recorder.stop(), sleep(8000)]).catch((err) => {
-      console.warn('recorder.stop() did not resolve cleanly:', err?.message || err);
-    });
+    capturing = false;
+    await captureLoop;
   }
 
   const duration = (Date.now() - t0) / 1000;
-  await browser.close();
-  console.log('raw capture done:', RAW, `(${duration.toFixed(1)}s)`);
+  // browser.close() has been observed to hang occasionally on Windows — give
+  // it a short grace period, then hard-kill the underlying Chrome process.
+  await Promise.race([browser.close(), sleep(5000)]).catch(() => {});
+  if (browser.process() && !browser.process().killed) {
+    browser.process().kill('SIGKILL');
+  }
+  clearTimeout(watchdog);
+
+  const actualFps = frameIdx / duration;
+  console.log(`captured ${frameIdx} frames over ${duration.toFixed(1)}s (~${actualFps.toFixed(2)} fps effective)`);
 
   // ---- Post-process: add an instrumental music bed ---------------------------
-  console.log('music bed:', duration.toFixed(1) + 's');
   execFileSync('node', [path.join(ROOT, 'scripts', 'social', 'music-wav.mjs'), MUSIC, String(duration + 0.5)], { stdio: 'inherit' });
 
-  // Re-encode to H.264 (the raw capture is VP9-in-webm, which many phones/apps
-  // don't scrub/preview reliably) while muxing in the music bed.
+  // Assemble the JPEG sequence into H.264 (matching the effective capture
+  // rate so playback speed lines up with real elapsed time) with the music
+  // bed muxed in.
   execFileSync(ffmpegPath, [
-    '-y', '-i', RAW, '-i', MUSIC,
+    '-y',
+    '-framerate', actualFps.toFixed(3),
+    '-i', path.join(FRAMES_DIR, 'f%06d.jpg'),
+    '-i', MUSIC,
     '-filter:a', 'afade=t=in:st=0:d=0.6,afade=t=out:st=' + Math.max(0, duration - 1) + ':d=1',
     '-shortest',
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p',
@@ -181,6 +238,8 @@ async function main() {
     '-movflags', '+faststart',
     FINAL,
   ], { stdio: 'inherit' });
+
+  fs.rmSync(FRAMES_DIR, { recursive: true, force: true });
 
   console.log('\n✓ Done ->', FINAL);
   process.exit(0);

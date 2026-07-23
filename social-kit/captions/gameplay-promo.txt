@@ -1,8 +1,10 @@
 === FILE ===
-video/brawl-arena-promo.mp4 — 1080x1920, ~39s (Reels / Stories / TikTok / YouTube Shorts)
+video/brawl-arena-promo.mp4 — 1280x720 (16:9 landscape — the game's real orientation), ~35s
 Real captured gameplay: menu -> pick a fighter -> equip an elemental Aura + Special FX ->
 1v1 fight -> special-attack finisher -> K.O. -> Victory screen. Instrumental music bed only
 (no voiceover baked in — leaves room for narration/edits before posting).
+Note: landscape 16:9 posts fine on Instagram/TikTok/YouTube feeds (shown letterboxed
+in the vertical Reels/Stories/Shorts viewer) and is the native format for YouTube itself.
 
 === CAPTION (Reels / TikTok / Shorts) ===
 Gear up. Throw down. 🔥👊
