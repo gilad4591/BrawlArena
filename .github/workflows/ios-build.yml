@@ -54,8 +54,14 @@ jobs:
 
       - name: Build for iOS Simulator (no signing required)
         working-directory: ios/App
+        # This Capacitor 8 project uses Swift Package Manager (CapApp-SPM is a
+        # local package embedded directly in App.xcodeproj — see the
+        # XCLocalSwiftPackageReference in project.pbxproj) instead of
+        # CocoaPods, so there's no generated .xcworkspace to build against —
+        # build the .xcodeproj directly; xcodebuild resolves the SPM
+        # dependency automatically.
         run: |
-          xcodebuild -workspace App.xcworkspace -scheme App \
+          xcodebuild -project App.xcodeproj -scheme App \
             -sdk iphonesimulator -configuration Release \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build
@@ -112,7 +118,7 @@ jobs:
         env:
           TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
         run: |
-          xcodebuild -workspace App.xcworkspace -scheme App \
+          xcodebuild -project App.xcodeproj -scheme App \
             -configuration Release -archivePath build/App.xcarchive \
             -destination 'generic/platform=iOS' \
             DEVELOPMENT_TEAM="$TEAM_ID" archive
