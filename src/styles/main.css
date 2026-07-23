@@ -2895,7 +2895,10 @@ body,
   align-items: center;
   justify-content: center;
 }
-.cos-manne .cos-portrait-bust { width: 72%; height: 72%; line-height: 0; }
+/* Same bust:frame ratio as the proven "Choose Fighter" portrait-frame overlay
+   (frame is 116% of the bust, i.e. bust ≈ 86% of the frame) — just applied the
+   other way round here since the frame is the fixed box and the bust sits inside it. */
+.cos-manne .cos-portrait-bust { width: 86%; height: 86%; line-height: 0; }
 .cos-manne .cos-portrait-bust canvas {
   display: block;
   width: 100%;
@@ -2958,10 +2961,10 @@ body,
   box-shadow: 0 0 16px var(--g);
 }
 /* Frame thumbnails: fighter bust with the element border overlaid on top.
-   The bust must sit INSIDE the frame's ornate border with a margin, matching
-   the big preview — shrink it well below the frame's own footprint. */
+   Same bust:frame ratio as the "Choose Fighter" portrait-frame overlay (~86%),
+   just scaled down to this card's small footprint. */
 .cos-thumb.is-frame { position: relative; overflow: visible; }
-.cos-thumb-portrait { display: block; width: 56%; height: 56%; line-height: 0; }
+.cos-thumb-portrait { display: block; width: 86%; height: 86%; line-height: 0; }
 .cos-thumb-portrait canvas { width: 100%; height: 100%; border-radius: 6px; object-fit: cover; }
 .cos-thumb-frame {
   position: absolute;
