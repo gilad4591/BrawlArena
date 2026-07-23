@@ -6,14 +6,17 @@
 // instrumental music bed is muxed in so the clip isn't silent on socials.
 //
 // NOTE ON CAPTURE METHOD: Puppeteer's experimental `page.screencast()` (a
-// thin wrapper that pipes CDP screencast frames into an ffmpeg child) was
-// tried first but reliably stalls partway through longer/heavier recordings
-// on this machine — the raw file keeps growing in bytes but the *decodable*
-// video track silently truncates to just the first several seconds, with no
-// error. Lowering fps only delayed the stall, so it isn't a resolution/fps
-// issue but a backpressure bug in that pipe on Windows. This script instead
-// drives capture manually via `page.screenshot()` on a timed loop and
-// assembles the resulting JPEG sequence with ffmpeg — slower, but reliable.
+// thin wrapper that pipes CDP screencast frames into an ffmpeg child) reliably
+// stalls partway through longer/heavier recordings on this machine — the raw
+// file keeps growing in bytes but the *decodable* video track silently
+// truncates to just the first several seconds. A plain `page.screenshot()`
+// polling loop fixed the truncation but only managed ~9fps (each call is a
+// full request/response round trip), which looks choppy. This script instead
+// talks to the same underlying CDP `Page.startScreencast` API directly and
+// writes each pushed frame straight to a JPEG file (no ffmpeg pipe in the
+// hot path — that pipe was the actual stall culprit), acking immediately so
+// Chrome keeps streaming frames as fast as it renders them. The JPEG
+// sequence is assembled into the final video afterwards.
 //
 // Usage: node scripts/social/record-gameplay.mjs [devServerPort]
 import puppeteer from 'puppeteer-core';
@@ -30,7 +33,6 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 const FRAMES_DIR = path.join(OUT_DIR, 'frames_tmp');
 const MUSIC = path.join(OUT_DIR, 'gameplay_music.wav');
 const FINAL = path.join(OUT_DIR, 'brawl-arena-promo.mp4');
-const CAPTURE_FPS = 20;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -68,27 +70,29 @@ async function main() {
   const t0 = Date.now();
   const mark = (label) => console.log(`  [${((Date.now() - t0) / 1000).toFixed(1)}s] ${label}`);
 
+  // Manual CDP screencast: Chrome pushes a 'Page.screencastFrame' event as
+  // fast as it can encode+deliver one, we write it straight to disk (fire and
+  // forget, tracked for a final await) and ack immediately so the next frame
+  // is sent without waiting on disk I/O.
+  const client = await page.createCDPSession();
   let frameIdx = 0;
-  let capturing = true;
-  const captureLoop = (async () => {
-    while (capturing) {
-      const shotStart = Date.now();
-      const idx = frameIdx++;
-      try {
-        await page.screenshot({
-          path: path.join(FRAMES_DIR, `f${String(idx).padStart(6, '0')}.jpg`),
-          type: 'jpeg',
-          quality: 70,
-          optimizeForSpeed: true,
-        });
-      } catch (e) {
-        console.warn('frame capture failed', idx, e.message);
-      }
-      const elapsed = Date.now() - shotStart;
-      const wait = 1000 / CAPTURE_FPS - elapsed;
-      if (wait > 0) await sleep(wait);
-    }
-  })();
+  const pendingWrites = [];
+  client.on('Page.screencastFrame', (frame) => {
+    const idx = frameIdx++;
+    pendingWrites.push(
+      fs.promises
+        .writeFile(path.join(FRAMES_DIR, `f${String(idx).padStart(6, '0')}.jpg`), Buffer.from(frame.data, 'base64'))
+        .catch((e) => console.warn('frame write failed', idx, e.message))
+    );
+    client.send('Page.screencastFrameAck', { sessionId: frame.sessionId }).catch(() => {});
+  });
+  await client.send('Page.startScreencast', {
+    format: 'jpeg',
+    quality: 85,
+    maxWidth: 1280,
+    maxHeight: 720,
+    everyNthFrame: 1,
+  });
 
   try {
     // ---- 1) Branded main menu ------------------------------------------------
@@ -204,8 +208,8 @@ async function main() {
     mark('victory hold');
     await sleep(6800);
   } finally {
-    capturing = false;
-    await captureLoop;
+    await client.send('Page.stopScreencast').catch(() => {});
+    await Promise.allSettled(pendingWrites);
   }
 
   const duration = (Date.now() - t0) / 1000;
