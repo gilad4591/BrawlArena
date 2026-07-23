@@ -1,0 +1,28 @@
+=== FILE ===
+video/brawl-arena-promo.mp4 — 1080x1920, ~39s (Reels / Stories / TikTok / YouTube Shorts)
+Real captured gameplay: menu -> pick a fighter -> equip an elemental Aura + Special FX ->
+1v1 fight -> special-attack finisher -> K.O. -> Victory screen. Instrumental music bed only
+(no voiceover baked in — leaves room for narration/edits before posting).
+
+=== CAPTION (Reels / TikTok / Shorts) ===
+Gear up. Throw down. 🔥👊
+
+This is BRAWL ARENA — real gameplay, zero download, totally free:
+👉 brawl-arena.com (link in bio)
+
+Pick a fighter, unlock an elemental Aura, then go get that K.O. 💥
+
+@brawlarenagame
+
+=== CAPTION (alt, shorter) ===
+Pick your fighter. Light up your Special. Get the K.O. 🏆
+BRAWL ARENA — free to play, right in your browser.
+👉 brawl-arena.com
+
+=== FIRST COMMENT (hashtags) ===
+#brawlarena #fightinggame #beatemup #arcadegame #browsergame #freegame #gaming #gamer #mobilegaming #indiedev #gamedev #2dgame #videogames #playnow #gamingcommunity #gamereels #gamingreels #ko #victory #fighting #gamingclips #tiktokgaming #shorts #reels
+
+=== REGENERATE ===
+node scripts/social/record-gameplay.mjs [devServerPort]
+(needs a running `npm run dev` and Chrome installed at CHROME_PATH; swap the
+character/moves inside the script to reshoot with a different fighter)

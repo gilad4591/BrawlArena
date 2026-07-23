@@ -3134,9 +3134,9 @@ export class App {
           <small>Enter a friend's code</small>
         </button>
       </div>
-      <p class="mp-note">${this.mp?.online || this._relayConfigured()
-        ? 'Cross-device play is live via the relay server.'
-        : 'Same-device play works out of the box. Set a relay URL (VITE_MP_RELAY_URL) for cross-device.'}</p>
+      ${this.mp?.online || this._relayConfigured()
+        ? '<p class="mp-note">Cross-device play is live via the relay server.</p>'
+        : ''}
     `;
     body.querySelector('#mp-create').addEventListener('click', () => this.mpCreate());
     body.querySelector('#mp-join').addEventListener('click', () => this.mpJoinPrompt());
