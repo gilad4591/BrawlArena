@@ -12,10 +12,19 @@ import {
 } from './constants.js';
 import { getSpriteSet, frameForState } from './sprites.js';
 import { STATUS_IMAGES, drawVfx, drawAura } from './vfx.js';
+import { ELEMENTS } from './cosmetics.js';
 
 // Melee combo timing (seconds)
 const ATTACK = { windup: 0.07, active: 0.11, recover: 0.16 };
 const SPECIAL_TIME = 0.42;
+
+function hexToRgba(hex, alpha) {
+  const h = (hex || '#ffffff').replace('#', '');
+  const r = parseInt(h.length === 3 ? h[0] + h[0] : h.slice(0, 2), 16);
+  const g = parseInt(h.length === 3 ? h[1] + h[1] : h.slice(2, 4), 16);
+  const b = parseInt(h.length === 3 ? h[2] + h[2] : h.slice(4, 6), 16);
+  return `rgba(${r || 255}, ${g || 255}, ${b || 255}, ${alpha})`;
+}
 
 // A defeated fighter lies on the floor for DEATH_LINGER seconds, then fades out
 // over DEATH_FADE and stops being drawn.
@@ -428,10 +437,27 @@ export class Fighter {
     ctx.fill();
     ctx.restore();
 
-    // equipped-skin elemental aura (animated, additive) drawn BEHIND the body
+    // equipped-skin elemental aura (animated, additive) drawn BEHIND the body.
+    // A soft ambient glow sits underneath the ring sprite so the aura still
+    // reads clearly even from a wide/zoomed-out camera, not just up close.
     if (this.alive && this.skinAura) {
-      drawAura(ctx, this.skinAura, sx, bodyBottom, h * 1.72, Date.now() / 1000, {
-        alpha: 0.9,
+      const auraColor = ELEMENTS[this.skinAura]?.color || crestColor;
+      const glowPulse = 0.75 + Math.sin(Date.now() / 260) * 0.2;
+      const glowR = h * 1.05;
+      const cy = bodyBottom - h * 0.42;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const glow = ctx.createRadialGradient(sx, cy, 0, sx, cy, glowR);
+      glow.addColorStop(0, hexToRgba(auraColor, 0.4 * glowPulse));
+      glow.addColorStop(0.6, hexToRgba(auraColor, 0.16 * glowPulse));
+      glow.addColorStop(1, hexToRgba(auraColor, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(sx, cy, glowR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      drawAura(ctx, this.skinAura, sx, bodyBottom, h * 2.05, Date.now() / 1000, {
+        alpha: 1,
       });
     }
 

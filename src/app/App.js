@@ -87,10 +87,27 @@ export class App {
     // XP / unlocked roster (merge starters + purchased premium fighters).
     this.xp = this.profile.xp || 0;
     // Dev/test convenience: on localhost give unlimited coins so every cosmetic
-    // and premium unlock can be exercised without grinding.
-    this._dev = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(location.hostname);
+    // and premium unlock can be exercised without grinding. IMPORTANT: Capacitor
+    // apps serve their bundled assets from `location.hostname === 'localhost'`
+    // by default (no custom `server.hostname` is set in capacitor.config.json),
+    // so the hostname check alone would also match the real, shipped Android/
+    // iOS app — handing every real player unlimited coins and every character
+    // for free. Explicitly require a *non-native* (i.e. actual browser/web)
+    // context on top of the hostname check.
+    this._dev = !this._isNative() && /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(location.hostname);
     if (this._dev) window.__app = this; // dev-only: console/headless-test access
     this.coins = this._dev ? 999999 : (this.profile.coins || 0);
+    // One-time remediation for the above bug's fallout: before the native-
+    // platform check existed, real Android/iOS installs also matched the
+    // hostname-only regex and got 999999 coins saved into their real profile
+    // on the very next autosave. That balance is impossible to reach through
+    // normal play, so clamp it back down on native — but leave anything
+    // already unlocked/bought with it alone (no clawing back purchases from
+    // real players over a bug that wasn't their fault).
+    if (!this._dev && this._isNative() && this.coins >= 900000) {
+      this.coins = 0;
+      this.profile = await StorageService.saveProfile({ coins: 0 });
+    }
     this.quests = new QuestService();
     await this.quests.ensureDaily();
     this.unlocked = new Set([

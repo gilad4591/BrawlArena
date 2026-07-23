@@ -52,10 +52,6 @@ jobs:
       - name: Capacitor sync (ios)
         run: npx cap sync ios
 
-      - name: Install CocoaPods
-        working-directory: ios/App
-        run: pod install --repo-update
-
       - name: Build for iOS Simulator (no signing required)
         working-directory: ios/App
         run: |
@@ -88,10 +84,6 @@ jobs:
 
       - name: Capacitor sync (ios)
         run: npx cap sync ios
-
-      - name: Install CocoaPods
-        working-directory: ios/App
-        run: pod install --repo-update
 
       - name: Import signing certificate & profile
         env:
