@@ -88,10 +88,17 @@ async function main() {
   });
   await client.send('Page.startScreencast', {
     format: 'jpeg',
-    quality: 85,
+    quality: 80,
     maxWidth: 1280,
     maxHeight: 720,
-    everyNthFrame: 1,
+    // Pushing every single rendered frame (30-60/s) makes Chrome spend so much
+    // of the tab's own main thread JPEG/base64-encoding screencast frames that
+    // it started starving the page's *own* game-logic thread under load —
+    // occasionally stalling the actual fight for a second or more (looks like
+    // freezing in the output) and even letting scripted actions land later
+    // than intended. Skipping every other frame roughly halves that overhead
+    // while still giving a smooth ~18-20fps capture.
+    everyNthFrame: 2,
   });
 
   try {
@@ -148,12 +155,22 @@ async function main() {
     // ---- 5) Live, keyboard-driven fight --------------------------------------
     mark('fight');
     // Real CPU fights are unpredictable — keep the human topped up during the
-    // scripted button-mashing so a lucky CPU combo can't KO the *player*
-    // before the guaranteed finishing blow (below) ends the match as a win.
+    // scripted button-mashing so a lucky CPU combo can't KO the *player*. The
+    // CPU's health ceiling is also ramped smoothly downward over the fight
+    // (not snapped instantly — that would look like an unexplained jump on
+    // the health bar) so it's reliably on the ropes by the finishing flurry,
+    // without ever needing a fake mega-damage number to force the KO.
     await page.evaluate(() => {
+      let cpuCeiling = 0.92; // fraction of max HP; ramps down each tick below
       window.__promoGuard = setInterval(() => {
-        const h = window.__app.engine?.human;
+        const eng = window.__app.engine;
+        const h = eng?.human;
         if (h && h.alive) h.hp = h.maxHp;
+        const cpu = eng?.fighters.find((f) => !f.isHuman && f.alive);
+        if (cpu) {
+          cpuCeiling = Math.max(0.08, cpuCeiling - 0.012);
+          cpu.hp = Math.min(cpu.hp, cpu.maxHp * cpuCeiling);
+        }
       }, 200);
     });
     const tap = async (key, ms = 140) => {
@@ -189,20 +206,34 @@ async function main() {
     await tap('KeyA'); await sleep(300);
     await tap('KeyA'); await sleep(300);
 
-    // ---- 6) Guaranteed, cinematic finish -------------------------------------
+    // ---- 6) Guaranteed, but realistic, finish ---------------------------------
     // Real CPU fights are inherently a little unpredictable (dodges/blocks),
     // which is fine for a highlight reel but risky for a scripted-length promo
-    // clip — so the actual finishing blow is delivered through the engine's own
-    // hit pipeline (same VFX/knockback/K.O. logic a real hit would trigger),
-    // guaranteeing the KO/victory beats land inside the recording window.
+    // clip. Rather than injecting one absurd mega-damage hit (which shows an
+    // obviously fake number on screen — "999" — and gives the game away), the
+    // CPU's health was already capped low throughout the fight (above), so a
+    // couple of normal, plausible-damage attacks land the KO for real through
+    // the engine's own combat pipeline — same numbers a real hit would show.
     mark('finishing blow');
-    await page.evaluate(() => {
-      clearInterval(window.__promoGuard);
-      const app = window.__app;
-      const eng = app.engine;
-      const cpu = eng?.fighters.find((f) => !f.isHuman && f.alive);
-      if (eng && cpu) eng._applyHit(eng.human, cpu, 999, { dir: eng.human.facing });
-    });
+    await tap('KeyA'); await sleep(280);
+    await tap('KeyA'); await sleep(280);
+    await tap('KeyS'); await sleep(500);
+    // Safety net: if the CPU is still standing (e.g. it blocked every swing,
+    // or the tab was briefly busy and a keypress didn't land in time), finish
+    // it off with one modest, plausible-sized hit — never a cheat-code number
+    // — and retry a couple of times so the promo can't end mid-fight.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const stillAlive = await page.evaluate(() => {
+        const eng = window.__app.engine;
+        const cpu = eng?.fighters.find((f) => !f.isHuman && f.alive);
+        if (eng && cpu) eng._applyHit(eng.human, cpu, Math.min(28, cpu.hp + 4), { dir: eng.human.facing });
+        return !!eng?.fighters.find((f) => !f.isHuman && f.alive);
+      });
+      if (!stillAlive) break;
+      console.log(`  finishing blow attempt ${attempt + 1} didn't land — retrying`);
+      await sleep(400);
+    }
+    await page.evaluate(() => clearInterval(window.__promoGuard));
 
     // ---- 7) Hold on K.O. + victory screen -------------------------------------
     mark('victory hold');
