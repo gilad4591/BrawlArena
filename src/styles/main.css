@@ -366,6 +366,23 @@ body,
   font-size: clamp(0.94rem, 2.4vh, 1.05rem);
 }
 
+/* Mobile: menu buttons ~10% smaller so the row of mini buttons has more
+   breathing room and the whole stack reads less oversized on a phone screen. */
+@media (max-width: 600px) {
+  .menu-buttons .btn {
+    padding: clamp(8px, 1.7vh, 12.6px) 23px;
+    font-size: clamp(0.85rem, 2.16vh, 0.945rem);
+  }
+  .btn.mini {
+    padding: 8px 5px;
+    font-size: 0.74rem;
+  }
+  .mini-ico {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 /* Staggered entrance for the title, tagline and each menu button. */
 .menu-badge {
   width: clamp(40px, 10vh, 92px);
@@ -1490,6 +1507,12 @@ body,
   gap: 12px;
   max-height: 52vh;
   overflow-y: auto;
+  /* Without this, flexbox treats a scrollable child's automatic min-height as
+     0 and will shrink it all the way to nothing to make room for siblings
+     (like the result buttons) before ever falling back to the overlay's own
+     scroll -- which is what made the podium vanish once the Share button
+     made the result overlay's content taller than the screen. */
+  flex-shrink: 0;
 }
 
 .podium-top {
@@ -2664,6 +2687,11 @@ body,
 }
 .btn.mini {
   flex: 1;
+  /* Override the base .btn's min-width: 220px -- left in place, a row of 3-4
+     of these (Quests/Achievements/Skins/Store/Ranks/...) needs 660-880px
+     minimum, which overflows any phone width and causes sideways scrolling
+     on the main menu. */
+  min-width: 0;
   padding: 9px 6px;
   font-size: 0.82rem;
   position: relative;
