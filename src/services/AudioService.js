@@ -73,6 +73,31 @@ export class AudioService {
     this.master = this.ctx.createGain();
     this.master.gain.value = this.volume;
     this.master.connect(this.ctx.destination);
+
+    // A small synthesized-impulse reverb send. Music notes route a little of
+    // their signal through this — it's the single biggest thing that turns a
+    // dry oscillator into something that sounds like a "song" rather than a
+    // beeping test tone. SFX skip it entirely (they stay punchy/dry).
+    this.reverb = this.ctx.createConvolver();
+    this.reverb.buffer = this._impulse(1.8, 2.6);
+    this.reverbGain = this.ctx.createGain();
+    this.reverbGain.gain.value = 0.4;
+    this.reverb.connect(this.reverbGain);
+    this.reverbGain.connect(this.master);
+  }
+
+  /** Synthesize a soft-decay noise impulse response (no reverb IR file needed). */
+  _impulse(duration, decay) {
+    const rate = this.ctx.sampleRate;
+    const length = Math.floor(rate * duration);
+    const buf = this.ctx.createBuffer(2, length, rate);
+    for (let c = 0; c < 2; c += 1) {
+      const data = buf.getChannelData(c);
+      for (let i = 0; i < length; i += 1) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / length) ** decay;
+      }
+    }
+    return buf;
   }
 
   /** Route to the master bus (falls back to destination pre-init). */
@@ -190,20 +215,58 @@ export class AudioService {
     this.tone(330, 0.24, 'triangle', 0.04, 0.08);
   }
 
-  /** Play one note at an ABSOLUTE AudioContext time, with a soft attack so it
-   *  reads as a musical note rather than a percussive sfx hit. */
-  _noteAt(time, freq, duration, type, gain) {
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    osc.connect(g);
-    g.connect(this.out);
-    g.gain.setValueAtTime(0.0001, time);
-    g.gain.exponentialRampToValueAtTime(gain, time + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-    osc.start(time);
-    osc.stop(time + duration + 0.02);
+  /**
+   * Play one music note at an ABSOLUTE AudioContext time. This is the piece
+   * that makes the loops sound like an instrument instead of a beeping test
+   * tone: two slightly-detuned oscillators (unison, like a real synth voice)
+   * feed a lowpass filter that sweeps closed over the note's life (a "pluck"
+   * rather than a flat buzz), a touch of vibrato on sustained lead notes, and
+   * a reverb send for space. `opts.vibrato` (cents) and `opts.detune` (cents)
+   * are optional; humanization (micro-timing/velocity) is applied by the
+   * caller before this is invoked.
+   */
+  _noteAt(time, freq, duration, type, gain, opts = {}) {
+    const detune = opts.detune ?? 7;
+    const vibrato = opts.vibrato ?? 0;
+
+    const bus = this.ctx.createGain();
+    bus.gain.setValueAtTime(0.0001, time);
+    bus.gain.exponentialRampToValueAtTime(gain, time + 0.03);
+    bus.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.Q.value = 0.6;
+    filter.frequency.setValueAtTime(Math.min(9000, freq * 9), time);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(320, freq * 1.7), time + duration * 0.85);
+    filter.connect(bus);
+
+    let lfo = null;
+    let lfoGain = null;
+    if (vibrato > 0) {
+      lfo = this.ctx.createOscillator();
+      lfoGain = this.ctx.createGain();
+      lfo.frequency.value = 5.4;
+      lfoGain.gain.value = vibrato;
+      lfo.connect(lfoGain);
+      lfo.start(time + duration * 0.15); // let the note settle before it wobbles
+      lfo.stop(time + duration + 0.05);
+    }
+
+    const voices = [-detune, detune];
+    for (const cents of voices) {
+      const osc = this.ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.value = freq;
+      osc.detune.value = cents;
+      if (lfoGain) lfoGain.connect(osc.detune);
+      osc.connect(filter);
+      osc.start(time);
+      osc.stop(time + duration + 0.05);
+    }
+
+    bus.connect(this.out); // dry
+    bus.connect(this.reverb || this.out); // wet send (space/warmth)
   }
 
   /** Change the selected loop; if music is already playing, hot-swap it. */
@@ -223,6 +286,12 @@ export class AudioService {
     let step = 0;
     let nextTime = this.ctx.currentTime + 0.05;
 
+    // Small humanization helpers — a hair of timing/velocity variance is the
+    // difference between "sequenced" and "robotic". Bass stays tight (it's
+    // the rhythmic anchor); the lead gets a little more push and pull.
+    const jitter = (maxMs) => (Math.random() * 2 - 1) * (maxMs / 1000);
+    const vel = (base, spread) => base * (1 - spread / 2 + Math.random() * spread);
+
     const scheduleStep = (time) => {
       const s = step % totalSteps;
       const chordIdx = Math.floor(s / track.segSteps) % track.chords.length;
@@ -230,14 +299,14 @@ export class AudioService {
       const chord = track.chords[chordIdx];
 
       if (track.bassOffsets.includes(local)) {
-        this._noteAt(time, chord.root, stepDur * 1.8, track.bassType, 0.05);
+        this._noteAt(time + jitter(4), chord.root, stepDur * 1.8, track.bassType, vel(0.05, 0.12), { detune: 4 });
       }
       if (track.leadOffsets.includes(local)) {
         const idx = track.leadOffsets.indexOf(local) % chord.arp.length;
-        this._noteAt(time, chord.arp[idx], stepDur * 1.5, track.leadType, 0.04);
+        this._noteAt(time + jitter(14), chord.arp[idx], stepDur * 1.5, track.leadType, vel(0.04, 0.3), { detune: 8, vibrato: 5 });
       }
       if (track.pad && local === 0) {
-        for (const f of chord.arp) this._noteAt(time, f, stepDur * track.segSteps * 0.95, 'sine', 0.012);
+        for (const f of chord.arp) this._noteAt(time, f, stepDur * track.segSteps * 0.95, 'sine', 0.011, { detune: 5 });
       }
       step += 1;
     };
