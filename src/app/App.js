@@ -13,7 +13,7 @@ import { STAGES } from '../game/enemies.js';
 import { MODES, DIFFICULTY, TEAM_COLORS } from '../game/constants.js';
 import { ARENAS, ARENA_MAP, loadArenaImages, isPremiumArena } from '../game/arenas.js';
 import { loadItemImages } from '../game/items.js';
-import { loadVfxImages, drawAura, ORB_IMAGES } from '../game/vfx.js';
+import { loadVfxImages, drawAura, ORB_IMAGES, AURA_IMAGES, AURA_COLS, AURA_ROWS } from '../game/vfx.js';
 import { makePortraitCanvas } from '../game/portraits.js';
 import {
   loadAllSprites,
@@ -189,15 +189,13 @@ export class App {
           <div class="btn-row col menu-buttons">
             <button class="btn btn-primary btn-play" data-action="play">Play</button>
             <div class="menu-mini-row">
-              <button class="btn btn-ghost mini" data-action="quests"><img class="mini-ico" src="${this._iconUrl('quests')}" alt="">Quests<span class="mini-badge hidden" id="quest-badge">0</span></button>
-              <button class="btn btn-ghost mini" data-action="achievements"><img class="mini-ico" src="${this._iconUrl('achievements')}" alt="">Achievements</button>
-              <button class="btn btn-ghost mini" data-action="cosmetics"><img class="mini-ico" src="${this._iconUrl('skins')}" alt="">Skins</button>
-            </div>
-            <div class="menu-mini-row">
-              ${this._premiumEnabled() ? `<button class="btn btn-ghost mini" data-action="store"><img class="mini-ico" src="${this._iconUrl('daily')}" alt="">Store</button>` : ''}
-              ${this.leaderboard?.available ? `<button class="btn btn-ghost mini" data-action="leaderboard"><img class="mini-ico" src="${this._iconUrl('achievements')}" alt="">Ranks</button>` : ''}
-              <button class="btn btn-ghost mini" data-action="howto"><img class="mini-ico" src="${this._iconUrl('help')}" alt="">How to Play</button>
-              <button class="btn btn-ghost mini" data-action="settings"><img class="mini-ico" src="${this._iconUrl('settings')}" alt="">Settings</button>
+              <button class="btn btn-ghost mini" data-action="quests"><img class="mini-ico" src="${this._iconUrl('quests')}" alt=""><span class="mini-label">Quests</span><span class="mini-badge hidden" id="quest-badge">0</span></button>
+              <button class="btn btn-ghost mini" data-action="achievements"><img class="mini-ico" src="${this._iconUrl('achievements')}" alt=""><span class="mini-label">Achievements</span></button>
+              <button class="btn btn-ghost mini" data-action="cosmetics"><img class="mini-ico" src="${this._iconUrl('skins')}" alt=""><span class="mini-label">Skins</span></button>
+              ${this._premiumEnabled() ? `<button class="btn btn-ghost mini" data-action="store"><img class="mini-ico" src="${this._iconUrl('daily')}" alt=""><span class="mini-label">Store</span></button>` : ''}
+              ${this.leaderboard?.available ? `<button class="btn btn-ghost mini" data-action="leaderboard"><img class="mini-ico" src="${this._iconUrl('achievements')}" alt=""><span class="mini-label">Ranks</span></button>` : ''}
+              <button class="btn btn-ghost mini" data-action="howto"><img class="mini-ico" src="${this._iconUrl('help')}" alt=""><span class="mini-label">How to Play</span></button>
+              <button class="btn btn-ghost mini" data-action="settings"><img class="mini-ico" src="${this._iconUrl('settings')}" alt=""><span class="mini-label">Settings</span></button>
             </div>
           </div>
         </div>
@@ -2123,6 +2121,47 @@ export class App {
     return `${base}ui/vfx/aura_${theme}.png?v=1`;
   }
 
+  /**
+   * Static square thumbnail of the real elemental aura ring — one cropped
+   * frame of its animated sprite sheet — used for the AURA cosmetic slot
+   * card. Replaces the old flat CSS glow circle placeholder with the actual
+   * asset so it reads as "the real symbol", matching how Frame/SP FX cards
+   * already show their real art. The sheet's black backing plate is meant
+   * for additive blending (same technique the in-game renderer uses), so we
+   * pre-fill the canvas with the card's own background colour first — that
+   * makes the black disappear seamlessly instead of showing as a square.
+   */
+  _auraThumbCanvas(theme, size) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const c = document.createElement('canvas');
+    c.width = size * dpr;
+    c.height = size * dpr;
+    c.style.width = `${size}px`;
+    c.style.height = `${size}px`;
+    const ctx = c.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.fillStyle = '#161b30'; // matches --panel / .cos-card background
+    ctx.fillRect(0, 0, size, size);
+    const img = AURA_IMAGES[theme];
+    if (img && img.complete && img.naturalWidth) {
+      const fw = img.naturalWidth / AURA_COLS;
+      const fh = img.naturalHeight / AURA_ROWS;
+      // Frame 2 (of 8) tends to catch the ring mid-loop, fuller/brighter
+      // than the very first frame — a nicer static "cover shot".
+      const frame = 2 % (AURA_COLS * AURA_ROWS);
+      const sx = (frame % AURA_COLS) * fw;
+      const sy = Math.floor(frame / AURA_COLS) * fh;
+      const scale = (size * 0.94) / Math.max(fw, fh);
+      const w = fw * scale;
+      const h = fh * scale;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(img, sx, sy, fw, fh, (size - w) / 2, (size - h) / 2, w, h);
+      ctx.restore();
+    }
+    return c;
+  }
+
   /** Repaint every coin counter in the DOM. */
   _updateCurrencyUi() {
     this.root.querySelectorAll('#coin-count, #coin-count-cos').forEach((el) => {
@@ -2763,7 +2802,7 @@ export class App {
       } else if (slot === 'sp') {
         thumb = `<img class="cos-thumb-img orb" src="${this._orbUrl(elem.orb)}" alt="">`;
       } else {
-        thumb = `<span class="cos-thumb-glow" style="--g:${elem.color}"></span>`;
+        thumb = `<span class="cos-thumb-aura" data-aura="${el}"></span>`;
       }
       const cta = isEq
         ? `<button class="btn btn-ghost btn-xs" data-cos-toggle="off">✓ ${t('Equipped')}</button>`
@@ -2778,6 +2817,9 @@ export class App {
 
     wrap.querySelectorAll('.cos-thumb-portrait[data-portrait]').forEach((holder) => {
       holder.appendChild(this.portraitCanvas(getCharacter(holder.dataset.portrait), 72));
+    });
+    wrap.querySelectorAll('.cos-thumb-aura[data-aura]').forEach((holder) => {
+      holder.appendChild(this._auraThumbCanvas(holder.dataset.aura, 54));
     });
     wrap.querySelectorAll('[data-cos-slot]').forEach((card) => {
       const slot = card.dataset.cosSlot;

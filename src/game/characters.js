@@ -67,7 +67,11 @@ export const CHARACTERS = [
     attackPower: 10,
     reach: 66,
     specials: [
-      { name: 'Water Slash', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 15, speed: 500, radius: 15, color: '#67c8ff', knockback: 1.0, orb: 'water' },
+      // orb: 'ice' (not 'water') -- Tide's cosmetics element is 'frost', whose
+      // Special-FX theme swaps the projectile to the 'ice' orb once equipped;
+      // matching it natively means buying Special FX is a pure upgrade
+      // (bigger/brighter) instead of suddenly changing the orb's look.
+      { name: 'Water Slash', slot: 'neutral', type: 'projectile', mpCost: 22, damage: 15, speed: 500, radius: 15, color: '#67c8ff', knockback: 1.0, orb: 'ice' },
       { name: 'Tidal Rush', slot: 'dash', type: 'rush', mpCost: 24, damage: 18, speed: 1320, color: '#8fd0ff', knockback: 1.2 },
       { name: 'Rising Wave', slot: 'air', type: 'uppercut', mpCost: 26, damage: 16, launch: 600, color: '#67c8ff', knockback: 0.8 },
     ],

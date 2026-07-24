@@ -2668,39 +2668,47 @@ body,
 }
 
 .menu-mini-row {
+  /* All secondary menu buttons live in ONE wrapping row instead of two fixed
+     groups of 3 -- the fixed grouping forced whatever button count landed in
+     a row (up to 4: Store/Ranks/How to Play/Settings) into equal-width
+     columns narrow enough that labels like "How to Play" had to wrap onto a
+     second line. Letting the browser reflow buttons based on a comfortable
+     minimum width means a row only ever holds as many as truly fit, so every
+     label stays on one line -- narrow phones just get more (shorter) rows. */
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: clamp(6px, 1.4vmin, 10px);
   justify-content: center;
 }
 .btn.mini {
-  /* Equal-width columns (basis 0%) -- every button in a row matches the
-     widest one ("Achievements") instead of each sizing to its own label,
-     which looked uneven/misaligned. The font-size below is tuned down just
-     enough that "Achievements" still fits on one line at that equal share;
-     overflow-wrap below is the last-resort fallback for extreme cases
-     instead of ever letting the row grow past its container (scroll). */
-  flex: 1;
-  /* Override the base .btn's min-width: 220px -- left in place, a row of 3-4
-     of these (Quests/Achievements/Skins/Store/Ranks/...) needs 660-880px
-     minimum, which overflows any phone width and causes sideways scrolling
-     on the main menu. */
+  /* Basis tuned so the longest labels ("Achievements", "How to Play") fit
+     on one line at the font-size below without wrapping; flex-wrap on the
+     parent reflows extra buttons onto new rows instead of shrinking these
+     below a readable/legible width. */
+  flex: 1 1 clamp(108px, 30vmin, 150px);
+  max-width: 220px;
+  /* Override the base .btn's min-width: 220px, which would force sideways
+     overflow/scrolling once several of these sit in a wrapping row on a
+     narrow phone. */
   min-width: 0;
-  padding: clamp(9px, 1.6vmin, 14px) clamp(6px, 1vmin, 10px);
-  font-size: clamp(0.72rem, 1.65vmin, 0.92rem);
+  padding: clamp(9px, 1.6vmin, 14px) clamp(8px, 1.2vmin, 12px);
+  font-size: clamp(0.74rem, 1.7vmin, 0.92rem);
   position: relative;
-  /* Icon + label as a real wrapping flex row instead of plain inline text --
-     a single long word like "Achievements" has no space to break on, so once
-     the enlarged web sizing left too little width for it on one line, it was
-     overflowing past the button's border instead of wrapping. `overflow-wrap`
-     is a safety net so it breaks cleanly inside the word if it still doesn't
-     fit, rather than spilling out. */
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
   text-align: center;
-  overflow-wrap: anywhere;
+}
+.mini-label {
+  /* The label never wraps to a second line; on a truly pathological screen
+     width where even the shrunk basis above can't fit it, this clips with
+     an ellipsis instead of spilling text past the button's border. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .mini-badge {
   position: absolute;
@@ -3116,13 +3124,11 @@ body,
 }
 .cos-thumb-img { width: 100%; height: 100%; object-fit: contain; }
 .cos-thumb-img.orb { filter: drop-shadow(0 0 8px rgba(255,255,255,0.4)); }
-.cos-thumb-glow {
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--g) 0%, transparent 70%);
-  box-shadow: 0 0 16px var(--g);
-}
+/* Real aura-ring thumbnail (cropped frame of the actual sprite sheet,
+   drawn additively onto a canvas matching the card background — see
+   App.js `_auraThumbCanvas`), replacing the old flat CSS glow circle. */
+.cos-thumb-aura { display: block; width: 54px; height: 54px; line-height: 0; }
+.cos-thumb-aura canvas { width: 100% !important; height: 100% !important; border-radius: 50%; }
 /* Frame thumbnails: fighter bust with the element border overlaid on top.
    Same bust:frame ratio as the "Choose Fighter" portrait-frame overlay (~86%),
    just scaled down to this card's small footprint. */

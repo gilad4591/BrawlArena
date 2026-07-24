@@ -17,11 +17,17 @@
  */
 
 // The six elements (matches aura_/frame_ sheets + orb sprites).
+// Glow/trail colours below are hue-matched to the actual painted orb sprites
+// (sampled the bright pixels of each orb_*.png) rather than chosen in
+// isolation — `storm` and `toxic` used to sit noticeably off-hue from their
+// orb art (e.g. storm's glow leaned purple-blue while orb_lightning.png is
+// cyan-blue), so equipping/firing a Special-FX projectile showed a bright
+// core in one colour with a trail/bloom glow in a visibly different one.
 export const ELEMENTS = {
-  inferno: { name: 'Inferno', color: '#ff7a2b', orb: 'fire' },
+  inferno: { name: 'Inferno', color: '#ff8a3a', orb: 'fire' },
   frost: { name: 'Frost', color: '#8fdcff', orb: 'ice' },
-  storm: { name: 'Storm', color: '#a9c8ff', orb: 'lightning' },
-  toxic: { name: 'Toxic', color: '#9dff45', orb: 'toxic' },
+  storm: { name: 'Storm', color: '#7fd2f0', orb: 'lightning' },
+  toxic: { name: 'Toxic', color: '#b4e94a', orb: 'toxic' },
   divine: { name: 'Divine', color: '#ffe08a', orb: 'holy' },
   void: { name: 'Void', color: '#c06bff', orb: 'void' },
 };
