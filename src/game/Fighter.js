@@ -237,7 +237,15 @@ export class Fighter {
         this.z += c.state.dirZ * speed * 0.62 * dt;
         moving = true;
       }
-      if (this.grounded) {
+      // `this.vy <= 0` guards against the jump trigger above (which runs
+      // earlier this same frame): right after a jump, `vy` is already
+      // positive but `grounded` (a `y <= 0.001` getter) hasn't caught up
+      // yet since physics/gravity hasn't advanced `y` this frame — without
+      // this check, `state = 'jump'` was being clobbered back to
+      // 'walk'/'idle' on the very same frame it was set, so `state` never
+      // actually held 'jump' for any observable frame (breaking anything
+      // that reads it, e.g. the tutorial's "Jump" step detection).
+      if (this.grounded && this.vy <= 0) {
         this.state = moving ? 'walk' : 'idle';
         if (moving) this.walkPhase += dt * 10;
       }
