@@ -344,7 +344,7 @@ body,
   z-index: 2;
   width: 100%;
   height: 100%;
-  max-width: 640px;
+  max-width: 760px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2673,14 +2673,18 @@ body,
   justify-content: center;
 }
 .btn.mini {
-  flex: 1;
+  /* flex-basis: auto (not 0%) so each button first claims space for its own
+     label -- "Achievements" naturally ends up wider than "Skins" instead of
+     all three being forced into a strict, equal one-third split that's too
+     narrow for the longest word in the row. */
+  flex: 1 1 auto;
   /* Override the base .btn's min-width: 220px -- left in place, a row of 3-4
      of these (Quests/Achievements/Skins/Store/Ranks/...) needs 660-880px
      minimum, which overflows any phone width and causes sideways scrolling
      on the main menu. */
   min-width: 0;
-  padding: clamp(9px, 1.6vmin, 14px) clamp(6px, 1vmin, 10px);
-  font-size: clamp(0.82rem, 1.85vmin, 0.98rem);
+  padding: clamp(9px, 1.6vmin, 14px) clamp(8px, 1.4vmin, 14px);
+  font-size: clamp(0.86rem, 2vmin, 1.05rem);
   position: relative;
   /* Icon + label as a real wrapping flex row instead of plain inline text --
      a single long word like "Achievements" has no space to break on, so once
@@ -3268,25 +3272,4 @@ body,
     width: min(720px, 96vw);
   }
   .cos-thumb { width: 52px; height: 52px; }
-}
-
-/* Mobile: menu buttons ~10% smaller so the row of mini buttons has more
-   breathing room and the whole stack reads less oversized on a phone screen.
-   (Placed at the end of the file so it wins the cascade over the base
-   .menu-buttons .btn / .btn.mini / .mini-ico rules above, which share the
-   same specificity — a media query only overrides an equal-specificity rule
-   declared *earlier* in the stylesheet.) */
-@media (max-width: 600px) {
-  .menu-buttons .btn {
-    padding: clamp(8px, 1.7vmin, 12.6px) 23px;
-    font-size: clamp(0.85rem, 2.16vmin, 0.945rem);
-  }
-  .btn.mini {
-    padding: 8px 5px;
-    font-size: 0.74rem;
-  }
-  .mini-ico {
-    width: 16px;
-    height: 16px;
-  }
 }

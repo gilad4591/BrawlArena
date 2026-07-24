@@ -43,10 +43,10 @@ export const IAP = {
  * Create these in Play Console as *Consumable* managed products with these IDs.
  */
 export const COIN_PACKS = [
-  { id: 'coins_500', coins: 500 },
-  { id: 'coins_1200', coins: 1200 },
-  { id: 'coins_3000', coins: 3000 },
-  { id: 'coins_8000', coins: 8000 },
+  { id: '500_coins', coins: 500 },
+  { id: '1200_coins', coins: 1200 },
+  { id: '3000_coins', coins: 3000 },
+  { id: '8000_coins', coins: 8000 },
 ];
 
 export const COIN_PACK_IDS = COIN_PACKS.map((p) => p.id);

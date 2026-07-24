@@ -270,18 +270,24 @@ export class PurchaseService {
             const res = await NativePurchases.purchaseProduct({
               productIdentifier: productId,
               productType: INAPP,
-              // Some plugin versions honour this to auto-consume so the pack can
-              // be bought again; harmless if ignored.
-              quantity: 1,
+              // This is the actual documented flag for @capgo/native-purchases
+              // (Android): without it the purchase is left as a normal owned
+              // in-app item, and Google Play blocks buying the SAME coin pack
+              // again ("item already owned") until it's consumed. `quantity`
+              // (previously used here) does nothing for this — it only
+              // affects iOS.
+              isConsumable: true,
             });
             const ok = !!(res && (res.transactionId || res.purchaseToken));
-            // Best-effort consume so Google Play lets the pack be re-purchased.
+            // Belt-and-suspenders: also explicitly consume via the purchase
+            // token. Redundant when isConsumable already handled it, but a
+            // harmless no-op/soft-fail in that case (caught below) — and a
+            // real safety net if a plugin/platform quirk didn't auto-consume.
             const token = res?.purchaseToken || res?.transactionId;
             if (ok && token) {
               try {
-                await (NativePurchases.consume?.({ purchaseToken: token, productIdentifier: productId })
-                  ?? NativePurchases.consumePurchase?.({ purchaseToken: token }));
-              } catch { /* ignore — verified/consumed on next query */ }
+                await NativePurchases.consumePurchase?.({ purchaseToken: token });
+              } catch { /* ignore — already consumed, or verified on next query */ }
             }
             return { ok, error: ok ? undefined : 'Purchase cancelled.' };
           } catch (err) {
