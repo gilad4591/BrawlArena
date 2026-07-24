@@ -656,6 +656,21 @@ export class App {
     if (!this._menuSplashImg) {
       const im = new Image();
       im.onload = () => { if (this.state === 'menu') this.drawMenuScene(); };
+      // A one-off network hiccup (dev-server restart, flaky connection, etc.)
+      // used to strand the menu on the plain procedural fallback for the
+      // rest of the session -- `_menuSplashImg` was already a (failed)
+      // Image, so the `if (!this._menuSplashImg)` guard above never let it
+      // retry. Clear it after a short backoff (a few tries) so the next
+      // drawMenuScene() call attempts a fresh load instead of giving up
+      // permanently.
+      im.onerror = () => {
+        this._menuSplashRetries = (this._menuSplashRetries || 0) + 1;
+        if (this._menuSplashRetries > 5) return;
+        setTimeout(() => {
+          this._menuSplashImg = null;
+          if (this.state === 'menu') this.drawMenuScene();
+        }, 1000 * this._menuSplashRetries);
+      };
       im.src = `${import.meta.env.BASE_URL || '/'}ui/menu-splash.png?v=9`;
       this._menuSplashImg = im;
     }
