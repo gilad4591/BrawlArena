@@ -3177,6 +3177,10 @@ body,
   color: #fff;
   cursor: pointer;
 }
+/* Inside the main Store screen (not the "Get Coins" overlay) the pack grid
+   should span the full store-body width like the other sections instead of
+   staying pinned to the overlay's narrower centered-modal width. */
+.store-body .coin-packs { width: 100%; margin: 0; }
 .coin-pack:active { transform: scale(0.96); }
 .coin-pack-amt { font-weight: 900; font-size: 1.05rem; display: flex; align-items: center; gap: 4px; }
 .coin-pack-price {

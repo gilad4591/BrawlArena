@@ -2904,6 +2904,26 @@ export class App {
   }
 
   // ---- coin packs (real money, mobile only) ----
+  /** Shared markup for a row of coin-pack buy buttons — used both in the
+   * standalone "Get Coins" overlay (triggered on insufficient funds) and
+   * directly inside the main Store screen, so players can top up coins
+   * proactively instead of only when they're short. */
+  _coinPackButtonsHtml() {
+    return COIN_PACKS.map((p) => {
+      const price = this.purchases?.priceFor(p.id) || '';
+      return `<button class="coin-pack" data-coin-pack="${p.id}">
+        <span class="coin-pack-amt">${this._coinIco('coin-ico-sm')} ${p.coins}</span>
+        <span class="coin-pack-price">${price || t('Unavailable')}</span>
+      </button>`;
+    }).join('');
+  }
+
+  _wireCoinPackButtons(container) {
+    container?.querySelectorAll('[data-coin-pack]').forEach((btn) => {
+      btn.addEventListener('click', () => this._buyCoins(btn.dataset.coinPack));
+    });
+  }
+
   showCoinStore(shortBy = 0) {
     const ov = this.root.querySelector('#coins-overlay');
     const list = this.root.querySelector('#coin-packs');
@@ -2912,16 +2932,8 @@ export class App {
     if (meta) meta.textContent = shortBy > 0
       ? tpl('You need {n} more coins.', { n: shortBy })
       : t('Top up with coins to unlock cosmetics.');
-    list.innerHTML = COIN_PACKS.map((p) => {
-      const price = this.purchases?.priceFor(p.id) || '';
-      return `<button class="coin-pack" data-coin-pack="${p.id}">
-        <span class="coin-pack-amt">${this._coinIco('coin-ico-sm')} ${p.coins}</span>
-        <span class="coin-pack-price">${price || t('Unavailable')}</span>
-      </button>`;
-    }).join('');
-    list.querySelectorAll('[data-coin-pack]').forEach((btn) => {
-      btn.addEventListener('click', () => this._buyCoins(btn.dataset.coinPack));
-    });
+    list.innerHTML = this._coinPackButtonsHtml();
+    this._wireCoinPackButtons(list);
     ov.classList.remove('hidden');
   }
 
@@ -2941,6 +2953,7 @@ export class App {
     this._updateCurrencyUi();
     this.root.querySelector('#coins-overlay')?.classList.add('hidden');
     if (this.state === 'cosmetics') this.buildCosmetics();
+    if (this.state === 'store') this.buildStore();
   }
 
   // ------------------------------------------------------------- settings
@@ -3037,6 +3050,8 @@ export class App {
     };
 
     body.innerHTML = `
+      <div class="store-label">Coins</div>
+      <div class="coin-packs" id="store-coin-packs">${this._coinPackButtonsHtml()}</div>
       <div class="store-section">
         ${bigCard(REMOVE_ADS_ID, IAP.removeAds.title, IAP.removeAds.desc, ownRemoveAds)}
         ${bigCard(ALL_CHARACTERS_ID, IAP.allCharacters.title, IAP.allCharacters.desc, ownAll)}
@@ -3053,6 +3068,7 @@ export class App {
     body.querySelectorAll('[data-buy]').forEach((btn) => {
       btn.addEventListener('click', () => this.buyProduct(btn.dataset.buy));
     });
+    this._wireCoinPackButtons(body.querySelector('#store-coin-packs'));
   }
 
   async buyProduct(productId) {
