@@ -2653,8 +2653,8 @@ body,
   margin-right: 1px;
 }
 .mini-ico {
-  width: clamp(18px, 2.7vmin, 22px);
-  height: clamp(18px, 2.7vmin, 22px);
+  width: clamp(16px, 2.3vmin, 20px);
+  height: clamp(16px, 2.3vmin, 20px);
   object-fit: contain;
   vertical-align: middle;
   flex-shrink: 0;
@@ -2673,18 +2673,20 @@ body,
   justify-content: center;
 }
 .btn.mini {
-  /* flex-basis: auto (not 0%) so each button first claims space for its own
-     label -- "Achievements" naturally ends up wider than "Skins" instead of
-     all three being forced into a strict, equal one-third split that's too
-     narrow for the longest word in the row. */
-  flex: 1 1 auto;
+  /* Equal-width columns (basis 0%) -- every button in a row matches the
+     widest one ("Achievements") instead of each sizing to its own label,
+     which looked uneven/misaligned. The font-size below is tuned down just
+     enough that "Achievements" still fits on one line at that equal share;
+     overflow-wrap below is the last-resort fallback for extreme cases
+     instead of ever letting the row grow past its container (scroll). */
+  flex: 1;
   /* Override the base .btn's min-width: 220px -- left in place, a row of 3-4
      of these (Quests/Achievements/Skins/Store/Ranks/...) needs 660-880px
      minimum, which overflows any phone width and causes sideways scrolling
      on the main menu. */
   min-width: 0;
-  padding: clamp(9px, 1.6vmin, 14px) clamp(8px, 1.4vmin, 14px);
-  font-size: clamp(0.86rem, 2vmin, 1.05rem);
+  padding: clamp(9px, 1.6vmin, 14px) clamp(6px, 1vmin, 10px);
+  font-size: clamp(0.72rem, 1.65vmin, 0.92rem);
   position: relative;
   /* Icon + label as a real wrapping flex row instead of plain inline text --
      a single long word like "Achievements" has no space to break on, so once
