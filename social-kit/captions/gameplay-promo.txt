@@ -1,10 +1,19 @@
 === FILE ===
-video/brawl-arena-promo.mp4 — 1280x720 (16:9 landscape — the game's real orientation), ~35s
+video/brawl-arena-promo.mp4 — 1280x720 (16:9 landscape — the game's real orientation), ~38s
 Real captured gameplay: menu -> pick a fighter -> equip an elemental Aura + Special FX ->
-1v1 fight -> special-attack finisher -> K.O. -> Victory screen. Instrumental music bed only
-(no voiceover baked in — leaves room for narration/edits before posting).
+1v1 fight -> special-attack finisher -> K.O. -> Victory screen. Instrumental music bed only.
 Note: landscape 16:9 posts fine on Instagram/TikTok/YouTube feeds (shown letterboxed
 in the vertical Reels/Stories/Shorts viewer) and is the native format for YouTube itself.
+
+video/brawl-arena-promo-voiceover.mp4 — same clip, WITH an English voiceover (offline
+Windows TTS, "Microsoft Mark") timed to the on-screen beats, music ducked under the
+narration. Use this one for posting — it's the same footage, just with speech instead
+of instrumental-only. Regenerate/re-time via `node scripts/social/narrate.mjs` (edit the
+`lines` array timings if you re-shoot record-gameplay.mjs and the beat timings shift).
+
+video/promo_square-voiceover.mp4 (1080x1080) and video/promo_story-voiceover.mp4
+(1080x1920) — the "meet the roster" character-card slideshow, narrated (calls out each
+fighter's name as their card appears) + ducked music. Good for a second post/Story.
 
 === CAPTION (Reels / TikTok / Shorts) ===
 Gear up. Throw down. 🔥👊
