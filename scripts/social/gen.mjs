@@ -140,28 +140,35 @@ const baseCss = (accent, color) => `
 
 function characterHtml({ id, name, tagline, color, accent, arenaId, w, h }) {
   const story = h > w;
-  const cardW = story ? 780 : 520;
-  const cardH = story ? 780 : 520;
-  const cardTop = story ? 360 : 118;
-  const nameSize = story ? 210 : 118;
-  const nameTop = story ? 1200 : 648;
+  // The non-story branch was originally tuned for a 1080x1080 square; the
+  // new 1200x630 Facebook-feed size shares that branch (h <= w) but is only
+  // 630px tall, so every absolute pixel value below is scaled by the actual
+  // height vs. the 1080 baseline — keeps the same poster-crop composition
+  // (character card + name + CTA), just proportionally smaller, with more
+  // of the arena backdrop visible on the sides for the wider canvas.
+  const s = story ? 1 : h / 1080;
+  const cardW = story ? 780 : Math.round(520 * s);
+  const cardH = story ? 780 : Math.round(520 * s);
+  const cardTop = story ? 360 : Math.round(118 * s);
+  const nameSize = story ? 210 : Math.round(118 * s);
+  const nameTop = story ? 1200 : Math.round(648 * s);
   const barTop = Math.round(nameTop + nameSize * 0.9);
-  const tagTop = barTop + (story ? 26 : 18);
+  const tagTop = barTop + (story ? 26 : Math.round(18 * s));
   return `<!doctype html><html><head><meta charset="utf-8">${FONTS}<style>
     html,body{width:${w}px;height:${h}px;} ${baseCss(accent, color)}
-    .brand{ top:${story ? 56 : 44}px; left:${story ? 56 : 44}px; }
-    .brand img{ width:${story ? 74 : 60}px; height:${story ? 74 : 60}px; }
-    .brand .wm{ font-size:${story ? 46 : 38}px; }
-    .ribbon{ top:${story ? 56 : 40}px; right:${story ? -68 : -60}px; width:${story ? 268 : 232}px;
-      font-size:${story ? 30 : 24}px; letter-spacing:2px; padding:${story ? '10px 0' : '8px 0'}; }
+    .brand{ top:${story ? 56 : Math.round(44 * s)}px; left:${story ? 56 : Math.round(44 * s)}px; }
+    .brand img{ width:${story ? 74 : Math.round(60 * s)}px; height:${story ? 74 : Math.round(60 * s)}px; }
+    .brand .wm{ font-size:${story ? 46 : Math.round(38 * s)}px; }
+    .ribbon{ top:${story ? 56 : Math.round(40 * s)}px; right:${story ? -68 : Math.round(-60 * s)}px; width:${story ? 268 : Math.round(232 * s)}px;
+      font-size:${story ? 30 : Math.round(24 * s)}px; letter-spacing:2px; padding:${story ? '10px 0' : `${Math.round(8 * s)}px 0`}; }
     .card{ top:${cardTop}px; width:${cardW}px; height:${cardH}px; }
     .name{ top:${nameTop}px; font-size:${nameSize}px; letter-spacing:3px; }
-    .accentbar{ top:${barTop}px; width:${story ? 360 : 220}px; }
-    .tag{ top:${tagTop}px; font-size:${story ? 44 : 30}px; letter-spacing:${story ? 8 : 5}px; max-width:${story ? 900 : 720}px; }
-    .cta{ bottom:${story ? 118 : 46}px; }
-    .pill{ font-size:${story ? 44 : 34}px; padding:${story ? '17px 40px' : '13px 30px'}; }
-    .link{ font-size:${story ? 38 : 30}px; }
-    .handle{ font-size:${story ? 34 : 26}px; }
+    .accentbar{ top:${barTop}px; width:${story ? 360 : Math.round(220 * s)}px; }
+    .tag{ top:${tagTop}px; font-size:${story ? 44 : Math.round(30 * s)}px; letter-spacing:${story ? 8 : Math.round(5 * s)}px; max-width:${story ? 900 : Math.round(720 * s)}px; }
+    .cta{ bottom:${story ? 118 : Math.round(46 * s)}px; }
+    .pill{ font-size:${story ? 44 : Math.round(34 * s)}px; padding:${story ? '17px 40px' : `${Math.round(13 * s)}px ${Math.round(30 * s)}px`}; }
+    .link{ font-size:${story ? 38 : Math.round(30 * s)}px; }
+    .handle{ font-size:${story ? 34 : Math.round(26 * s)}px; }
   </style></head><body>
     <div class="stage">
       <div class="bg" style="background-image:url('${arena(arenaId)}')"></div>
@@ -184,38 +191,40 @@ function characterHtml({ id, name, tagline, color, accent, arenaId, w, h }) {
 
 function heroHtml({ w, h }) {
   const story = h > w;
+  // See characterHtml's `s` comment — same reasoning for the 1200x630 FB size.
+  const s = story ? 1 : h / 1080;
   const strip = ROSTER.slice(0, story ? 4 : 5)
     .map(([id, , , , acc]) => `<div class="mini" style="--a:${acc}"><img src="${portrait(id)}"></div>`)
     .join('');
   const badges = FEATURES.map((f) => `<span class="badge">${f}</span>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8">${FONTS}<style>
     html,body{width:${w}px;height:${h}px;} ${baseCss('#ff7a2f', '#ff4d2a')}
-    .ribbon{ top:${story ? 56 : 40}px; right:${story ? -68 : -60}px; width:${story ? 268 : 232}px;
-      font-size:${story ? 30 : 24}px; letter-spacing:2px; padding:${story ? '10px 0' : '8px 0'}; }
-    .logo{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 320 : 96}px;
-      width:${story ? 300 : 210}px; height:${story ? 300 : 210}px;
+    .ribbon{ top:${story ? 56 : Math.round(40 * s)}px; right:${story ? -68 : Math.round(-60 * s)}px; width:${story ? 268 : Math.round(232 * s)}px;
+      font-size:${story ? 30 : Math.round(24 * s)}px; letter-spacing:2px; padding:${story ? '10px 0' : `${Math.round(8 * s)}px 0`}; }
+    .logo{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 320 : Math.round(96 * s)}px;
+      width:${story ? 300 : Math.round(210 * s)}px; height:${story ? 300 : Math.round(210 * s)}px;
       filter:drop-shadow(0 18px 50px rgba(0,0,0,.7)); }
-    .title{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 650 : 320}px;
+    .title{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 650 : Math.round(320 * s)}px;
       font-family:'Bebas Neue','Arial Black',sans-serif; line-height:.86; text-align:center;
-      font-size:${story ? 230 : 170}px; letter-spacing:4px; filter:drop-shadow(0 8px 20px rgba(0,0,0,.85)); }
+      font-size:${story ? 230 : Math.round(170 * s)}px; letter-spacing:4px; filter:drop-shadow(0 8px 20px rgba(0,0,0,.85)); }
     .title b{color:#fff;} .title i{color:var(--a); font-style:normal;}
-    .sub{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 950 : 512}px;
-      font-family:'Oswald',sans-serif; font-weight:500; text-transform:uppercase; letter-spacing:${story ? 12 : 9}px;
-      font-size:${story ? 46 : 38}px; color:#e9eef7; text-shadow:0 3px 10px rgba(0,0,0,.85); white-space:nowrap; }
-    .badges{ position:absolute; left:0; right:0; top:${story ? 1030 : 588}px; display:flex; justify-content:center;
-      gap:${story ? 16 : 14}px; z-index:5; }
+    .sub{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 950 : Math.round(512 * s)}px;
+      font-family:'Oswald',sans-serif; font-weight:500; text-transform:uppercase; letter-spacing:${story ? 12 : Math.round(9 * s)}px;
+      font-size:${story ? 46 : Math.round(38 * s)}px; color:#e9eef7; text-shadow:0 3px 10px rgba(0,0,0,.85); white-space:nowrap; }
+    .badges{ position:absolute; left:0; right:0; top:${story ? 1030 : Math.round(588 * s)}px; display:flex; justify-content:center;
+      gap:${story ? 16 : Math.round(14 * s)}px; z-index:5; }
     .badge{ font-family:'Oswald',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:1px;
-      font-size:${story ? 30 : 26}px; color:#fff; padding:${story ? '9px 20px' : '8px 16px'}; border-radius:999px;
+      font-size:${story ? 30 : Math.round(26 * s)}px; color:#fff; padding:${story ? '9px 20px' : `${Math.round(8 * s)}px ${Math.round(16 * s)}px`}; border-radius:999px;
       background:rgba(255,255,255,.08); border:2px solid color-mix(in srgb, var(--a) 60%, transparent);
       backdrop-filter:blur(4px); white-space:nowrap; }
-    .strip{ position:absolute; left:0; right:0; bottom:${story ? 320 : 252}px; display:flex; justify-content:center; gap:${story ? 22 : 26}px; }
-    .mini{ width:${story ? 150 : 140}px; height:${story ? 150 : 140}px; border-radius:20px; overflow:hidden;
+    .strip{ position:absolute; left:0; right:0; bottom:${story ? 320 : Math.round(252 * s)}px; display:flex; justify-content:center; gap:${story ? 22 : Math.round(26 * s)}px; }
+    .mini{ width:${story ? 150 : Math.round(140 * s)}px; height:${story ? 150 : Math.round(140 * s)}px; border-radius:20px; overflow:hidden;
       border:4px solid var(--a); box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 26px color-mix(in srgb, var(--a) 40%, transparent); }
     .mini img{ width:100%; height:100%; object-fit:cover; }
-    .cta{ bottom:${story ? 110 : 44}px; }
-    .pill{ font-size:${story ? 46 : 38}px; padding:${story ? '18px 44px' : '15px 34px'}; }
-    .link{ font-size:${story ? 40 : 32}px; }
-    .handle{ font-size:${story ? 36 : 28}px; }
+    .cta{ bottom:${story ? 110 : Math.round(44 * s)}px; }
+    .pill{ font-size:${story ? 46 : Math.round(38 * s)}px; padding:${story ? '18px 44px' : `${Math.round(15 * s)}px ${Math.round(34 * s)}px`}; }
+    .link{ font-size:${story ? 40 : Math.round(32 * s)}px; }
+    .handle{ font-size:${story ? 36 : Math.round(28 * s)}px; }
   </style></head><body>
     <div class="stage">
       <div class="bg" style="background-image:url('${arena('colosseum')}')"></div>
@@ -239,9 +248,11 @@ function heroHtml({ w, h }) {
 // Full-roster showcase: every fighter in a tidy grid — great "meet the cast" post.
 function rosterHtml({ w, h }) {
   const story = h > w;
+  // See characterHtml's `s` comment — same reasoning for the 1200x630 FB size.
+  const s = story ? 1 : h / 1080;
   const cols = story ? 3 : 5;
-  const tile = story ? 236 : 172;
-  const gap = story ? 20 : 18;
+  const tile = story ? 236 : Math.round(150 * s);
+  const gap = story ? 20 : Math.round(18 * s);
   const gridW = cols * tile + (cols - 1) * gap;
   const tiles = ALL.map(([id, name, , , acc]) => `
     <div class="rtile" style="--a:${acc}">
@@ -249,27 +260,27 @@ function rosterHtml({ w, h }) {
     </div>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8">${FONTS}<style>
     html,body{width:${w}px;height:${h}px;} ${baseCss('#ff7a2f', '#ff4d2a')}
-    .brand{ top:${story ? 56 : 44}px; left:${story ? 56 : 44}px; }
-    .brand img{ width:${story ? 74 : 60}px; height:${story ? 74 : 60}px; }
-    .brand .wm{ font-size:${story ? 46 : 38}px; }
-    .ribbon{ top:${story ? 56 : 40}px; right:${story ? -68 : -60}px; width:${story ? 268 : 232}px;
-      font-size:${story ? 30 : 24}px; letter-spacing:2px; padding:${story ? '10px 0' : '8px 0'}; }
-    .heading{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 150 : 128}px; text-align:center;
-      font-family:'Bebas Neue','Arial Black',sans-serif; font-size:${story ? 150 : 120}px; letter-spacing:3px;
-      line-height:.9; filter:drop-shadow(0 6px 16px rgba(0,0,0,.85)); }
+    .brand{ top:${story ? 56 : Math.round(44 * s)}px; left:${story ? 56 : Math.round(44 * s)}px; }
+    .brand img{ width:${story ? 74 : Math.round(60 * s)}px; height:${story ? 74 : Math.round(60 * s)}px; }
+    .brand .wm{ font-size:${story ? 46 : Math.round(38 * s)}px; }
+    .ribbon{ top:${story ? 56 : Math.round(40 * s)}px; right:${story ? -68 : Math.round(-60 * s)}px; width:${story ? 268 : Math.round(232 * s)}px;
+      font-size:${story ? 30 : Math.round(24 * s)}px; letter-spacing:2px; padding:${story ? '10px 0' : `${Math.round(8 * s)}px 0`}; }
+    .heading{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 170 : Math.round(128 * s)}px; text-align:center;
+      font-family:'Bebas Neue','Arial Black',sans-serif; font-size:${story ? 128 : Math.round(94 * s)}px; letter-spacing:2px;
+      line-height:.9; white-space:nowrap; filter:drop-shadow(0 6px 16px rgba(0,0,0,.85)); }
     .heading b{color:#fff;} .heading i{color:var(--a); font-style:normal;}
-    .grid{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 330 : 296}px;
+    .grid{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 330 : Math.round(260 * s)}px;
       width:${gridW}px; display:flex; flex-wrap:wrap; justify-content:center; gap:${gap}px; }
     .rtile{ width:${tile}px; height:${tile}px; border-radius:18px; overflow:hidden; position:relative;
       border:3px solid var(--a); box-shadow:0 10px 24px rgba(0,0,0,.5); }
     .rtile img{ width:100%; height:100%; object-fit:cover; }
     .rtile b{ position:absolute; left:0; right:0; bottom:0; text-align:center; font-family:'Bebas Neue',sans-serif;
-      font-weight:400; letter-spacing:1px; font-size:${story ? 34 : 26}px; color:#fff; padding:${story ? '20px 4px 6px' : '16px 4px 5px'};
+      font-weight:400; letter-spacing:1px; font-size:${story ? 34 : Math.round(22 * s)}px; color:#fff; padding:${story ? '20px 4px 6px' : `${Math.round(14 * s)}px 4px ${Math.round(4 * s)}px`};
       background:linear-gradient(transparent, rgba(0,0,0,.82)); }
-    .cta{ bottom:${story ? 110 : 54}px; }
-    .pill{ font-size:${story ? 46 : 38}px; padding:${story ? '18px 44px' : '15px 34px'}; }
-    .link{ font-size:${story ? 40 : 32}px; }
-    .handle{ font-size:${story ? 36 : 28}px; }
+    .cta{ bottom:${story ? 110 : Math.round(78 * s)}px; }
+    .pill{ font-size:${story ? 46 : Math.round(38 * s)}px; padding:${story ? '18px 44px' : `${Math.round(15 * s)}px ${Math.round(34 * s)}px`}; }
+    .link{ font-size:${story ? 40 : Math.round(32 * s)}px; }
+    .handle{ font-size:${story ? 36 : Math.round(28 * s)}px; }
   </style></head><body>
     <div class="stage">
       <div class="bg" style="background-image:url('${arena('colosseum')}')"></div>
@@ -288,7 +299,130 @@ function rosterHtml({ w, h }) {
   </body></html>`;
 }
 
-const SIZES = { square: [1080, 1080], story: [1080, 1920] };
+// Feature-highlight card: sells the cosmetics system (auras / frames /
+// special FX) rather than a specific fighter — a different marketing angle
+// from the roster/character cards above, good for a "did you know" style post.
+function featuresHtml({ w, h }) {
+  const story = h > w;
+  const s = story ? 1 : h / 1080;
+  const rows = [
+    ['⚡', 'ELEMENTAL AURAS', 'A glowing energy field, unique to every element'],
+    ['🖼️', 'RARE PORTRAIT FRAMES', 'Show off your rank in every menu'],
+    ['💥', 'SIGNATURE SPECIAL FX', 'Make your finishing blow unforgettable'],
+  ];
+  const rowsHtml = rows
+    .map(
+      ([icon, title, sub], i) => `
+    <div class="frow" style="top:${(story ? 1020 : Math.round(555 * s)) + i * (story ? 175 : Math.round(95 * s))}px">
+      <span class="ficon">${icon}</span>
+      <span class="ftext"><b>${title}</b><i>${sub}</i></span>
+    </div>`
+    )
+    .join('');
+  return `<!doctype html><html><head><meta charset="utf-8">${FONTS}<style>
+    html,body{width:${w}px;height:${h}px;} ${baseCss('#c06bff', '#7a3fb0')}
+    .brand{ top:${story ? 56 : Math.round(44 * s)}px; left:${story ? 56 : Math.round(44 * s)}px; }
+    .brand img{ width:${story ? 74 : Math.round(60 * s)}px; height:${story ? 74 : Math.round(60 * s)}px; }
+    .brand .wm{ font-size:${story ? 46 : Math.round(38 * s)}px; }
+    .card{ top:${story ? 300 : Math.round(120 * s)}px; left:50%; transform:translateX(-50%); width:${story ? 620 : Math.round(360 * s)}px; height:${story ? 620 : Math.round(360 * s)}px; }
+    .heading{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 170 : Math.round(36 * s)}px; text-align:center;
+      font-family:'Bebas Neue','Arial Black',sans-serif; font-size:${story ? 100 : Math.round(66 * s)}px; letter-spacing:3px;
+      line-height:.9; white-space:nowrap; filter:drop-shadow(0 6px 16px rgba(0,0,0,.85)); }
+    .heading b{color:#fff;} .heading i{color:var(--a); font-style:normal;}
+    .frow{ position:absolute; left:50%; transform:translateX(-50%); display:flex; align-items:center;
+      gap:${story ? 22 : Math.round(14 * s)}px; width:${story ? 880 : Math.round(880 * s)}px; }
+    .ficon{ font-size:${story ? 64 : Math.round(38 * s)}px; filter:drop-shadow(0 4px 10px rgba(0,0,0,.6)); flex-shrink:0; }
+    .ftext{ display:flex; flex-direction:column; gap:${story ? 4 : Math.round(2 * s)}px; }
+    .ftext b{ font-family:'Oswald',sans-serif; font-weight:700; letter-spacing:1px; font-size:${story ? 40 : Math.round(26 * s)}px;
+      color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.8); }
+    .ftext i{ font-style:normal; font-family:'Montserrat',sans-serif; font-weight:600; font-size:${story ? 28 : Math.round(18 * s)}px;
+      color:#cdd6e6; text-shadow:0 2px 6px rgba(0,0,0,.8); }
+    .cta{ bottom:${story ? 118 : Math.round(40 * s)}px; }
+    .pill{ font-size:${story ? 44 : Math.round(34 * s)}px; padding:${story ? '17px 40px' : `${Math.round(13 * s)}px ${Math.round(30 * s)}px`}; }
+    .link{ font-size:${story ? 38 : Math.round(30 * s)}px; }
+    .handle{ font-size:${story ? 34 : Math.round(26 * s)}px; }
+  </style></head><body>
+    <div class="stage">
+      <div class="bg" style="background-image:url('${arena('sky_temple')}')"></div>
+      <div class="glow"></div>
+      <div class="vig"></div>
+      <div class="brand"><img src="${LOGO}"><div class="wm"><b>BRAWL</b><i>ARENA</i></div></div>
+      <div class="card"><img src="${portrait('solaris')}"></div>
+      <div class="heading"><b>MAKE IT </b><i>YOURS</i></div>
+      ${rowsHtml}
+      <div class="cta">
+        <span class="pill">${CTA}</span>
+        ${LINK_SPAN}
+        <span class="handle">${HANDLE}</span>
+      </div>
+    </div>
+  </body></html>`;
+}
+
+// "Now available" platform card — plain text pills instead of official
+// App Store/Play Store badge artwork (avoids any trademarked-badge asset
+// requirement) while still communicating cross-platform availability.
+function platformsHtml({ w, h }) {
+  const story = h > w;
+  const s = story ? 1 : h / 1080;
+  const strip = [...ROSTER.slice(0, 3), ...PREMIUM.slice(0, 2)]
+    .map(([id, , , , acc]) => `<div class="mini" style="--a:${acc}"><img src="${portrait(id)}"></div>`)
+    .join('');
+  return `<!doctype html><html><head><meta charset="utf-8">${FONTS}<style>
+    html,body{width:${w}px;height:${h}px;} ${baseCss('#4fd6ff', '#2f6fd6')}
+    .logo{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 260 : Math.round(80 * s)}px;
+      width:${story ? 220 : Math.round(150 * s)}px; height:${story ? 220 : Math.round(150 * s)}px;
+      filter:drop-shadow(0 18px 50px rgba(0,0,0,.7)); }
+    .title{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 520 : Math.round(240 * s)}px;
+      font-family:'Bebas Neue','Arial Black',sans-serif; line-height:.86; text-align:center;
+      font-size:${story ? 150 : Math.round(108 * s)}px; letter-spacing:4px; filter:drop-shadow(0 8px 20px rgba(0,0,0,.85)); }
+    .title b{color:#fff;} .title i{color:var(--a); font-style:normal;}
+    .sub{ position:absolute; left:50%; transform:translateX(-50%); top:${story ? 700 : Math.round(360 * s)}px;
+      font-family:'Oswald',sans-serif; font-weight:500; text-transform:uppercase; letter-spacing:${story ? 10 : Math.round(7 * s)}px;
+      font-size:${story ? 40 : Math.round(30 * s)}px; color:#e9eef7; text-shadow:0 3px 10px rgba(0,0,0,.85); white-space:nowrap; }
+    .plats{ position:absolute; left:0; right:0; top:${story ? 800 : Math.round(420 * s)}px; display:flex; justify-content:center;
+      gap:${story ? 20 : Math.round(16 * s)}px; z-index:5; }
+    .plat{ font-family:'Oswald',sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+      font-size:${story ? 34 : Math.round(26 * s)}px; color:#0b0d12; padding:${story ? '16px 32px' : `${Math.round(12 * s)}px ${Math.round(24 * s)}px`};
+      border-radius:16px; background:linear-gradient(180deg,#fff,var(--a));
+      box-shadow:0 12px 30px color-mix(in srgb, var(--a) 50%, transparent); white-space:nowrap; }
+    .strip{ position:absolute; left:0; right:0; bottom:${story ? 400 : Math.round(260 * s)}px; display:flex; justify-content:center; gap:${story ? 22 : Math.round(20 * s)}px; }
+    .mini{ width:${story ? 150 : Math.round(120 * s)}px; height:${story ? 150 : Math.round(120 * s)}px; border-radius:20px; overflow:hidden;
+      border:4px solid var(--a); box-shadow:0 12px 30px rgba(0,0,0,.55), 0 0 26px color-mix(in srgb, var(--a) 40%, transparent); }
+    .mini img{ width:100%; height:100%; object-fit:cover; }
+    .cta{ bottom:${story ? 110 : Math.round(44 * s)}px; }
+    .pill{ font-size:${story ? 46 : Math.round(38 * s)}px; padding:${story ? '18px 44px' : `${Math.round(15 * s)}px ${Math.round(34 * s)}px`}; }
+    .link{ font-size:${story ? 40 : Math.round(32 * s)}px; }
+    .handle{ font-size:${story ? 36 : Math.round(28 * s)}px; }
+  </style></head><body>
+    <div class="stage">
+      <div class="bg" style="background-image:url('${arena('neon_rooftop')}')"></div>
+      <div class="glow"></div>
+      <div class="vig"></div>
+      <img class="logo" src="${LOGO}">
+      <div class="title"><b>BRAWL</b><i>ARENA</i></div>
+      <div class="sub">Now available — everywhere</div>
+      <div class="plats">
+        <span class="plat">📱 iOS</span>
+        <span class="plat">🤖 Android</span>
+        <span class="plat">🌐 Web</span>
+      </div>
+      <div class="strip">${strip}</div>
+      <div class="cta">
+        <span class="pill">${CTA}</span>
+        ${LINK_SPAN}
+        <span class="handle">${HANDLE}</span>
+      </div>
+    </div>
+  </body></html>`;
+}
+
+// `fb`: Facebook's standard landscape link/feed image (1200x630) — also
+// works fine for a Twitter/X card or a wide website hero. Shares the
+// non-story ("square") branch of each template (h <= w), just wider — the
+// centered layout reads as a poster crop with more visible background on
+// the sides, which still looks intentional rather than broken.
+const SIZES = { square: [1080, 1080], story: [1080, 1920], fb: [1200, 630] };
 
 const browser = await puppeteer.launch({
   executablePath: CHROME,
@@ -341,19 +475,36 @@ console.log('Warming fonts…');
 await warmFonts();
 
 console.log('Hero cards…');
-await render(heroHtml({ w: 1080, h: 1080 }), 1080, 1080, 'hero_square.png');
-await render(heroHtml({ w: 1080, h: 1920 }), 1080, 1920, 'hero_story.png');
+for (const [tag, [w, h]] of Object.entries(SIZES)) {
+  await render(heroHtml({ w, h }), w, h, `hero_${tag}.png`);
+}
 
 console.log('Roster cards…');
-await render(rosterHtml({ w: 1080, h: 1080 }), 1080, 1080, 'roster_square.png');
-await render(rosterHtml({ w: 1080, h: 1920 }), 1080, 1920, 'roster_story.png');
+for (const [tag, [w, h]] of Object.entries(SIZES)) {
+  await render(rosterHtml({ w, h }), w, h, `roster_${tag}.png`);
+}
 
-for (const list of [ROSTER, PREMIUM]) {
-  for (const [id, name, tagline, color, accent, arenaId] of list) {
-    console.log(`${name}…`);
-    for (const [tag, [w, h]] of Object.entries(SIZES)) {
-      const html = characterHtml({ id, name, tagline, color, accent, arenaId, w, h });
-      await render(html, w, h, `${id}_${tag}.png`);
+console.log('Features card…');
+for (const [tag, [w, h]] of Object.entries(SIZES)) {
+  await render(featuresHtml({ w, h }), w, h, `features_${tag}.png`);
+}
+
+console.log('Platforms card…');
+for (const [tag, [w, h]] of Object.entries(SIZES)) {
+  await render(platformsHtml({ w, h }), w, h, `platforms_${tag}.png`);
+}
+
+// SKIP_CHARS=1 lets a quick layout-tuning iteration re-render just the
+// hero/roster/features/platforms cards above without redoing all ~40
+// per-character renders (each is a fresh Puppeteer page navigation).
+if (!process.env.SKIP_CHARS) {
+  for (const list of [ROSTER, PREMIUM]) {
+    for (const [id, name, tagline, color, accent, arenaId] of list) {
+      console.log(`${name}…`);
+      for (const [tag, [w, h]] of Object.entries(SIZES)) {
+        const html = characterHtml({ id, name, tagline, color, accent, arenaId, w, h });
+        await render(html, w, h, `${id}_${tag}.png`);
+      }
     }
   }
 }

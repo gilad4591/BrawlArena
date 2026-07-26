@@ -188,21 +188,57 @@ async function processVideo({ file, lines, tag, captionFilter }) {
   console.log('✓', out);
 }
 
-// ---- 1) Gameplay trailer (16:9) — timed to record-gameplay.mjs's own beats.
-// Captions sit near the TOP of the frame — the game's own HUD (health bars,
-// on-screen joystick/buttons, floating combo/damage numbers) already
-// occupies the bottom two-thirds of this footage. The health-bar row is
-// only ~40px tall, so y=48 clears it.
+// Reads the `<outName>.timeline.json` sidecar that record-gameplay.mjs
+// writes next to each raw capture — the REAL wall-clock second each named
+// beat (menu / character select / fight / K.O. / …) actually happened on
+// screen, measured live during capture rather than guessed from the
+// recording script's sleep() calls. Lines below are scheduled at
+// `tl.at('label') + small offset` so captions/VO always land on the beat
+// they describe, regardless of any run-to-run timing drift in the capture
+// itself (network/render jitter etc.) — this is the fix for VO/captions
+// not matching what's on screen.
+function loadTimeline(outName) {
+  const file = path.join(VIDEO_DIR, `${outName}.timeline.json`);
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const byLabel = {};
+  data.marks.forEach((m) => { byLabel[m.label] = m.t; });
+  return { ...data, at: (label) => byLabel[label] };
+}
+
+// ---- 1) Gameplay trailers (16:9) — each timed to its OWN recording's real
+// timeline (see loadTimeline above). Captions sit near the TOP of the frame
+// — the game's own HUD (health bars, on-screen joystick/buttons, floating
+// combo/damage numbers) already occupies the bottom two-thirds of this
+// footage. The health-bar row is only ~40px tall, so y=48 clears it.
+const tl1 = loadTimeline('brawl-arena-promo');
 const GAMEPLAY_LINES = [
-  { at: 0.3, text: 'This is Brawl Arena.' },
-  { at: 5.0, text: 'Choose your fighter.' },
-  { at: 7.6, text: 'Unlock auras, frames, and devastating effects.' },
-  { at: 12.6, text: 'Then... game on.' },
-  { at: 15.2, text: 'Combos. Specials. Clutch counters.' },
-  { at: 19.2, text: 'No mercy in the arena.' },
-  { at: 27.6, text: 'One hit...' },
-  { at: 30.4, text: 'K.O.! Victory!' },
-  { at: 33.0, text: 'Brawl Arena. Free to play. Download now.' },
+  { at: tl1.at('menu') + 0.3, text: 'This is Brawl Arena.' },
+  { at: tl1.at('character select') + 0.3, text: 'Fourteen heroes. Choose yours.' },
+  { at: tl1.at('cosmetics: aura equip') + 0.3, text: 'Gear up with elemental auras' },
+  { at: tl1.at('cosmetics: frame tab') + 0.3, text: 'and rare portrait frames.' },
+  { at: tl1.at('start match') + 0.3, text: 'Solaris steps into the arena.' },
+  { at: tl1.at('fight') + 0.3, text: 'The fight begins!' },
+  { at: tl1.at('special (1)') + 0.3, text: 'Unleash devastating special attacks' },
+  { at: tl1.at('special (2)') + 0.3, text: 'chain combos without mercy' },
+  { at: tl1.at('special (3)') + 0.3, text: 'and finish strong.' },
+  { at: tl1.at('victory hold') + 0.3, text: 'K.O.! Victory! Brawl Arena — download free today.' },
+];
+
+// Second scenario: Volt in the Neon City arena — same beat structure, fresh
+// character/arena/copy for variety (posting the same fight twice looks
+// repetitive on a feed).
+const tl2 = loadTimeline('duel-volt-neon');
+const GAMEPLAY_LINES_2 = [
+  { at: tl2.at('menu') + 0.3, text: 'Brawl Arena — pick your fighter.' },
+  { at: tl2.at('character select') + 0.3, text: 'Meet Volt, master of storms.' },
+  { at: tl2.at('cosmetics: aura equip') + 0.3, text: 'Equip a crackling storm aura' },
+  { at: tl2.at('cosmetics: frame tab') + 0.3, text: 'and an electrified frame.' },
+  { at: tl2.at('start match') + 0.3, text: 'Into the Neon City arena.' },
+  { at: tl2.at('fight') + 0.3, text: 'Sparks fly fast.' },
+  { at: tl2.at('special (1)') + 0.3, text: 'Special attacks light up the night' },
+  { at: tl2.at('special (2)') + 0.3, text: 'combo after combo' },
+  { at: tl2.at('special (3)') + 0.3, text: 'no escape.' },
+  { at: tl2.at('victory hold') + 0.3, text: 'K.O.! Victory! Brawl Arena — free on iOS and Android.' },
 ];
 
 // ---- 2) Roster montage (square + story) — same slideshow timeline; every
@@ -226,6 +262,10 @@ const ROSTER_LINES = [
 
 await processVideo({
   file: path.join(VIDEO_DIR, 'brawl-arena-promo.mp4'), lines: GAMEPLAY_LINES, tag: 'gameplay',
+  captionFilter: (synthed) => drawtextChain(synthed, 26, '48'),
+});
+await processVideo({
+  file: path.join(VIDEO_DIR, 'duel-volt-neon.mp4'), lines: GAMEPLAY_LINES_2, tag: 'gameplay2',
   captionFilter: (synthed) => drawtextChain(synthed, 26, '48'),
 });
 await processVideo({

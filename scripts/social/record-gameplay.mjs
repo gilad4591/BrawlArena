@@ -1,9 +1,11 @@
-// Records a ~35s landscape (16:9 — the game's native orientation; it locks to
-// landscape on native mobile via @capacitor/screen-orientation) gameplay
-// promo directly from the real running game: main menu -> character/cosmetics
-// ("skin") pick -> live fight -> K.O. -> victory screen. No narration is
-// added here (by design — the user is adding voiceover separately); a plain
-// instrumental music bed is muxed in so the clip isn't silent on socials.
+// Records a ~35-40s landscape (16:9 — the game's native orientation; it
+// locks to landscape on native mobile via @capacitor/screen-orientation)
+// gameplay promo directly from the real running game: main menu ->
+// character/cosmetics ("skin") pick -> live fight -> K.O. -> victory
+// screen. A plain instrumental music bed is muxed in so the clip isn't
+// silent on socials — voiceover/captions are added afterwards by
+// narrate.mjs, which needs to know exactly when each of these beats
+// actually happened on screen.
 //
 // NOTE ON CAPTURE METHOD: Puppeteer's experimental `page.screencast()` (a
 // thin wrapper that pipes CDP screencast frames into an ffmpeg child) reliably
@@ -18,7 +20,18 @@
 // Chrome keeps streaming frames as fast as it renders them. The JPEG
 // sequence is assembled into the final video afterwards.
 //
-// Usage: node scripts/social/record-gameplay.mjs [devServerPort]
+// TIMING: every `mark()` call below is written, with its *real* elapsed
+// time (measured from the same t0 the final video's frame 0 corresponds
+// to), into a `<outName>.timeline.json` sidecar next to the output video.
+// narrate.mjs reads that file to place captions/voiceover lines exactly
+// when each beat actually happened — NOT from the scripted sleep()
+// durations below, which don't account for real page-load/render/
+// screencast-startup latency and drift from the actual video by several
+// seconds (this is what caused voiceover lines to land on the wrong
+// screen in earlier takes).
+//
+// Usage: node scripts/social/record-gameplay.mjs [devServerPort] [outName] [character] [arena]
+// Example: node scripts/social/record-gameplay.mjs 5175 duel-frost-volt frost volcano
 import puppeteer from 'puppeteer-core';
 import ffmpegPath from 'ffmpeg-static';
 import { execFileSync } from 'node:child_process';
@@ -27,16 +40,23 @@ import path from 'node:path';
 
 const CHROME = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const PORT = process.argv[2] || '5175';
+const OUT_NAME = process.argv[3] || 'brawl-arena-promo';
+const CHARACTER = process.argv[4] || 'solaris';
+const ARENA = process.argv[5] || 'forest';
+
 const ROOT = process.cwd();
 const OUT_DIR = path.join(ROOT, 'social-kit', 'video');
 fs.mkdirSync(OUT_DIR, { recursive: true });
-const FRAMES_DIR = path.join(OUT_DIR, 'frames_tmp');
-const MUSIC = path.join(OUT_DIR, 'gameplay_music.wav');
-const FINAL = path.join(OUT_DIR, 'brawl-arena-promo.mp4');
+const FRAMES_DIR = path.join(OUT_DIR, `frames_tmp_${OUT_NAME}`);
+const MUSIC = path.join(OUT_DIR, `${OUT_NAME}_music.wav`);
+const FINAL = path.join(OUT_DIR, `${OUT_NAME}.mp4`);
+const TIMELINE = path.join(OUT_DIR, `${OUT_NAME}.timeline.json`);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
+  console.log(`recording "${OUT_NAME}": character=${CHARACTER} arena=${ARENA}`);
+
   // Hard ceiling on the whole capture phase (menu -> fight -> KO -> victory
   // hold) so a stuck browser/CDP session can never hang the script forever.
   const watchdog = setTimeout(() => {
@@ -50,7 +70,24 @@ async function main() {
   const browser = await puppeteer.launch({
     executablePath: CHROME,
     headless: true,
-    args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'],
+    args: [
+      '--no-sandbox',
+      '--autoplay-policy=no-user-gesture-required',
+      // THE FIX for "video looks stuck"/VO-desync: Chrome treats a headless
+      // (no real window) tab as an occluded/backgrounded renderer and, per
+      // spec, throttles its requestAnimationFrame loop down to ~1fps to save
+      // power — UNLESS real synthetic input events are landing (which is
+      // exactly why the fight portion, driven by page.keyboard.down/up,
+      // captured near-full framerate while the static menu/character-select/
+      // cosmetics screens before it — driven by page.evaluate() JS calls,
+      // not real input — got compressed to a single frame for ~12 real
+      // seconds). These flags turn that whole throttling subsystem off so
+      // every screen renders at its true framerate regardless of "focus".
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      '--disable-background-timer-throttling',
+      '--disable-ipc-flooding-protection',
+    ],
   });
   const page = await browser.newPage();
   // 16:9 landscape, matching the game's actual (locked) native orientation.
@@ -68,17 +105,38 @@ async function main() {
 
   console.log('capturing frames ->', FRAMES_DIR);
   const t0 = Date.now();
-  const mark = (label) => console.log(`  [${((Date.now() - t0) / 1000).toFixed(1)}s] ${label}`);
+  const timeline = [];
+  // Wall-clock elapsed seconds since t0 — this now maps DIRECTLY onto the
+  // final video's timeline (see the concat-demuxer note below), so
+  // narrate.mjs can place captions/VO at this exact second.
+  const mark = (label) => {
+    const t = (Date.now() - t0) / 1000;
+    console.log(`  [${t.toFixed(1)}s] ${label} (frame ${frameIdx})`);
+    timeline.push({ label, t });
+  };
 
-  // Manual CDP screencast: Chrome pushes a 'Page.screencastFrame' event as
-  // fast as it can encode+deliver one, we write it straight to disk (fire and
-  // forget, tracked for a final await) and ack immediately so the next frame
-  // is sent without waiting on disk I/O.
+  // Manual CDP screencast: Chrome pushes a 'Page.screencastFrame' event
+  // whenever the page actually repaints — NOT at a fixed video framerate.
+  // Static screens (the menu, character-select, cosmetics showcase are all
+  // single canvas draws with no animation loop — see drawMenuScene()/
+  // buildCosmetics(), which only redraw once per call) legitimately produce
+  // just ONE frame for several real seconds of screen time, while the live
+  // fight (driven by real synthetic keyboard input, which keeps the game's
+  // own render loop repainting every tick) produces near-fps-rate frames.
+  // frameTimestamps records the real Date.now() each frame arrived at, so
+  // the video can later be assembled with each frame *held* for its true
+  // real-world duration — assembling this as a fixed-fps sequence (the old
+  // approach) squashed every static screen down to a single 1/fps-second
+  // flash and let the fight play in real time, which is exactly why the
+  // resulting video looked "stuck"/jump-cut and voiceover could never line
+  // up with what was on screen.
   const client = await page.createCDPSession();
   let frameIdx = 0;
+  const frameTimestamps = [];
   const pendingWrites = [];
   client.on('Page.screencastFrame', (frame) => {
     const idx = frameIdx++;
+    frameTimestamps.push(Date.now());
     pendingWrites.push(
       fs.promises
         .writeFile(path.join(FRAMES_DIR, `f${String(idx).padStart(6, '0')}.jpg`), Buffer.from(frame.data, 'base64'))
@@ -109,29 +167,30 @@ async function main() {
 
     // ---- 2) Character select -------------------------------------------------
     mark('character select');
-    await page.evaluate(() => {
+    await page.evaluate((character, arena) => {
       const app = window.__app;
-      app.selection.character = 'solaris';
+      app.selection.character = character;
+      app.selection.arena = arena;
       app.selection.mode = 'oneVsOne';
       app.selection.opponents = 1;
       app.selection.difficulty = 1;
       app.buildSetup();
       app.showScreen('setup');
-    });
+    }, CHARACTER, ARENA);
     await sleep(2500);
 
     // ---- 3) Cosmetics — the "skin change" showcase ---------------------------
     mark('cosmetics: aura equip');
-    await page.evaluate(() => {
+    await page.evaluate((character) => {
       const app = window.__app;
-      app._toggleEquip('solaris', 'aura', true);
-      app._toggleEquip('solaris', 'sp', true);
+      app._toggleEquip(character, 'aura', true);
+      app._toggleEquip(character, 'sp', true);
       app._cosStep = 'detail';
-      app._cosChar = 'solaris';
+      app._cosChar = character;
       app._cosTab = 'aura';
       app.showScreen('cosmetics');
       app.buildCosmetics();
-    });
+    }, CHARACTER);
     await sleep(3000);
     mark('cosmetics: frame tab');
     await page.evaluate(() => {
@@ -145,6 +204,11 @@ async function main() {
     mark('start match');
     await page.evaluate(() => {
       const app = window.__app;
+      // startGame() silently resets a premium arena back to 'forest' unless
+      // the arena pack is actually owned — fine for real players, but this
+      // recording just wants to *show off* the requested arena, so force it
+      // for this in-memory session only (never persisted).
+      app.purchases.ownsArenas = () => true;
       app.showScreen('setup');
       app.buildSetup();
     });
@@ -184,6 +248,7 @@ async function main() {
     await tap('KeyA'); await sleep(280);
     await tap('KeyA'); await sleep(280);
     await tap('KeyA'); await sleep(280);
+    mark('special (1)');
     await tap('KeyS'); await sleep(750); // special — shows the equipped SP FX
     await hold('ArrowLeft', 400); // back off a step
     await sleep(300);
@@ -193,6 +258,7 @@ async function main() {
     await tap('KeyW'); await sleep(300); // jump
     await tap('KeyA'); await sleep(350);
     await tap('KeyA'); await sleep(280);
+    mark('special (2)');
     await tap('KeyS'); await sleep(750); // special again
     await hold('ArrowRight', 350);
     await tap('KeyT'); await sleep(400); // grab/throw
@@ -201,6 +267,7 @@ async function main() {
     await tap('KeyA'); await sleep(280);
     await tap('KeyA'); await sleep(280);
     await tap('KeyA'); await sleep(280);
+    mark('special (3)');
     await tap('KeyS'); await sleep(750); // one more special for the finish
     await hold('ArrowRight', 350);
     await tap('KeyA'); await sleep(300);
@@ -238,6 +305,7 @@ async function main() {
     // ---- 7) Hold on K.O. + victory screen -------------------------------------
     mark('victory hold');
     await sleep(6800);
+    mark('end');
   } finally {
     await client.send('Page.stopScreencast').catch(() => {});
     await Promise.allSettled(pendingWrites);
@@ -252,20 +320,47 @@ async function main() {
   }
   clearTimeout(watchdog);
 
-  const actualFps = frameIdx / duration;
-  console.log(`captured ${frameIdx} frames over ${duration.toFixed(1)}s (~${actualFps.toFixed(2)} fps effective)`);
+  const meanFps = frameIdx / duration;
+  console.log(`captured ${frameIdx} frames over ${duration.toFixed(1)}s (~${meanFps.toFixed(2)} fps mean, held at real per-frame duration)`);
+
+  fs.writeFileSync(TIMELINE, JSON.stringify({ outName: OUT_NAME, character: CHARACTER, arena: ARENA, duration, marks: timeline }, null, 2));
+  console.log('✓ timeline ->', TIMELINE);
 
   // ---- Post-process: add an instrumental music bed ---------------------------
   execFileSync('node', [path.join(ROOT, 'scripts', 'social', 'music-wav.mjs'), MUSIC, String(duration + 0.5)], { stdio: 'inherit' });
 
-  // Assemble the JPEG sequence into H.264 (matching the effective capture
-  // rate so playback speed lines up with real elapsed time) with the music
-  // bed muxed in.
+  // Assemble the JPEGs with a ffmpeg concat-demuxer list that holds each
+  // frame for its own *real, measured* duration (the gap until the next
+  // frame actually arrived) instead of a fixed 1/fps slot for every frame.
+  // This is what actually fixes the sync: a static screen that only
+  // produced 1 screencast frame over 4.8 real seconds now correctly shows
+  // for 4.8 seconds in the output (repeated by the encoder as needed),
+  // rather than being squashed into a single 1/fps-second flash. See the
+  // frameTimestamps comment above for why frame counts are so uneven.
+  const listPath = path.join(OUT_DIR, `${OUT_NAME}.concat.txt`);
+  const lines = [];
+  for (let i = 0; i < frameIdx; i++) {
+    const framePath = path.join(FRAMES_DIR, `f${String(i).padStart(6, '0')}.jpg`).replace(/\\/g, '/');
+    const next = i + 1 < frameIdx ? frameTimestamps[i + 1] : t0 + duration * 1000;
+    const dur = Math.max(0.02, (next - frameTimestamps[i]) / 1000);
+    lines.push(`file '${framePath}'`, `duration ${dur.toFixed(3)}`);
+  }
+  // ffmpeg's concat demuxer documents that the very last file's "duration"
+  // is otherwise ignored unless the file is listed once more afterwards.
+  if (frameIdx > 0) {
+    lines.push(`file '${path.join(FRAMES_DIR, `f${String(frameIdx - 1).padStart(6, '0')}.jpg`).replace(/\\/g, '/')}'`);
+  }
+  fs.writeFileSync(listPath, lines.join('\n'));
+
   execFileSync(ffmpegPath, [
     '-y',
-    '-framerate', actualFps.toFixed(3),
-    '-i', path.join(FRAMES_DIR, 'f%06d.jpg'),
+    '-f', 'concat', '-safe', '0',
+    '-i', listPath,
     '-i', MUSIC,
+    // Re-quantize the variable-duration concat stream to a standard constant
+    // 30fps output (duplicating/dropping as needed) — plays back correctly
+    // and predictably everywhere (browsers, TikTok/IG uploaders, etc.).
+    '-r', '30', '-vsync', 'cfr',
     '-filter:a', 'afade=t=in:st=0:d=0.6,afade=t=out:st=' + Math.max(0, duration - 1) + ':d=1',
     '-shortest',
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p',
@@ -275,6 +370,7 @@ async function main() {
   ], { stdio: 'inherit' });
 
   fs.rmSync(FRAMES_DIR, { recursive: true, force: true });
+  fs.rmSync(listPath, { force: true });
 
   console.log('\n✓ Done ->', FINAL);
   process.exit(0);
