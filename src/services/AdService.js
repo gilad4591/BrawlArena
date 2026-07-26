@@ -61,10 +61,13 @@ export class AdService {
   /**
    * Ad diagnostics — answers "why did I get the fallback instead of a real
    * ad?" without needing devtools/remote-debugging on a phone. Always logs
-   * to the console; ALSO shows a small on-screen badge for a few seconds
-   * when debug mode is on, since a phone browser usually has no console
-   * visible. Enable with `?addebug=1` in the URL once — it's remembered via
-   * localStorage after that. Disable the same way with `?addebug=0`.
+   * to the console; ALSO keeps an on-screen, scrollable LOG (not a single
+   * message that flashes and vanishes) when debug mode is on, since a phone
+   * browser usually has no console visible and a single fading toast is too
+   * easy to miss/impossible to re-read. Enable with `?addebug=1` in the URL
+   * once — it's remembered via localStorage after that. Disable the same
+   * way with `?addebug=0`. Tap the badge's "✕" to dismiss it; it reappears
+   * on the next ad event.
    */
   _adDebug(msg) {
     console.info('[ads]', msg);
@@ -75,20 +78,35 @@ export class AdService {
     } catch {
       return;
     }
+    this._adDebugLog = this._adDebugLog || [];
+    const time = new Date().toLocaleTimeString();
+    this._adDebugLog.push(`[${time}] ${msg}`);
+    if (this._adDebugLog.length > 10) this._adDebugLog.shift();
+
     let el = document.getElementById('ad-debug-badge');
     if (!el) {
       el = document.createElement('div');
       el.id = 'ad-debug-badge';
-      el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;'
-        + 'max-width:92vw;padding:6px 10px;border-radius:8px;font:12px/1.4 monospace;'
-        + 'background:rgba(0,0,0,0.85);color:#7ee0ff;border:1px solid rgba(255,255,255,0.2);'
-        + 'white-space:pre-wrap;pointer-events:none;';
+      el.style.cssText = 'position:fixed;left:8px;bottom:8px;right:8px;z-index:99999;'
+        + 'max-height:40vh;overflow-y:auto;padding:8px 10px;border-radius:10px;'
+        + 'font:11px/1.5 monospace;background:rgba(0,0,0,0.92);color:#7ee0ff;'
+        + 'border:1px solid rgba(255,255,255,0.25);white-space:pre-wrap;'
+        + '-webkit-overflow-scrolling:touch;';
+      const close = document.createElement('button');
+      close.textContent = '✕ close log';
+      close.style.cssText = 'display:block;margin-bottom:6px;padding:4px 10px;'
+        + 'border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.08);'
+        + 'color:#fff;font:11px/1 monospace;';
+      close.addEventListener('click', () => { el.classList.add('hidden-ad-debug'); el.style.display = 'none'; });
+      const list = document.createElement('div');
+      list.id = 'ad-debug-list';
+      el.appendChild(close);
+      el.appendChild(list);
       document.body.appendChild(el);
     }
-    el.textContent = `[ads] ${msg}`;
-    el.style.opacity = '1';
-    clearTimeout(this._adDebugTimer);
-    this._adDebugTimer = setTimeout(() => { el.style.opacity = '0'; }, 6000);
+    el.style.display = 'block';
+    el.querySelector('#ad-debug-list').textContent = this._adDebugLog.join('\n\n');
+    el.scrollTop = el.scrollHeight;
   }
 
   // ----------------------------------------------------------------- native
