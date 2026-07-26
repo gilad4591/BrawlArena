@@ -58,6 +58,39 @@ export class AdService {
     return ADS[this.platform] || ADS.android;
   }
 
+  /**
+   * Ad diagnostics — answers "why did I get the fallback instead of a real
+   * ad?" without needing devtools/remote-debugging on a phone. Always logs
+   * to the console; ALSO shows a small on-screen badge for a few seconds
+   * when debug mode is on, since a phone browser usually has no console
+   * visible. Enable with `?addebug=1` in the URL once — it's remembered via
+   * localStorage after that. Disable the same way with `?addebug=0`.
+   */
+  _adDebug(msg) {
+    console.info('[ads]', msg);
+    try {
+      const params = new URLSearchParams(location.search);
+      if (params.has('addebug')) localStorage.setItem('adDebug', params.get('addebug'));
+      if (localStorage.getItem('adDebug') !== '1') return;
+    } catch {
+      return;
+    }
+    let el = document.getElementById('ad-debug-badge');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ad-debug-badge';
+      el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;'
+        + 'max-width:92vw;padding:6px 10px;border-radius:8px;font:12px/1.4 monospace;'
+        + 'background:rgba(0,0,0,0.85);color:#7ee0ff;border:1px solid rgba(255,255,255,0.2);'
+        + 'white-space:pre-wrap;pointer-events:none;';
+      document.body.appendChild(el);
+    }
+    el.textContent = `[ads] ${msg}`;
+    el.style.opacity = '1';
+    clearTimeout(this._adDebugTimer);
+    this._adDebugTimer = setTimeout(() => { el.style.opacity = '0'; }, 6000);
+  }
+
   // ----------------------------------------------------------------- native
   async _initNative() {
     try {
@@ -210,10 +243,12 @@ export class AdService {
           clearTimeout(watchdog);
           this._muteForAd?.(false);
           if (!ok && !granted) {
+            this._adDebug('rewarded: no real ad filled -> fallback overlay (reward still granted on close)');
             // No real rewarded ad filled — offer the fallback overlay and grant
             // on close so the player still gets the reward they opted into.
             this._showOverlayInterstitial(() => resolve(true));
           } else {
+            this._adDebug('rewarded: real ad viewed');
             resolve(true);
           }
         };
@@ -235,9 +270,12 @@ export class AdService {
             adBreakDone: () => finish(granted),
           });
           return;
-        } catch {
+        } catch (err) {
           clearTimeout(watchdog);
+          this._adDebug(`rewarded: adBreak() threw (${err?.message}) -> fallback`);
         }
+      } else {
+        this._adDebug('rewarded: window.adBreak is not a function (script blocked/not loaded) -> fallback');
       }
       this._showOverlayInterstitial(() => resolve(true));
     });
@@ -279,17 +317,22 @@ export class AdService {
       if (typeof window.adBreak === 'function') {
         let adShown = false;
         let settled = false;
-        const finish = (showFallback) => {
+        const finish = (showFallback, reason) => {
           if (settled) return;
           settled = true;
           clearTimeout(watchdog);
           this._muteForAd?.(false);
-          if (showFallback && !adShown) this._showOverlayInterstitial(resolve);
-          else resolve();
+          if (showFallback && !adShown) {
+            this._adDebug(`interstitial: no real ad (${reason}) -> showing fallback`);
+            this._showOverlayInterstitial(resolve);
+          } else {
+            this._adDebug(`interstitial: real ad shown (${reason})`);
+            resolve();
+          }
         };
         // If the SDK is blocked/not loaded, adBreakDone never fires — so after a
         // beat with nothing shown we surface our own overlay instead.
-        const watchdog = setTimeout(() => finish(true), 1800);
+        const watchdog = setTimeout(() => finish(true, 'timeout — adBreak never called beforeAd, likely blocked or still loading'), 1800);
         try {
           window.adBreak({
             type: 'next', // an ad "between levels" — here, between matches
@@ -304,14 +347,17 @@ export class AdService {
               const st = info && info.breakStatus;
               // 'viewed'/'dismissed' => a real ad played; anything else (noAd*,
               // frequencyCapped, error, notReady…) => show our fallback overlay.
-              finish(st !== 'viewed' && st !== 'dismissed');
+              finish(st !== 'viewed' && st !== 'dismissed', `breakStatus=${st}`);
             },
           });
           return;
-        } catch {
+        } catch (err) {
           clearTimeout(watchdog);
+          this._adDebug(`interstitial: adBreak() threw (${err?.message}) -> fallback`);
           /* fall through to the manual overlay */
         }
+      } else {
+        this._adDebug('interstitial: window.adBreak is not a function (script blocked/not loaded) -> fallback');
       }
       this._showOverlayInterstitial(resolve);
     });
@@ -350,12 +396,19 @@ export class AdService {
       const ins = overlay.querySelector('ins.adsbygoogle');
       const checkFill = () => {
         if (this._overlay !== overlay) return;
-        const unfilled = ins?.getAttribute('data-ad-status') === 'unfilled';
+        const status = ins?.getAttribute('data-ad-status');
+        const unfilled = status === 'unfilled';
         const empty = !ins || ins.offsetHeight < 40 || ins.childElementCount === 0;
-        if (unfilled || empty) this._renderHouseAd(overlay);
+        if (unfilled || empty) {
+          this._adDebug(`display unit: data-ad-status=${status ?? '(none)'}, height=${ins?.offsetHeight ?? 0}px -> house promo`);
+          this._renderHouseAd(overlay);
+        } else {
+          this._adDebug(`display unit filled: data-ad-status=${status}`);
+        }
       };
       setTimeout(checkFill, 1600);
     } else {
+      this._adDebug('display unit: no adClient/adSlot configured -> house promo');
       this._renderHouseAd(overlay);
     }
 
