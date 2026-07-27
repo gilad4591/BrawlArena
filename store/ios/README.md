@@ -135,8 +135,15 @@ Repo → **Settings → Secrets and variables → Actions**:
 | `IOS_PROVISION_PROFILE_BASE64` | base64 of the `.mobileprovision` (4d) |
 | `IOS_TEAM_ID` | your 10-character Apple Team ID |
 
-Then add a repo **variable** (not secret), same Settings page, **Variables**
-tab: `IOS_SIGNING_READY` = `true`.
+Then add two repo **variables** (not secrets), same Settings page,
+**Variables** tab:
+- `IOS_SIGNING_READY` = `true`
+- `IOS_PROVISION_PROFILE_SPECIFIER` = the exact **Name** you gave the profile
+  in 4d (e.g. `Brawl Arena App Store`) — the Xcode project itself uses
+  automatic signing (fine locally, where Xcode is logged into an Apple ID),
+  which can't resolve anything in CI's non-interactive session, so the
+  archive step switches to manual signing just for that build and needs
+  this exact name to pick the right profile.
 
 **Paste me the four values above (or just tell me they're set) and I can run
 `gh secret set` for all of them from here** — I just can't generate the
