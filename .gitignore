@@ -31,6 +31,15 @@ android/keystore.properties
 ios/App/Pods/
 ios/App/build/
 
+# iOS signing material generated locally by store/ios/generate-csr.ps1 and
+# cert-to-p12.ps1 -- private key + cert artifacts, never commit these.
+store/ios/*.key
+store/ios/*.csr
+store/ios/*.cer
+store/ios/*.pem
+store/ios/*.p12
+store/ios/*.mobileprovision
+
 # Env / secrets
 .env
 .env.local

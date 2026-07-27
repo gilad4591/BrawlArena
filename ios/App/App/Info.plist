@@ -67,5 +67,14 @@
 	     triggers on init (via AdMob.requestTrackingAuthorization()). -->
 	<key>NSUserTrackingUsageDescription</key>
 	<string>This identifier is used to show you more relevant ads and measure ad performance.</string>
+	<!-- Export compliance: the app only uses standard HTTPS/WSS transport
+	     encryption (no custom/proprietary cryptography anywhere in the
+	     codebase — see the multiplayer relay in server/server.js and
+	     src/game/netcode.js). Setting this to false lets App Store Connect
+	     skip re-asking the Export Compliance question on every build
+	     upload. If that ever changes (e.g. you add real end-to-end
+	     encryption), remove this key and answer the ASC prompt manually. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

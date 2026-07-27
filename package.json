@@ -1,7 +1,7 @@
 {
   "name": "brawl-arena",
   "private": true,
-  "version": "1.0.0",
+  "version": "4.10.9",
   "type": "module",
   "scripts": {
     "dev": "vite",

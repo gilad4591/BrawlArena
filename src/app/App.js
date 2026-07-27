@@ -420,6 +420,7 @@ export class App {
         <button class="btn btn-secondary" data-action="achievements">Achievements</button>
         <button class="btn btn-secondary" data-action="tutorial-replay">Replay Tutorial</button>
         <button class="btn btn-ghost btn-privacy hidden" id="privacy-options">Ad Privacy Options</button>
+        <button class="btn btn-ghost btn-privacy" id="privacy-policy-link">Privacy Policy</button>
         <button class="btn btn-secondary" data-action="menu">Back</button>
         <button class="btn btn-danger" id="reset-progress">Reset Progress</button>
       </div>
@@ -2998,6 +2999,18 @@ export class App {
     if (privBtn) {
       privBtn.classList.toggle('hidden', !this.ads?.native || !this.ads?.showPrivacyOptions);
       privBtn.onclick = () => this.ads?.showPrivacyOptions?.();
+    }
+    // Full privacy policy link. On web the menu footer already links to the
+    // same page inline (see the footer-note markup above); this button
+    // covers native builds, where that footer is hidden by _isNative() and
+    // App Store review otherwise has no in-app way to find the policy.
+    // Capacitor's WKWebView hands off any http(s) navigation whose host
+    // doesn't match the app's local bundle host to the system browser by
+    // default, so a plain window.open to the live URL works with no extra
+    // plugin (e.g. @capacitor/browser) needed.
+    const policyBtn = this.root.querySelector('#privacy-policy-link');
+    if (policyBtn) {
+      policyBtn.onclick = () => window.open('https://brawl-arena.com/privacy.html', '_blank');
     }
     this.showScreen('settings');
   }

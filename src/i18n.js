@@ -155,6 +155,7 @@ const HE = {
   Special: 'מיוחד',
   'Replay Tutorial': 'הפעל מדריך מחדש',
   'Ad Privacy Options': 'הגדרות פרטיות מודעות',
+  'Privacy Policy': 'מדיניות פרטיות',
   'Learn the Basics?': 'ללמוד את היסודות?',
   'A 60-second practice round teaches you how to move, jump, attack, use your special and block. You can skip anytime.':
     'סיבוב תרגול של 60 שניות ילמד אותך לזוז, לקפוץ, להתקיף, להשתמש במיוחד ולחסום. אפשר לדלג בכל שלב.',
