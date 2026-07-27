@@ -40,10 +40,13 @@ export const ADS = {
   },
 
   ios: {
-    appId: 'ca-app-pub-3940256099942544~1458002511',
-    banner: 'ca-app-pub-3940256099942544/2934735716',
-    interstitial: 'ca-app-pub-3940256099942544/4411468910',
-    rewarded: 'ca-app-pub-3940256099942544/1712485313',
+    // Production AdMob IDs for "Brawl Arena" iOS (must match Info.plist's
+    // GADApplicationIdentifier). Same publisher (9834744561471352) as
+    // Android, just this app's own iOS App ID + ad units.
+    appId: 'ca-app-pub-9834744561471352~6331817042',
+    banner: 'ca-app-pub-9834744561471352/5653160191',
+    interstitial: 'ca-app-pub-9834744561471352/9373867649',
+    rewarded: 'ca-app-pub-9834744561471352/4855083843',
   },
 
   // AdSense (browser build). adClient is your publisher ID. adSlot is filled in

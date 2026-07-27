@@ -47,12 +47,10 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
-	<!-- AdMob application id for "Brawl Arena" (iOS). This is currently
-	     Google's OFFICIAL TEST app id (src/services/adsConfig.js ios.appId) —
-	     create a real iOS app at admob.google.com and swap both this value
-	     and the ad-unit ids in adsConfig.js before shipping ads for real. -->
+	<!-- Production AdMob application id for "Brawl Arena" (iOS) -- must
+	     match src/services/adsConfig.js's ios.appId. -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-9834744561471352~6331817042</string>
 	<!-- Required for AdMob's iOS attribution (SKAdNetwork). This is Google's
 	     own network id; add more identifiers here only if you enable extra
 	     mediation networks in AdMob. -->
