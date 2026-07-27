@@ -9,7 +9,11 @@ so they should be accurate as of this writing.
 
 ## 1. Name, subtitle, promotional text
 
-- **Name:** Brawl Arena
+- **Name** (App Store Connect "Name" field, 30 chars max): `Brawl Arena: Fighting Game`
+  — plain "Brawl Arena" is already taken by an unrelated app on the Store
+  (name collisions are global, not per-developer-account). This only
+  affects the App Store *listing* title — the home-screen icon label stays
+  "Brawl Arena" (`CFBundleDisplayName` in `Info.plist`, unaffected).
 - **Subtitle** (30 chars max): `2.5D Fighting Game & Brawler`
 - **Promotional text** (170 chars, editable without a new review):
   `Battle with 14 unique fighters across 8 arenas. New seasonal cosmetics and
