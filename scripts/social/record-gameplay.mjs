@@ -103,6 +103,18 @@ async function main() {
   });
   await sleep(300);
 
+  // This recording runs against the local dev server, which auto-grants
+  // 999999 coins in dev mode (see App.js's `this._dev` check) so cosmetics/
+  // store flows can be tested without grinding. Handy for testing, but it
+  // shows an implausible balance in real marketing footage / App Store
+  // screenshots (real players never see this) — pin it to a normal,
+  // plausible mid-game balance for this recording session only, before
+  // anything that renders the coin badge (goMenu/buildCosmetics) runs.
+  // Never persisted to the actual dev profile on disk.
+  await page.evaluate(() => {
+    window.__app.coins = 240;
+  });
+
   console.log('capturing frames ->', FRAMES_DIR);
   const t0 = Date.now();
   const timeline = [];

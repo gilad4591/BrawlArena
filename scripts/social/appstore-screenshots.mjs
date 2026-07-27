@@ -35,10 +35,16 @@ const SIZES = {
 // Store set and the social-media set always show the same moments.
 // [source video, real timestamp (from the matching *.timeline.json — see
 // record-gameplay.mjs), output label, caption to burn in]
+// character-select and cosmetics-aura deliberately pass null here (unlike
+// screenshots.mjs's social-media version of this same SHOTS list) — at App
+// Store sizes the in-game screen already renders its own "Choose Your
+// Fighter" / "Cosmetics" header text in roughly the same top-center spot a
+// burned-in caption would use, so adding one there just doubles up two
+// overlapping strings instead of adding information.
 const SHOTS = [
   ['brawl-arena-promo.mp4', 2.5, 'menu', null],
-  ['brawl-arena-promo.mp4', 6.0, 'character-select', 'CHOOSE YOUR FIGHTER'],
-  ['brawl-arena-promo.mp4', 9.0, 'cosmetics-aura', 'ELEMENTAL AURAS'],
+  ['brawl-arena-promo.mp4', 6.0, 'character-select', null],
+  ['brawl-arena-promo.mp4', 9.0, 'cosmetics-aura', null],
   ['brawl-arena-promo.mp4', 18.5, 'fight-forest', 'SPECIAL ATTACKS'],
   ['brawl-arena-promo.mp4', 32.0, 'victory-forest', 'VICTORY!'],
   ['duel-volt-neon.mp4', 19.0, 'fight-neon', 'NEON CITY ARENA'],
