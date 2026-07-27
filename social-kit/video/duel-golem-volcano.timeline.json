@@ -1,0 +1,56 @@
+{
+  "outName": "duel-golem-volcano",
+  "character": "golem",
+  "arena": "volcano",
+  "duration": 36.399,
+  "marks": [
+    {
+      "label": "menu",
+      "t": 0.003
+    },
+    {
+      "label": "character select",
+      "t": 4.823
+    },
+    {
+      "label": "cosmetics: aura equip",
+      "t": 7.339
+    },
+    {
+      "label": "cosmetics: frame tab",
+      "t": 10.357
+    },
+    {
+      "label": "start match",
+      "t": 12.191
+    },
+    {
+      "label": "fight",
+      "t": 14.559
+    },
+    {
+      "label": "special (1)",
+      "t": 16.795
+    },
+    {
+      "label": "special (2)",
+      "t": 21.659
+    },
+    {
+      "label": "special (3)",
+      "t": 25.801
+    },
+    {
+      "label": "finishing blow",
+      "t": 28.025
+    },
+    {
+      "label": "victory hold",
+      "t": 29.577
+    },
+    {
+      "label": "end",
+      "t": 36.381
+    }
+  ]
+}

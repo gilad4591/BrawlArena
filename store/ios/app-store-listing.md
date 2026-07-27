@@ -113,9 +113,38 @@ account/authentication identifier. The game has **no account system**.
 
 **Practical note:** Google publishes AdMob's own current "data types
 collected" declaration for App Store Connect's App Privacy form — check
-[Google's AdMob/Play Services SDK data disclosure](https://support.google.com/admob/answer/9760862)
+[Google's AdMob/Play Services SDK data disclosure](https://developers.google.com/admob/ios/privacy/data-disclosure)
 at submission time and copy their current list exactly, since ad SDKs'
-declared data types do change between SDK versions.
+declared data types do change between SDK versions. As of the SDK version
+current at this writing, Google's own page lists: **Device ID**
+(Identifiers), **Product Interaction + Advertising Data** (Usage Data),
+**IP address → Coarse Location**, and **Crash Data + Performance Data**
+(Diagnostics) — it does *not* separately list "User ID" as a type AdMob
+collects (that's a different Apple category: "screen name, handle, account
+ID..." — see next paragraph).
+
+**Resolving the "User ID" entry seen in App Store Connect (2026-07-27
+session):** the questionnaire showed 3 data types under "Data Not Linked to
+You": Product Interaction, User ID, Other User Content. "Other User Content"
+is correctly the Fighter Name (App Functionality, done). "User ID" is very
+likely a duplicate selection of that *same* Fighter Name made earlier in the
+"Data Types" step (under the separate "Identifiers" group) — the game has no
+account system and issues no actual account/handle ID, so there's no second,
+distinct piece of data for this to describe. Two options, either is fine:
+- **(Preferred) Go back to Data Types and uncheck "User ID"** under
+  Identifiers — it's redundant with Other User Content, and Apple's own
+  guidance favors not over-declaring types you don't actually have.
+- **If you'd rather leave it checked:** fill it in identically to Other User
+  Content — Linked to You: **No**, Used for Tracking: **No**, Purpose:
+  **App Functionality**.
+
+Fill in **Product Interaction** (from AdMob) exactly per Google's official
+data-disclosure page linked above:
+- Linked to You: **No**
+- Used for Tracking: **Yes** (AdMob uses this to measure/serve ads across
+  apps — this is what makes the ATT prompt fire)
+- Purpose: **Third-Party Advertising** (+ **Analytics** if the form offers
+  both as separate checkboxes for the same type)
 
 ---
 
@@ -131,3 +160,56 @@ pack, coin packs, remove ads) can all be tested by initiating a purchase
 flow; no special test account/coupon is needed since pricing is fetched
 live from App Store Connect's sandbox for review builds.
 ```
+
+---
+
+## 9. Apple ID locked from repeated MFA attempts (2026-07-27) — recovery
+
+The Apple ID got locked after several failed/interrupted 2FA attempts caused
+by the browser crashing mid-verification. This is purely server-side on
+Apple's end — nothing in this repo or on this machine can unlock it. To
+recover:
+
+1. **Stop retrying immediately** — repeated attempts right after a lock can
+   extend the lockout window.
+2. Wait roughly **30–60 minutes**, then try signing in at
+   `https://appleid.apple.com/account/manage` directly (not the Developer
+   portal) in **one single browser tab**, on a stable, up-to-date browser.
+   This page shows account status and is the fastest self-service check.
+3. If it's still locked after that, use `https://iforgot.apple.com` to run
+   **Account Recovery** — this can also grant temporary access without
+   necessarily changing the password.
+4. If a **trusted device** (iPhone/iPad/Mac signed into the same Apple ID)
+   is available, approve the sign-in via the push notification on that
+   device instead of typing an SMS/voice code — this is the most reliable
+   2FA path and avoids the browser entirely for the actual code entry.
+5. If still stuck after ~24h, contact **Apple ID Support** (not Developer
+   Support — different queue) via `https://support.apple.com/apple-id` or
+   the "Get Support" flow in the Apple Support app.
+6. This lockout is unrelated to the pending **Developer Program name
+   correction** request (§ asc-2 in the roadmap) — that's a separate,
+   already-submitted ticket and continues being reviewed independently of
+   this sign-in issue.
+
+## 10. Checklist for the next session (self-serve, no live guidance needed)
+
+Once signed back in, everything below can be done in one sitting, in this
+order:
+
+1. **App Privacy → Identifiers → User ID**: resolve per §7's "Resolving the
+   User ID entry" note above (uncheck it, or fill it in identically to Other
+   User Content).
+2. **App Privacy → Usage Data → Product Interaction**: fill in per §7's
+   AdMob recommendation above, then click **Publish** on the App Privacy
+   page to finalize the nutrition label.
+3. **Age Rating questionnaire**: answer using the table in §6 above.
+4. **Verify already-entered listing fields** are all saved: Name, Subtitle,
+   Promotional Text, Description, Keywords, Support/Marketing/Privacy URLs,
+   Category, Copyright (`2026 Gilad Cohen` — no special characters), price
+   tier (Free).
+5. **Verify all 21 screenshots** are still attached and fully processed (no
+   red warning triangles) under all 3 device-size slots.
+6. Everything past this point (IAP products, IPA upload, Submit for Review)
+   stays blocked on the Developer Program name-correction ticket — check its
+   status first (Apple Developer → Support → your ticket) before starting
+   those.

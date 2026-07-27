@@ -1,0 +1,13 @@
+Background music used in social-kit/video/tiktok/*.mp4:
+
+"8bit Dungeon Boss" Kevin MacLeod (incompetech.com)
+Licensed under Creative Commons: By Attribution 3.0/4.0 License
+http://creativecommons.org/licenses/by/3.0/
+
+Paste this credit into each post's caption/description on TikTok/Instagram
+(the license requires attribution). A small on-screen text credit is also
+burned into the bottom-left corner of every clip as a belt-and-suspenders
+measure, in case a caption gets truncated by the platform.
+
+Source file: social-kit/music/8bit-dungeon-boss.mp3
+Downloaded from: https://incompetech.com/music/royalty-free/mp3-royaltyfree/8bit%20Dungeon%20Boss.mp3

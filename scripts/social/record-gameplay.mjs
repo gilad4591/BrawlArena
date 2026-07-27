@@ -97,6 +97,16 @@ async function main() {
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle0' });
   await sleep(1200);
 
+  // App.js only assigns window.__app once its constructor finishes (dev-mode
+  // only, see App.js's `this._dev` check) — on a cold dev-server request
+  // (first hit after the Vite server has been idle a while) that can take
+  // noticeably longer than the fixed 1200ms above, so poll for it instead of
+  // assuming it's ready; this is what "Cannot set properties of undefined
+  // (setting 'coins')" below actually means when it happens.
+  for (let i = 0; i < 40 && !(await page.evaluate(() => !!window.__app)); i++) {
+    await sleep(250);
+  }
+
   // Dismiss the first-run daily-reward modal so it never appears on camera.
   await page.evaluate(() => {
     document.querySelector('[data-action="daily-close"]')?.click();

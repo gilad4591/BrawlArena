@@ -178,7 +178,90 @@ like a fighting-game character-select announcer.
 
 ---
 
-## 6. If you re-record footage later
+## 6. TikTok/Reels vertical clips (English only, for ElevenLabs)
+
+Three brand-new **vertical (1080x1920)** clips, distinct from the landscape
+Scripts A-C above — built by `scripts/social/tiktok-clips.mjs`, in
+`social-kit/video/tiktok/`. Each one:
+
+- is a fresh recording (different fighter + arena from anything else in this
+  kit): **Umbra** in the **Shadow Graveyard**, **Titania** at the **Sky
+  Temple**, **Golem** in the **Volcano**.
+- **speed-ramps** the repetitive/lower-interest beats (character select,
+  cosmetics browsing, the victory-screen hold run 1.6-1.8x faster) while
+  keeping the actual fight at real-time speed, so a ~37s raw recording
+  tightens to a punchier ~30-33s clip.
+- already has a **real royalty-free music bed** baked in — "8bit Dungeon
+  Boss" by Kevin MacLeod (incompetech.com), CC BY 3.0. **Paste the credit
+  text from `social-kit/music/CREDIT.txt` into each post's caption** (the
+  license requires attribution; a small on-screen credit is also burned
+  into the corner as a backup).
+- ends on a ~2.8s "DOWNLOAD NOW — App Store | Google Play" card. **No VO
+  needed under that card** — the lines below all end before it starts.
+- has **no voiceover baked in yet** — that's what these scripts are for.
+  Each clip's real post-speed-ramp beat timestamps are also saved to its own
+  `<name>.tiktok-timeline.json` right next to it, which is what the `AT`
+  column below was generated from (not guessed).
+
+Because the sped-up setup beats leave very tight windows (well under a
+second in places), each line below groups multiple beats into one natural
+sentence read continuously over its window, rather than one line per beat
+like Scripts A-C — try to actually match this pacing when recording, since
+a line read too slowly will run into the next one.
+
+**Once you have the ElevenLabs MP3s:** hand them + the matching plain video
+to a video editor and drop each line in at its `AT` second (same workflow as
+§2 above), or ask and this can be wired into a small "attach pre-rendered
+VO" mode of `narrate.mjs`'s ducking mixer (it already keeps each clip's
+`<name>_music.wav` sidecar around specifically so the real music can be
+ducked under real VO later, instead of needing to regenerate it).
+
+### Script D — Umbra in the Shadow Graveyard
+
+Video: `social-kit/video/tiktok/duel-umbra-graveyard.mp4` (32.9s, 9:16)
+Voice direction: hushed-but-menacing opener, energy ramps up through the
+combos, big triumphant hit on the K.O./CTA line.
+
+| # | AT (sec) | WINDOW | Line |
+|---|---|---|---|
+| 1 | 0.3 | ~10.3s | Brawl Arena — enter the Shadow Graveyard. Meet Umbra, the Night Reaper. |
+| 2 | 11.2 | ~1.7s | The fight begins! |
+| 3 | 13.5 | ~4.2s | Special attacks tear through the graveyard mist — |
+| 4 | 18.2 | ~3.5s | — combo after combo — |
+| 5 | 22.3 | ~1.6s | — no mercy. |
+| 6 | 26.2 | ~3.6s | K.O.! Victory! Download now — on the App Store and Google Play. |
+
+### Script E — Titania at the Sky Temple
+
+Video: `social-kit/video/tiktok/duel-titania-skytemple.mp4` (32.4s, 9:16)
+Voice direction: bright, regal opener; keep it graceful even through the
+combos — Titania is a control/ranged fighter, not a brawler.
+
+| # | AT (sec) | WINDOW | Line |
+|---|---|---|---|
+| 1 | 0.3 | ~10.3s | Brawl Arena — high above the clouds, at the Sky Temple. Meet Titania, the Nature Queen. |
+| 2 | 11.2 | ~1.6s | The fight begins! |
+| 3 | 13.4 | ~4.3s | Thorn arrows and bloom volleys rain down — |
+| 4 | 17.9 | ~3.6s | — precise, relentless — |
+| 5 | 21.9 | ~1.8s | — no escape. |
+| 6 | 25.9 | ~3.6s | K.O.! Victory! Download now — on the App Store and Google Play. |
+
+### Script F — Golem in the Volcano
+
+Video: `social-kit/video/tiktok/duel-golem-volcano.mp4` (33.0s, 9:16)
+Voice direction: heavy, booming, deliberate — Golem is a slow immovable
+tank, let the read feel weighty rather than fast/excited.
+
+| # | AT (sec) | WINDOW | Line |
+|---|---|---|---|
+| 1 | 0.3 | ~10.3s | Brawl Arena — down into the Volcano's heat. Meet Golem, the Stone Titan. |
+| 2 | 11.2 | ~1.7s | The ground shakes. |
+| 3 | 13.5 | ~4.5s | Boulder throws and bull rushes crush everything in their path — |
+| 4 | 18.3 | ~3.6s | — nothing survives Quake Slam — |
+| 5 | 22.4 | ~1.7s | — an unstoppable force. |
+| 6 | 26.3 | ~3.6s | K.O.! Victory! Download now — on the App Store and Google Play. |
+
+## 7. If you re-record footage later
 
 Both gameplay recordings can be regenerated any time with fresh, real
 timestamps — the recorder measures them live, it never guesses:
