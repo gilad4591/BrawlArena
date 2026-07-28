@@ -63,7 +63,14 @@ const SPEED_MAP = {
   'character select': 1.6,
   'cosmetics: aura equip': 1.7,
   'cosmetics: frame tab': 1.8,
-  'start match': 1.0,
+  // record-gameplay.mjs's "start match" beat briefly RE-SHOWS the
+  // character-select-style "confirm your fighter" screen (see its own
+  // "Back to setup, launch the match" comment) right before the fight
+  // actually begins — always been in the raw footage, but at real-time
+  // speed while everything around it is sped up, a viewer skimming this
+  // clip reads it as the fight restarting from a second character-select.
+  // Speed it into a near-subliminal flash/transition instead.
+  'start match': 4.5,
   fight: 1.0,
   'special (1)': 1.0,
   'special (2)': 1.0,

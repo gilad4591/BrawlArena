@@ -216,50 +216,59 @@ VO" mode of `narrate.mjs`'s ducking mixer (it already keeps each clip's
 `<name>_music.wav` sidecar around specifically so the real music can be
 ducked under real VO later, instead of needing to regenerate it).
 
+**Re-timed 2026-07-28** after fixing a pacing bug: the "start match" beat
+(a brief, ALWAYS-been-there re-flash of the character-select-style "confirm
+your fighter" screen right before the real fight, from record-gameplay.mjs's
+own "back to setup" step) was running at real-time speed like the fight
+itself, which — once everything *around* it got sped up — made the clip
+read as if it jumped back to character select and restarted. It's now
+sped ~4.5x into a sub-second flash, which shifted every later beat about
+1.8s earlier. Timings below are current.
+
 ### Script D — Umbra in the Shadow Graveyard
 
-Video: `social-kit/video/tiktok/duel-umbra-graveyard.mp4` (32.9s, 9:16)
+Video: `social-kit/video/tiktok/duel-umbra-graveyard.mp4` (30.6s, 9:16)
 Voice direction: hushed-but-menacing opener, energy ramps up through the
 combos, big triumphant hit on the K.O./CTA line.
 
 | # | AT (sec) | WINDOW | Line |
 |---|---|---|---|
-| 1 | 0.3 | ~10.3s | Brawl Arena — enter the Shadow Graveyard. Meet Umbra, the Night Reaper. |
-| 2 | 11.2 | ~1.7s | The fight begins! |
-| 3 | 13.5 | ~4.2s | Special attacks tear through the graveyard mist — |
-| 4 | 18.2 | ~3.5s | — combo after combo — |
-| 5 | 22.3 | ~1.6s | — no mercy. |
-| 6 | 26.2 | ~3.6s | K.O.! Victory! Download now — on the App Store and Google Play. |
+| 1 | 0.3 | ~8.5s | Brawl Arena — enter the Shadow Graveyard. Meet Umbra, the Night Reaper. |
+| 2 | 9.4 | ~1.9s | The fight begins! |
+| 3 | 11.6 | ~4.1s | Special attacks tear through the graveyard mist — |
+| 4 | 16.3 | ~3.3s | — combo after combo — |
+| 5 | 20.4 | ~3.3s | — no mercy. |
+| 6 | 24.2 | ~3.6s | K.O.! Victory! Download now — on the App Store and Google Play. |
 
 ### Script E — Titania at the Sky Temple
 
-Video: `social-kit/video/tiktok/duel-titania-skytemple.mp4` (32.4s, 9:16)
+Video: `social-kit/video/tiktok/duel-titania-skytemple.mp4` (30.0s, 9:16)
 Voice direction: bright, regal opener; keep it graceful even through the
 combos — Titania is a control/ranged fighter, not a brawler.
 
 | # | AT (sec) | WINDOW | Line |
 |---|---|---|---|
-| 1 | 0.3 | ~10.3s | Brawl Arena — high above the clouds, at the Sky Temple. Meet Titania, the Nature Queen. |
-| 2 | 11.2 | ~1.6s | The fight begins! |
-| 3 | 13.4 | ~4.3s | Thorn arrows and bloom volleys rain down — |
-| 4 | 17.9 | ~3.6s | — precise, relentless — |
-| 5 | 21.9 | ~1.8s | — no escape. |
-| 6 | 25.9 | ~3.6s | K.O.! Victory! Download now — on the App Store and Google Play. |
+| 1 | 0.3 | ~8.5s | Brawl Arena — high above the clouds, at the Sky Temple. Meet Titania, the Nature Queen. |
+| 2 | 9.4 | ~1.9s | The fight begins! |
+| 3 | 11.6 | ~4.0s | Thorn arrows and bloom volleys rain down — |
+| 4 | 16.1 | ~3.4s | — precise, relentless — |
+| 5 | 20.0 | ~3.4s | — no escape. |
+| 6 | 24.0 | ~3.6s | K.O.! Victory! Download now — on the App Store and Google Play. |
 
 ### Script F — Golem in the Volcano
 
-Video: `social-kit/video/tiktok/duel-golem-volcano.mp4` (33.0s, 9:16)
+Video: `social-kit/video/tiktok/duel-golem-volcano.mp4` (30.7s, 9:16)
 Voice direction: heavy, booming, deliberate — Golem is a slow immovable
 tank, let the read feel weighty rather than fast/excited.
 
 | # | AT (sec) | WINDOW | Line |
 |---|---|---|---|
-| 1 | 0.3 | ~10.3s | Brawl Arena — down into the Volcano's heat. Meet Golem, the Stone Titan. |
-| 2 | 11.2 | ~1.7s | The ground shakes. |
-| 3 | 13.5 | ~4.5s | Boulder throws and bull rushes crush everything in their path — |
-| 4 | 18.3 | ~3.6s | — nothing survives Quake Slam — |
-| 5 | 22.4 | ~1.7s | — an unstoppable force. |
-| 6 | 26.3 | ~3.6s | K.O.! Victory! Download now — on the App Store and Google Play. |
+| 1 | 0.3 | ~8.5s | Brawl Arena — down into the Volcano's heat. Meet Golem, the Stone Titan. |
+| 2 | 9.4 | ~1.9s | The ground shakes. |
+| 3 | 11.6 | ~4.3s | Boulder throws and bull rushes crush everything in their path — |
+| 4 | 16.3 | ~3.7s | — nothing survives Quake Slam — |
+| 5 | 20.6 | ~3.2s | — an unstoppable force. |
+| 6 | 24.4 | ~3.6s | K.O.! Victory! Download now — on the App Store and Google Play. |
 
 ## 7. If you re-record footage later
 
