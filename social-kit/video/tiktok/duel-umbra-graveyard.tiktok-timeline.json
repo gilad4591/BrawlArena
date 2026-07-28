@@ -3,7 +3,7 @@
   "character": "umbra",
   "arena": "shadow_graveyard",
   "display": "Umbra - Shadow Graveyard",
-  "duration": 30.6,
+  "duration": 38,
   "marks": [
     {
       "label": "menu",
@@ -51,11 +51,11 @@
     },
     {
       "label": "end",
-      "t": 28.27
+      "t": 30.82
     },
     {
       "label": "end",
-      "t": 28.78
+      "t": 31.33
     }
   ]
 }

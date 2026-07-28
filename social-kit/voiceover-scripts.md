@@ -188,15 +188,18 @@ Scripts A-C above — built by `scripts/social/tiktok-clips.mjs`, in
   kit): **Umbra** in the **Shadow Graveyard**, **Titania** at the **Sky
   Temple**, **Golem** in the **Volcano**.
 - **speed-ramps** the repetitive/lower-interest beats (character select,
-  cosmetics browsing, the victory-screen hold run 1.6-1.8x faster) while
-  keeping the actual fight at real-time speed, so a ~37s raw recording
-  tightens to a punchier ~30-33s clip.
+  cosmetics browsing) while keeping the actual fight — and the victory/
+  podium screen — at real-time speed, so viewers actually get to read the
+  "VICTORY! You placed #1" podium instead of it flashing by.
 - already has a **real royalty-free music bed** baked in — "8bit Dungeon
   Boss" by Kevin MacLeod (incompetech.com), CC BY 3.0. **Paste the credit
   text from `social-kit/music/CREDIT.txt` into each post's caption** (the
   license requires attribution; a small on-screen credit is also burned
   into the corner as a backup).
-- ends on a ~2.8s "DOWNLOAD NOW — App Store | Google Play" card. **No VO
+- ends on a ~3.4s outro: the frozen podium frame holds on its own for the
+  first ~1.0s, then a "DOWNLOAD NOW — App Store | Google Play" card art
+  (not drawtext — a real illustrated card, `social-kit/assets/download-now-
+  card.png`) fades in over it across ~0.5s and holds for the rest. **No VO
   needed under that card** — the lines below all end before it starts.
 - has **no voiceover baked in yet** — that's what these scripts are for.
   Each clip's real post-speed-ramp beat timestamps are also saved to its own
@@ -225,9 +228,22 @@ read as if it jumped back to character select and restarted. It's now
 sped ~4.5x into a sub-second flash, which shifted every later beat about
 1.8s earlier. Timings below are current.
 
+**Updated again 2026-07-28** (same day, second pass) on more feedback: the
+victory/podium screen is no longer sped up at all (was 1.6x — too fast to
+actually read "VICTORY!"), and the outro no longer slams the CTA card down
+the instant the fight ends — it now holds on the clean podium for ~1s and
+fades the card in over ~0.5s. This only pushed the *end* of each clip out
+by a few seconds (clips are now ~37-38s instead of ~30s); every `AT` value
+below (all timed to beats before the victory hold starts) is unchanged and
+still accurate — the extra time just becomes unused breathing room at the
+tail after each line 6 finishes, before the CTA fades in. The outro card
+art itself was also redone from scratch (`social-kit/assets/download-now-
+card.png`) with a clean chroma-keyed cutout instead of the rough first
+attempt.
+
 ### Script D — Umbra in the Shadow Graveyard
 
-Video: `social-kit/video/tiktok/duel-umbra-graveyard.mp4` (30.6s, 9:16)
+Video: `social-kit/video/tiktok/duel-umbra-graveyard.mp4` (38.0s, 9:16)
 Voice direction: hushed-but-menacing opener, energy ramps up through the
 combos, big triumphant hit on the K.O./CTA line.
 
@@ -242,7 +258,7 @@ combos, big triumphant hit on the K.O./CTA line.
 
 ### Script E — Titania at the Sky Temple
 
-Video: `social-kit/video/tiktok/duel-titania-skytemple.mp4` (30.0s, 9:16)
+Video: `social-kit/video/tiktok/duel-titania-skytemple.mp4` (37.4s, 9:16)
 Voice direction: bright, regal opener; keep it graceful even through the
 combos — Titania is a control/ranged fighter, not a brawler.
 
@@ -257,7 +273,7 @@ combos — Titania is a control/ranged fighter, not a brawler.
 
 ### Script F — Golem in the Volcano
 
-Video: `social-kit/video/tiktok/duel-golem-volcano.mp4` (30.7s, 9:16)
+Video: `social-kit/video/tiktok/duel-golem-volcano.mp4` (38.1s, 9:16)
 Voice direction: heavy, booming, deliberate — Golem is a slow immovable
 tank, let the read feel weighty rather than fast/excited.
 

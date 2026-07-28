@@ -3,7 +3,7 @@
   "character": "titania",
   "arena": "sky_temple",
   "display": "Titania - Sky Temple",
-  "duration": 30.03,
+  "duration": 37.4,
   "marks": [
     {
       "label": "menu",
@@ -51,11 +51,11 @@
     },
     {
       "label": "end",
-      "t": 27.97
+      "t": 30.52
     },
     {
       "label": "end",
-      "t": 28.16
+      "t": 30.71
     }
   ]
 }

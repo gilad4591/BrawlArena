@@ -42,7 +42,12 @@ fs.mkdirSync(TMP, { recursive: true });
 const FONT = 'C:/Windows/Fonts/arialbd.ttf';
 const MUSIC_SRC = path.join(ROOT, 'social-kit', 'music', '8bit-dungeon-boss.mp3');
 const PORT = process.argv[2] || '5180';
-const OUTRO_DUR = 2.8;
+const OUTRO_DUR = 3.4;
+// Let the frozen victory/podium frame sit on screen, uncovered, for a beat
+// before the CTA card fades in over it — appearing instantly (tried first)
+// read as an abrupt cut that didn't give the podium any time to register.
+const OUTRO_HOLD = 1.0;
+const OUTRO_FADE = 0.5;
 const CREDIT = 'Music: Kevin MacLeod (incompetech.com)';
 const CARD_IMG = path.join(ROOT, 'social-kit', 'assets', 'download-now-card.png');
 
@@ -77,7 +82,10 @@ const SPEED_MAP = {
   'special (2)': 1.0,
   'special (3)': 1.0,
   'finishing blow': 1.0,
-  'victory hold': 1.6,
+  // Real-time (not sped up): this is the actual victory/podium screen —
+  // speeding it up (1.6x, tried first) left too little time to actually
+  // register the podium before the outro CTA card covers it.
+  'victory hold': 1.0,
 };
 
 function run(args) {
@@ -200,11 +208,22 @@ async function buildScenario({ outName, character, arena, display }) {
   // (placement/XP/coin toasts, Share/Change Fighter/Main Menu buttons)
   // underneath — a merely semi-transparent/shorter bar (tried first) let
   // those bleed through around the CTA text, which read as messy/cluttered.
+  //
+  // The bar+card are built as their own transparent-background layer first
+  // (drawn onto a fully transparent 1080x1920 canvas via the `color=
+  // black@0.0` source below), then that whole layer is faded in (alpha
+  // 0->1 via fade=...:alpha=1, RGB untouched) starting at OUTRO_HOLD and
+  // finishing OUTRO_FADE later, and only THEN overlaid onto the frozen
+  // podium frame — so the clip holds on a clean, uncovered shot of the
+  // podium for OUTRO_HOLD seconds first, and the CTA eases in afterwards
+  // instead of slamming down the instant the fight ends.
   const bar = 'drawbox=x=0:y=(ih/2)-280:w=iw:h=560:color=black@0.94:t=fill';
   const outroFilter =
-    `[0:v]${bar}[bg];` +
+    `color=black@0.0:s=1080x1920,format=rgba,${bar}[barLayer];` +
     `[1:v]scale=1080:1920:force_original_aspect_ratio=decrease[card];` +
-    `[bg][card]overlay=(W-w)/2:(H-h)/2,${creditDraw}[out]`;
+    `[barLayer][card]overlay=(W-w)/2:(H-h)/2:format=auto[cta];` +
+    `[cta]fade=t=in:st=${OUTRO_HOLD}:d=${OUTRO_FADE}:alpha=1[ctaFaded];` +
+    `[0:v][ctaFaded]overlay=0:0:format=auto,${creditDraw}[out]`;
   const outro = path.join(TMP, `${outName}_outro.mp4`);
   run([
     '-y', '-loop', '1', '-i', lastFrame, '-loop', '1', '-i', CARD_IMG,

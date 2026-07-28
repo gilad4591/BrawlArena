@@ -3,7 +3,7 @@
   "character": "golem",
   "arena": "volcano",
   "display": "Golem - Volcano",
-  "duration": 30.67,
+  "duration": 38.07,
   "marks": [
     {
       "label": "menu",
@@ -51,11 +51,11 @@
     },
     {
       "label": "end",
-      "t": 28.35
+      "t": 30.91
     },
     {
       "label": "end",
-      "t": 28.87
+      "t": 31.43
     }
   ]
 }
