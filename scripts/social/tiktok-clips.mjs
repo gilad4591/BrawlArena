@@ -44,6 +44,7 @@ const MUSIC_SRC = path.join(ROOT, 'social-kit', 'music', '8bit-dungeon-boss.mp3'
 const PORT = process.argv[2] || '5180';
 const OUTRO_DUR = 2.8;
 const CREDIT = 'Music: Kevin MacLeod (incompetech.com)';
+const CARD_IMG = path.join(ROOT, 'social-kit', 'assets', 'download-now-card.png');
 
 // Three fresh matchups, distinct from the two already recorded
 // (brawl-arena-promo.mp4 = Solaris/Forest, duel-volt-neon.mp4 = Volt/Neon
@@ -181,9 +182,17 @@ async function buildScenario({ outName, character, arena, display }) {
     vertical,
   ]);
 
-  // 4) Outro card — freeze the final frame and lay a "DOWNLOAD NOW" card
-  // over it (same -loop 1 -i <still> pattern video.mjs already uses for
-  // its Ken-Burns slideshow clips).
+  // 4) Outro card — freeze the final frame and lay the "DOWNLOAD NOW" card
+  // art over it (same -loop 1 -i <still> pattern video.mjs already uses for
+  // its Ken-Burns slideshow clips). The card is a pre-baked PNG (logo +
+  // glow art + "DOWNLOAD NOW" + store badges, see social-kit/assets/
+  // download-now-card.png) rather than drawtext lines — much better
+  // typography/art than anything drawtext can produce. It started life as
+  // a Gemini image that was supposed to have a transparent background but
+  // actually just painted a literal checkerboard pattern as opaque pixels
+  // (no real alpha channel at all); scripts/social/_dechecker.mjs recovered
+  // real transparency from it by keying out the checkerboard's two neutral-
+  // gray tones.
   const lastFrame = path.join(TMP, `${outName}_lastframe.png`);
   run(['-y', '-sseof', '-0.1', '-i', vertical, '-frames:v', '1', '-q:v', '2', lastFrame]);
 
@@ -192,13 +201,15 @@ async function buildScenario({ outName, character, arena, display }) {
   // underneath — a merely semi-transparent/shorter bar (tried first) let
   // those bleed through around the CTA text, which read as messy/cluttered.
   const bar = 'drawbox=x=0:y=(ih/2)-280:w=iw:h=560:color=black@0.94:t=fill';
-  const line3 = `drawtext=fontfile='${FONT}':text='BRAWL ARENA':fontsize=40:fontcolor=white@0.9:x=(w-text_w)/2:y=(h/2)-190`;
-  const line1 = `drawtext=fontfile='${FONT}':text='DOWNLOAD NOW':fontsize=80:fontcolor=white:x=(w-text_w)/2:y=(h/2)-90`;
-  const line2 = `drawtext=fontfile='${FONT}':text='App Store  |  Google Play':fontsize=46:fontcolor=#ffd24a:x=(w-text_w)/2:y=(h/2)+30`;
+  const outroFilter =
+    `[0:v]${bar}[bg];` +
+    `[1:v]scale=1080:1920:force_original_aspect_ratio=decrease[card];` +
+    `[bg][card]overlay=(W-w)/2:(H-h)/2,${creditDraw}[out]`;
   const outro = path.join(TMP, `${outName}_outro.mp4`);
   run([
-    '-y', '-loop', '1', '-i', lastFrame, '-t', String(OUTRO_DUR),
-    '-vf', `${bar},${line1},${line2},${line3},${creditDraw}`, '-r', '30',
+    '-y', '-loop', '1', '-i', lastFrame, '-loop', '1', '-i', CARD_IMG,
+    '-filter_complex', outroFilter, '-map', '[out]',
+    '-t', String(OUTRO_DUR), '-r', '30',
     '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', '-pix_fmt', 'yuv420p',
     outro,
   ]);
