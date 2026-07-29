@@ -12,7 +12,7 @@ import path from 'node:path';
 import { asc } from './asc-api.mjs';
 
 const APP_ID = '6795069080'; // Brawl Arena
-const BUNDLE_VERSION = '53'; // CFBundleVersion (must match the IPA's Info.plist)
+const BUNDLE_VERSION = '54'; // CFBundleVersion (must match the IPA's Info.plist)
 const BUNDLE_SHORT_VERSION = '4.10.9';
 
 const ipaPath = process.argv[2];
