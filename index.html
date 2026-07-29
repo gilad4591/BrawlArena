@@ -96,6 +96,25 @@
         letter-spacing: 0.3em; text-transform: uppercase;
         text-shadow: 0 2px 8px rgba(0,0,0,0.8);
       }
+      /* Real, always-in-DOM description + links, shown for the brief moment
+         before the game mounts (or for as long as a slow/cold server takes).
+         This exists so a crawler that never waits for the JS app to finish
+         mounting still sees genuine page content instead of just a logo and
+         the word "Loading" — not hidden/cloaked, just small and muted since
+         normal users only glimpse it for a second or two. */
+      #boot-splash .bs-desc {
+        max-width: 320px; margin-top: 4px;
+        color: #a9b3d6; font: 400 12.5px/1.5 system-ui, sans-serif;
+        text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+      }
+      #boot-splash .bs-links {
+        margin-top: 2px; font: 600 11px system-ui, sans-serif;
+        letter-spacing: 0.03em;
+      }
+      #boot-splash .bs-links a {
+        color: #ffd7a8; text-decoration: none; border-bottom: 1px solid rgba(255,215,168,0.4);
+      }
+      #boot-splash .bs-links span { color: #6b76a3; margin: 0 8px; }
     </style>
   </head>
   <body>
@@ -105,8 +124,19 @@
         <div class="bs-logo">BRAWL<span>ARENA</span></div>
         <div class="bs-loader"><i id="boot-bar"></i></div>
         <div class="bs-sub">Loading…</div>
+        <p class="bs-desc">Brawl Arena is a fast, arcade-style fighting game. Pick a fighter, master combos and special attacks, and battle across unique arenas — free to play, with characters and arenas to unlock.</p>
+        <nav class="bs-links">
+          <a href="/about.html">About</a><span>·</span><a href="/privacy.html">Privacy Policy</a>
+        </nav>
       </div>
     </div>
+    <noscript>
+      <div style="max-width:480px;margin:40px auto;padding:0 20px;color:#eef1ff;font:15px/1.6 system-ui,sans-serif;text-align:center;">
+        <h1>Brawl Arena</h1>
+        <p>Brawl Arena is a fast, arcade-style fighting game. Pick a fighter, master combos and special attacks, and battle across unique arenas.</p>
+        <p><a href="/about.html" style="color:#ffd7a8;">About</a> &middot; <a href="/privacy.html" style="color:#ffd7a8;">Privacy Policy</a></p>
+      </div>
+    </noscript>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
