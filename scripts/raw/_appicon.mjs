@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { PNG } from 'pngjs';
+import ffmpegPath from 'ffmpeg-static';
 
 // Turns the AI-generated icon (orange rounded badge with a fist on a grey
 // backdrop) into every asset the app needs:
@@ -11,6 +13,7 @@ import { PNG } from 'pngjs';
 
 const SRC = 'scripts/raw/appicon-src.png';
 const RES = 'android/app/src/main/res';
+const IOS_ICON = 'ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png';
 
 const read = (p) => {
   const png = PNG.sync.read(fs.readFileSync(p));
@@ -29,7 +32,12 @@ const at = (img, x, y) => (y * img.w + x) * 4;
 const isGrey = (r, g, b) => {
   const mx = Math.max(r, g, b);
   const mn = Math.min(r, g, b);
-  return mx - mn < 22 && mx >= 178 && mx <= 246;
+  // Widened from [178,246] -- the original badge's anti-aliased edge and its
+  // drop shadow blend down into darker, bluish-grey tones (as low as ~120)
+  // that the tighter range missed, leaving a faint "ghost ring" of the
+  // original rounded-badge outline baked into what's supposed to be a
+  // full-bleed edge-to-edge square (see bleed()).
+  return mx - mn < 26 && mx >= 120 && mx <= 246;
 };
 
 // ---- 1. auto-crop the orange badge (drop the grey backdrop) ----------------
@@ -64,7 +72,7 @@ const sample = (img, fx, fy) => {
 };
 
 // ---- 2. full-bleed square: gradient-fill corners, overlay badge (skip grey) --
-function bleed(badge, zoom = 1.05) {
+function bleed(badge, zoom = 1.16) {
   const S = Math.round(Math.max(badge.w, badge.h));
   const out = mk(S, S);
   const tl = sample(badge, badge.w * 0.16, badge.h * 0.16);
@@ -247,6 +255,16 @@ if (process.env.ICON_APPLY === '1') {
     write(`${RES}/mipmap-${dpi}/ic_launcher_foreground.png`, centerOn(fist, s, 0.58));
   }
   write('store-assets/icon-512.png', resize(full, 512, 512)); // Play product icon (opaque)
+  // iOS wants a full-bleed square with NO pre-baked rounding/shadow -- it
+  // applies its own corner mask at render time. Feeding it an already-
+  // rounded image (what used to live here) creates a double-rounded /
+  // ghost-ring look on the home screen and in App Store Connect previews.
+  write(IOS_ICON, resize(full, 1024, 1024));
+  // pngjs always encodes RGBA -- App Store Connect rejects icons (like it
+  // rejects screenshots) that carry an alpha channel at all, even fully
+  // opaque. Flatten to RGB24 in place.
+  execFileSync(ffmpegPath, ['-y', '-i', IOS_ICON, '-vf', 'format=rgb24', IOS_ICON + '.tmp.png'], { stdio: 'ignore' });
+  fs.renameSync(IOS_ICON + '.tmp.png', IOS_ICON);
   write('public/icons/icon-512.png', rounded(resize(full, 512, 512), 0.18));
   write('public/icons/icon-192.png', rounded(resize(full, 192, 192), 0.18));
   write('public/icons/apple-touch-icon.png', resize(full, 180, 180)); // iOS rounds itself
