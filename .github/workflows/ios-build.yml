@@ -15,17 +15,6 @@ name: iOS Build
 #        IOS_TEAM_ID                your Apple Developer Team ID
 #        VITE_MP_RELAY_URL          (optional) wss URL for multiplayer
 #
-#      Optional: set these three to also auto-upload the signed IPA to App
-#      Store Connect at the end of the job (via `xcrun altool`, API-key
-#      auth — no Apple ID password/2FA needed), skipping the manual
-#      Transporter step entirely:
-#        APP_STORE_CONNECT_API_KEY_ID       "Key ID" from Users and Access ->
-#                                            Integrations -> App Store
-#                                            Connect API
-#        APP_STORE_CONNECT_API_ISSUER_ID    "Issuer ID" on that same page
-#        APP_STORE_CONNECT_API_KEY_BASE64   base64 of the downloaded
-#                                            AuthKey_<id>.p8
-#
 #      Get a distribution cert + App Store provisioning profile from
 #      https://developer.apple.com/account/resources (requires a paid Apple
 #      Developer Program membership). Once the secrets above are set, also
@@ -190,43 +179,3 @@ jobs:
           name: brawl-arena-ios-ipa
           path: ios/App/build/ipa/*.ipa
           if-no-files-found: error
-
-      - name: Upload build to App Store Connect
-        # Fully replaces the "download the artifact, open Transporter"
-        # manual step — Transporter's graphical app is Mac-only anyway (the
-        # Windows download is a Java-based CLI tool, not the drag-and-drop
-        # app), and this runner already has Xcode + altool, so just upload
-        # straight from CI. Auth is API-key-based (JWT), no Apple ID
-        # password/2FA prompt involved. Requires these repo secrets:
-        #   APP_STORE_CONNECT_API_KEY_ID       "Key ID" from the ASC
-        #                                       Integrations page
-        #   APP_STORE_CONNECT_API_ISSUER_ID    "Issuer ID" from that same
-        #                                       page (same for every key)
-        #   APP_STORE_CONNECT_API_KEY_BASE64   base64 of the AuthKey_*.p8
-        #                                       downloaded when creating it
-        # Only runs once those are set — until then this step is skipped,
-        # not failed, so the artifact upload above still lets you upload
-        # manually via Transporter as a fallback.
-        if: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 != '' }}
-        working-directory: ios/App
-        env:
-          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
-          API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
-        run: |
-          mkdir -p ~/private_keys
-          echo "$API_KEY_BASE64" | base64 -d > ~/private_keys/AuthKey_"$API_KEY_ID".p8
-
-          IPA_PATH=$(ls build/ipa/*.ipa | head -n1)
-          BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleVersion" build/App.xcarchive/Info.plist)
-          BUNDLE_SHORT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleShortVersionString" build/App.xcarchive/Info.plist)
-          echo "Uploading $IPA_PATH (version $BUNDLE_SHORT_VERSION, build $BUNDLE_VERSION)"
-
-          xcrun altool --upload-package "$IPA_PATH" \
-            -t ios \
-            --apiKey "$API_KEY_ID" \
-            --apiIssuer "$API_ISSUER_ID" \
-            --apple-id 6795069080 \
-            --bundle-id com.gilad4591.brawlarena \
-            --bundle-version "$BUNDLE_VERSION" \
-            --bundle-short-version-string "$BUNDLE_SHORT_VERSION"
