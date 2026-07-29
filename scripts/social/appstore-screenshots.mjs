@@ -87,7 +87,12 @@ for (const [video, t, label, caption] of SHOTS) {
       `[0:v]scale=${w}:${h},gblur=sigma=30,eq=brightness=-0.15[bg];` +
       `[0:v]scale=${w}:${h}:force_original_aspect_ratio=decrease[fg];` +
       `[bg][fg]overlay=(W-w)/2:(H-h)/2[comp];` +
-      `[comp]${watermark}${captionDraw}[out]`;
+      // format=rgb24 strips any alpha plane the overlay/gblur filters carry
+      // through — App Store Connect flat-out rejects screenshots with an
+      // alpha channel ("Images can't contain alpha channels or
+      // transparencies"), and ffmpeg's default PNG encoder otherwise keeps
+      // one even though the image is fully opaque.
+      `[comp]${watermark}${captionDraw},format=rgb24[out]`;
     // PNG output (not JPG) — App Store Connect requires PNG or JPEG, and
     // PNG avoids any extra compression artifacts on the sharp foreground.
     run(['-y', '-i', frame, '-filter_complex', filter, '-map', '[out]', '-frames:v', '1', out]);
