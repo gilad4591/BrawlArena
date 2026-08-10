@@ -58,7 +58,10 @@ jobs:
         run: npm ci
 
       - name: Build web bundle
-        run: npm run build
+        # --mode capacitor excludes the web-only marketing/SEO pages
+        # (marketing-pages/, see vite.config.js) from dist/ before it's
+        # packaged into the native app via cap sync below.
+        run: npm run build:capacitor
         env:
           VITE_MP_RELAY_URL: ${{ secrets.VITE_MP_RELAY_URL }}
 
@@ -97,7 +100,10 @@ jobs:
         run: npm ci
 
       - name: Build web bundle
-        run: npm run build
+        # --mode capacitor excludes the web-only marketing/SEO pages
+        # (marketing-pages/, see vite.config.js) from dist/ before it's
+        # packaged into the native app via cap sync below.
+        run: npm run build:capacitor
         env:
           VITE_MP_RELAY_URL: ${{ secrets.VITE_MP_RELAY_URL }}
 

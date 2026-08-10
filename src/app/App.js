@@ -202,7 +202,7 @@ export class App {
         <p class="footer-note">${
           this._isNative()
             ? ''
-            : '<a href="/about.html" class="foot-link" target="_blank" rel="noopener">About</a> · <a href="/privacy.html" class="foot-link" target="_blank" rel="noopener">Privacy</a>'
+            : '<a href="/how-to-play.html" class="foot-link" target="_blank" rel="noopener">How to Play</a> · <a href="/fighters.html" class="foot-link" target="_blank" rel="noopener">Fighters</a> · <a href="/cosmetics.html" class="foot-link" target="_blank" rel="noopener">Cosmetics</a> · <a href="/about.html" class="foot-link" target="_blank" rel="noopener">About</a> · <a href="/privacy.html" class="foot-link" target="_blank" rel="noopener">Privacy</a>'
         }</p>
       </div>
 
