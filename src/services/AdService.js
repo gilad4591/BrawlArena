@@ -114,12 +114,15 @@ export class AdService {
     try {
       const mod = await import('@capacitor-community/admob');
       this.AdMob = mod.AdMob;
+      // iOS App Tracking Transparency FIRST, before the Mobile Ads SDK starts
+      // (Apple/Google's documented order — see _requestTrackingAuthorization).
+      await this._requestTrackingAuthorization();
       await this.AdMob.initialize({
         initializeForTesting: ADS.useTestAds,
         testingDevices: ADS.testDeviceIds || [],
       });
       this.ready = true;
-      await this._requestConsent();
+      await this._requestConsentForm();
       this._prepareInterstitial();
     } catch (err) {
       console.warn('[ads] AdMob init failed:', err);
@@ -127,23 +130,38 @@ export class AdService {
   }
 
   /**
-   * GDPR (UMP) consent + iOS App Tracking Transparency, in Google's
-   * recommended order: consent info -> (iOS) ATT prompt -> consent form if
-   * required. Every step is best-effort — a failure here should never block
-   * ads entirely, it just means we fall back to non-personalized ads.
+   * iOS App Tracking Transparency. Two things matter here, both learned from
+   * an App Review rejection (Guideline 2.1 — "unable to locate the App
+   * Tracking Transparency permission request"):
+   *   1. Order: request it BEFORE initializing the Mobile Ads SDK, not after
+   *      — Apple requires the prompt to appear before any tracking-eligible
+   *      data collection starts, and Google's own docs recommend the same
+   *      order.
+   *   2. Timing: this fires during `bootstrap()`, within milliseconds of the
+   *      WKWebView's JS starting — often before the app is genuinely
+   *      foregrounded/`.active` on a cold launch (still mid-transition from
+   *      the launch screen). Requesting ATT in that window makes iOS
+   *      silently skip showing the system dialog at all (no error — the
+   *      completion handler still resolves) instead of queuing it, which is
+   *      exactly the symptom App Review reported. A short settle delay gives
+   *      the launch transition time to finish first.
    */
-  async _requestConsent() {
-    if (!this.AdMob) return;
+  async _requestTrackingAuthorization() {
+    if (this.platform !== 'ios' || !this.AdMob?.trackingAuthorizationStatus) return;
     try {
-      if (this.platform === 'ios' && this.AdMob.trackingAuthorizationStatus) {
-        const tracking = await this.AdMob.trackingAuthorizationStatus();
-        if (tracking?.status === 'notDetermined') {
-          await this.AdMob.requestTrackingAuthorization();
-        }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const tracking = await this.AdMob.trackingAuthorizationStatus();
+      if (tracking?.status === 'notDetermined') {
+        await this.AdMob.requestTrackingAuthorization();
       }
     } catch (err) {
       console.warn('[ads] ATT request failed:', err);
     }
+  }
+
+  /** GDPR (UMP) consent form — best-effort, never blocks ads entirely. */
+  async _requestConsentForm() {
+    if (!this.AdMob) return;
     try {
       const consentInfo = await this.AdMob.requestConsentInfo();
       if (consentInfo?.isConsentFormAvailable && !consentInfo.canRequestAds) {
