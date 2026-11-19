@@ -1,0 +1,128 @@
+name: iOS ATT screen recording
+
+# Records a screen video of the App Tracking Transparency prompt on an iOS
+# Simulator (fresh install -> launch -> ATT prompt -> tap Allow -> main menu),
+# for App Review (Guideline 2.1 "show us the ATT permission request").
+# Output: the `att-recording` artifact (att-recording.mp4 + screenshots).
+
+on:
+  push:
+    branches: [ci/att-recording]
+  workflow_dispatch:
+
+jobs:
+  record:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build web bundle
+        run: npm run build:capacitor
+        env:
+          VITE_MP_RELAY_URL: ${{ secrets.VITE_MP_RELAY_URL }}
+
+      - run: npx cap sync ios
+
+      - name: Pick and boot an iPhone simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          d = json.load(sys.stdin)["devices"]
+          best = None
+          for rt, devs in d.items():
+              if "iOS" not in rt: continue
+              for x in devs:
+                  if x["name"].startswith("iPhone") and "Pro" in x["name"]:
+                      key = (rt, "Max" in x["name"], x["name"])
+                      if best is None or key > best[0]: best = (key, x["udid"])
+          print(best[1])')
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+          xcrun simctl list devices | grep "$UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+
+      - name: Build app for the simulator
+        working-directory: ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App \
+            -sdk iphonesimulator -configuration Release \
+            -destination "id=$UDID" -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build | tail -20
+
+      - name: Install idb (to tap the system alert)
+        continue-on-error: true
+        run: |
+          brew tap facebook/fb
+          brew install idb-companion
+          python3 -m venv "$RUNNER_TEMP/idb"
+          "$RUNNER_TEMP/idb/bin/pip" install fb-idb
+          echo "$RUNNER_TEMP/idb/bin" >> "$GITHUB_PATH"
+
+      - name: Record fresh install -> launch -> ATT prompt -> Allow
+        run: |
+          set -x
+          mkdir -p out
+          APP=ios/App/build/Build/Products/Release-iphonesimulator/App.app
+          BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")
+          xcrun simctl uninstall "$UDID" "$BUNDLE" || true
+          xcrun simctl privacy "$UDID" reset all || true
+          xcrun simctl install "$UDID" "$APP"
+
+          xcrun simctl io "$UDID" recordVideo --codec h264 --force out/att-recording.mp4 &
+          REC=$!
+          sleep 3
+          xcrun simctl launch "$UDID" "$BUNDLE"
+
+          # Wait for the system ATT alert, then tap "Allow".
+          TAPPED=no
+          for i in $(seq 1 20); do
+            sleep 1
+            if command -v idb >/dev/null; then
+              idb ui describe-all --udid "$UDID" --json > out/ax.json 2>/dev/null || continue
+              XY=$(python3 - <<'PY'
+          import json
+          try:
+              items = json.load(open("out/ax.json"))
+          except Exception:
+              items = []
+          for it in items:
+              label = (it.get("AXLabel") or "").strip()
+              if label == "Allow":
+                  f = it["frame"]
+                  print(f'{f["x"] + f["width"] / 2} {f["y"] + f["height"] / 2}')
+                  break
+          PY
+              )
+              if [ -n "$XY" ]; then
+                xcrun simctl io "$UDID" screenshot out/1-att-prompt.png
+                sleep 3
+                idb ui tap --udid "$UDID" $XY
+                TAPPED=yes
+                break
+              fi
+            fi
+          done
+          echo "TAPPED=$TAPPED"
+          [ "$TAPPED" = yes ] || xcrun simctl io "$UDID" screenshot out/1-no-allow-found.png
+
+          # Show the flow that follows (main menu / game).
+          sleep 10
+          xcrun simctl io "$UDID" screenshot out/2-after-prompt.png
+          kill -INT $REC
+          wait $REC || true
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: att-recording
+          path: out/
