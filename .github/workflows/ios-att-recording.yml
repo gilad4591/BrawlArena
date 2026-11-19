@@ -106,7 +106,18 @@ jobs:
               if [ -n "$XY" ]; then
                 xcrun simctl io "$UDID" screenshot out/1-att-prompt.png
                 sleep 3
-                idb ui tap --udid "$UDID" $XY && TAPPED=yes
+                set -- $XY
+                # Try portrait-space coords first, then the landscape-rotated
+                # equivalents (the game runs in landscape); stop as soon as the
+                # screen changes (= alert dismissed).
+                for P in "$1 $2" "$2 $((440 - $1))" "$((956 - $2)) $1"; do
+                  idb ui tap --udid "$UDID" $P || true
+                  sleep 2
+                  xcrun simctl io "$UDID" screenshot out/check.png
+                  if ! cmp -s out/check.png out/1-att-prompt.png; then
+                    echo "dismissed with tap at $P"; TAPPED=yes; break
+                  fi
+                done
                 break
               fi
             fi
