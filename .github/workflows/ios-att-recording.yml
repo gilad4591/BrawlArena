@@ -62,7 +62,8 @@ jobs:
         continue-on-error: true
         run: |
           brew tap facebook/fb
-          brew install idb-companion
+          brew trust facebook/fb || true
+          brew install facebook/fb/idb-companion
           python3 -m venv "$RUNNER_TEMP/idb"
           "$RUNNER_TEMP/idb/bin/pip" install fb-idb
           echo "$RUNNER_TEMP/idb/bin" >> "$GITHUB_PATH"
@@ -87,7 +88,7 @@ jobs:
           for i in $(seq 1 20); do
             sleep 1
             if command -v idb >/dev/null; then
-              idb ui describe-all --udid "$UDID" --json > out/ax.json 2>/dev/null || continue
+              idb ui describe-all --udid "$UDID" --json > out/ax.json 2>out/idb-err.txt || { tail -3 out/idb-err.txt; continue; }
               XY=$(python3 - <<'PY'
           import json
           try:
