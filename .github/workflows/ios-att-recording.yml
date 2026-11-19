@@ -99,15 +99,14 @@ jobs:
               label = (it.get("AXLabel") or "").strip()
               if label == "Allow":
                   f = it["frame"]
-                  print(f'{f["x"] + f["width"] / 2} {f["y"] + f["height"] / 2}')
+                  print(f'{int(f["x"] + f["width"] / 2)} {int(f["y"] + f["height"] / 2)}')
                   break
           PY
               )
               if [ -n "$XY" ]; then
                 xcrun simctl io "$UDID" screenshot out/1-att-prompt.png
                 sleep 3
-                idb ui tap --udid "$UDID" $XY
-                TAPPED=yes
+                idb ui tap --udid "$UDID" $XY && TAPPED=yes
                 break
               fi
             fi
